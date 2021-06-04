@@ -1,4 +1,7 @@
 # Idemix
+[![License](https://img.shields.io/badge/license-Apache%202-blue)](LICENSE)
+[![Go Report Card](https://goreportcard.com/badge/github.com/IBM/idemix)](https://goreportcard.com/badge/github.com/IBM/idemix)
+[![Go](https://github.com/IBM/idemix/actions/workflows/go.yml/badge.svg)](https://github.com/IBM/idemix/actions/workflows/go.yml/badge.svg)
 
 This project is a Go implementation of an anonymous identity stack for blockchain systems.
 
