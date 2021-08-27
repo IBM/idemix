@@ -28,21 +28,17 @@ type NymSecretKey struct {
 	Translator idemix.Translator
 }
 
-func computeSKI(serialise func() []byte) ([]byte, error) {
+func computeSKI(serialise func() []byte) []byte {
 	raw := serialise()
 
 	hash := sha256.New()
 	hash.Write(raw)
-	return hash.Sum(nil), nil
+	return hash.Sum(nil)
 
 }
 
 func NewNymSecretKey(sk *math.Zr, pk *math.G1, translator idemix.Translator, exportable bool) (*NymSecretKey, error) {
-	ski, err := computeSKI(sk.Bytes)
-	if err != nil {
-		return nil, err
-	}
-
+	ski := computeSKI(sk.Bytes)
 	return &NymSecretKey{Ski: ski, Sk: sk, Pk: pk, Exportable: exportable, Translator: translator}, nil
 }
 
@@ -69,10 +65,7 @@ func (*NymSecretKey) Private() bool {
 }
 
 func (k *NymSecretKey) PublicKey() (bccsp.Key, error) {
-	ski, err := computeSKI(k.Pk.Bytes)
-	if err != nil {
-		return nil, err
-	}
+	ski := computeSKI(k.Pk.Bytes)
 	return &nymPublicKey{ski: ski, pk: k.Pk, translator: k.Translator}, nil
 }
 
@@ -95,9 +88,7 @@ func (k *nymPublicKey) Bytes() ([]byte, error) {
 }
 
 func (k *nymPublicKey) SKI() []byte {
-	c := make([]byte, len(k.ski))
-	copy(c, k.ski)
-	return c
+	return computeSKI(k.pk.Bytes)
 }
 
 func (*nymPublicKey) Symmetric() bool {
