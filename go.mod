@@ -1,6 +1,6 @@
 module github.com/IBM/idemix
 
-go 1.14
+go 1.16
 
 require (
 	github.com/IBM/mathlib v0.0.0-20210603184548-9a06095231d4

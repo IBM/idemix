@@ -425,13 +425,15 @@ func testSigParallel(t *testing.T, curve *math.Curve, tr Translator) {
 
 			err = sig.Ver(disclosure, key.Ipk, msg, nil, 0, 2, &revocationKey.PublicKey, epoch, idmx.Curve, tr, opts.BestEffort, nil)
 			if err != nil {
-				t.Fatalf("Signature should be valid but verification returned error: %s", err)
+				t.Logf("Signature should be valid but verification returned error: %s", err)
+				t.Fail()
 				return
 			}
 
 			err = sig.Ver(disclosure, key.Ipk, msg, nil, 0, 2, &revocationKey.PublicKey, epoch, idmx.Curve, tr, opts.ExpectStandard, nil)
 			if err != nil {
-				t.Fatalf("Signature should be valid but verification returned error: %s", err)
+				t.Logf("Signature should be valid but verification returned error: %s", err)
+				t.Fail()
 				return
 			}
 
@@ -446,25 +448,29 @@ func testSigParallel(t *testing.T, curve *math.Curve, tr Translator) {
 			// assert that the returned randomness is the right one
 			H_a_eid, err := tr.G1FromProto(key.Ipk.HAttrs[eidIndex])
 			if err != nil {
-				t.Fatalf("G1FromProto returned error: %s", err)
+				t.Logf("G1FromProto returned error: %s", err)
+				t.Fail()
 				return
 			}
 			HRand, err := tr.G1FromProto(key.Ipk.HRand)
 			if err != nil {
-				t.Fatalf("G1FromProto returned error: %s", err)
+				t.Logf("G1FromProto returned error: %s", err)
+				t.Fail()
 				return
 			}
 			Nym_eid := H_a_eid.Mul2(attrs[eidIndex], HRand, meta.NymEIDAuditData.RNymEid)
 			EidNym, err := tr.G1FromProto(sig.EidNym.Nym)
 			if err != nil {
-				t.Fatalf("G1FromProto returned error: %s", err)
+				t.Logf("G1FromProto returned error: %s", err)
+				t.Fail()
 				return
 			}
 			require.True(t, Nym_eid.Equals(EidNym))
 
 			err = sig.Ver(disclosure, key.Ipk, msg, nil, 0, 2, &revocationKey.PublicKey, epoch, idmx.Curve, tr, opts.BestEffort, nil)
 			if err != nil {
-				t.Fatalf("Signature should be valid but verification returned error: %s", err)
+				t.Logf("Signature should be valid but verification returned error: %s", err)
+				t.Fail()
 				return
 			}
 			err = sig.Ver(disclosure, key.Ipk, msg, attrs, rhindex, 2, &revocationKey.PublicKey, epoch, idmx.Curve, tr, opts.ExpectEidNym, nil)
@@ -528,7 +534,8 @@ func testSigParallel(t *testing.T, curve *math.Curve, tr Translator) {
 
 			err = sig.Ver(disclosure, key.Ipk, msg, nil, 0, 2, &revocationKey.PublicKey, epoch, idmx.Curve, tr, opts.BestEffort, nil)
 			if err != nil {
-				t.Fatalf("Signature should be valid but verification returned error: %s", err)
+				t.Logf("Signature should be valid but verification returned error: %s", err)
+				t.Fail()
 				return
 			}
 			err = sig.Ver(disclosure, key.Ipk, msg, attrs, rhindex, 2, &revocationKey.PublicKey, epoch, idmx.Curve, tr, opts.ExpectEidNym, nil)
@@ -673,7 +680,8 @@ func testNymSigParallel(t *testing.T, curve *math.Curve, tr Translator) {
 
 			err = nymsig.Ver(Nym, key.Ipk, []byte("testing"), idmx.Curve, tr)
 			if err != nil {
-				t.Fatalf("NymSig should be valid but verification returned error: %s", err)
+				t.Logf("NymSig should be valid but verification returned error: %s", err)
+				t.Fail()
 				return
 			}
 		}()
