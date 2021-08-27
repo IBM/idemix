@@ -371,7 +371,7 @@ func finalise(
 	var t4 *math.G1
 	var r_r_eid, r_eid *math.Zr
 	if sigType == opts.EidNym {
-		r_a_eid := rAttrs[eidIndex]
+		r_a_eid := rAttrs[sort.SearchInts(HiddenIndices, eidIndex)]
 		H_a_eid, err := tr.G1FromProto(ipk.HAttrs[eidIndex])
 		if err != nil {
 			return nil, nil, err
@@ -707,7 +707,7 @@ func (sig *Signature) Ver(
 			return err
 		}
 
-		t4 = H_a_eid.Mul2(ProofSAttrs[eidIndex], HRand, curve.NewZrFromBytes(sig.EidNym.ProofSEid))
+		t4 = H_a_eid.Mul2(ProofSAttrs[sort.SearchInts(HiddenIndices, eidIndex)], HRand, curve.NewZrFromBytes(sig.EidNym.ProofSEid))
 		EidNym, err := t.G1FromProto(sig.EidNym.Nym)
 		if err != nil {
 			return err
