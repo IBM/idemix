@@ -11,6 +11,7 @@ import (
 	"os"
 	"testing"
 
+	"github.com/IBM/idemix/bccsp/keystore/kvs"
 	bccsp "github.com/IBM/idemix/bccsp/schemes"
 	"github.com/IBM/idemix/bccsp/schemes/dlog/crypto/translator/amcl"
 	"github.com/IBM/idemix/bccsp/schemes/dlog/handlers"
@@ -28,8 +29,14 @@ func TestFileBased(t *testing.T) {
 	assert.NoError(t, err)
 	defer os.RemoveAll(dir)
 
-	keystore, err := NewFileBased(dir, curve, translator)
+	kvs, err := kvs.NewFileBased(dir)
 	assert.NoError(t, err)
+
+	keystore := &KVSStore{
+		KVS:        kvs,
+		Translator: translator,
+		Curve:      curve,
+	}
 
 	nsk, err := handlers.NewNymSecretKey(curve.NewRandomZr(rnd), curve.GenG1.Mul(curve.NewRandomZr(rnd)), translator, true)
 	assert.NoError(t, err)
@@ -37,12 +44,18 @@ func TestFileBased(t *testing.T) {
 		handlers.NewUserSecretKey(curve.NewRandomZr(rnd), true),
 		nsk,
 	}
+	pk, err := nsk.PublicKey()
+	assert.NoError(t, err)
+	skis := [][]byte{
+		keys[0].SKI(),
+		pk.SKI(),
+	}
 
-	for _, key := range keys {
+	for i, key := range keys {
 		err = keystore.StoreKey(key)
 		assert.NoError(t, err)
 
-		keyBack, err := keystore.GetKey(key.SKI())
+		keyBack, err := keystore.GetKey(skis[i])
 		assert.NoError(t, err)
 
 		b1, err := key.Bytes()
