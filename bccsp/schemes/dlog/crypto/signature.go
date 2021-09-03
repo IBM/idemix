@@ -545,7 +545,7 @@ func finalise(
 
 func (sig *Signature) AuditNymEid(
 	ipk *IssuerPublicKey,
-	enrollmentID string,
+	eidAttr *math.Zr,
 	eidIndex int,
 	RNymEid *math.Zr,
 	curve *math.Curve,
@@ -578,8 +578,6 @@ func (sig *Signature) AuditNymEid(
 	if err != nil {
 		return errors.Wrap(err, "could not deserialize EidNym")
 	}
-
-	eidAttr := curve.HashToZr([]byte(enrollmentID))
 
 	Nym_eid := H_a_eid.Mul2(eidAttr, HRand, RNymEid)
 

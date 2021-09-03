@@ -369,4 +369,93 @@ var _ = Describe("Signature", func() {
 			})
 		})
 	})
+
+	Describe("when verifying a nym eid", func() {
+
+		var (
+			Verifier            *handlers.Verifier
+			fakeSignatureScheme *mock.SignatureScheme
+		)
+
+		BeforeEach(func() {
+			fakeSignatureScheme = &mock.SignatureScheme{}
+			Verifier = &handlers.Verifier{SignatureScheme: fakeSignatureScheme}
+		})
+
+		Context("and the underlying cryptographic algorithm succeed", func() {
+			BeforeEach(func() {
+				fakeSignatureScheme.AuditNymEidReturns(nil)
+			})
+
+			It("returns no error and a successful validation", func() {
+				valid, err := Verifier.AuditNymEid(
+					handlers.NewIssuerPublicKey(nil),
+					[]byte("a signature"),
+					[]byte("a digest"),
+					&bccsp.EidNymAuditOpts{},
+				)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(valid).To(BeTrue())
+			})
+		})
+
+		Context("and the underlying cryptographic algorithm falis", func() {
+			BeforeEach(func() {
+				fakeSignatureScheme.AuditNymEidReturns(errors.New("invalid nym eid"))
+			})
+
+			It("returns an error and a falied validation", func() {
+				valid, err := Verifier.AuditNymEid(
+					handlers.NewIssuerPublicKey(nil),
+					[]byte("a signature"),
+					[]byte("a digest"),
+					&bccsp.EidNymAuditOpts{},
+				)
+				Expect(err).To(HaveOccurred())
+				Expect(err).To(MatchError("invalid nym eid"))
+				Expect(valid).To(BeFalse())
+			})
+		})
+
+		Context("and the wrong option is supplied", func() {
+			It("returns error", func() {
+				valid, err := Verifier.AuditNymEid(
+					handlers.NewIssuerPublicKey(nil),
+					[]byte("a signature"),
+					[]byte("a digest"),
+					&bccsp.IdemixSignerOpts{},
+				)
+				Expect(err).To(HaveOccurred())
+				Expect(err).To(MatchError("invalid options, expected *EidNymAuditOpts"))
+				Expect(valid).To(BeFalse())
+			})
+		})
+
+		Context("and no signature is supplied", func() {
+			It("returns error", func() {
+				valid, err := Verifier.AuditNymEid(
+					handlers.NewIssuerPublicKey(nil),
+					nil,
+					[]byte("a digest"),
+					&bccsp.EidNymAuditOpts{},
+				)
+				Expect(err).To(HaveOccurred())
+				Expect(err).To(MatchError("invalid signature, it must not be empty"))
+				Expect(valid).To(BeFalse())
+			})
+		})
+
+		Context("and the issuer public key is nil", func() {
+			It("returns error", func() {
+				valid, err := Verifier.AuditNymEid(
+					nil,
+					[]byte("fake signature"),
+					nil,
+					&bccsp.EidNymAuditOpts{},
+				)
+				Expect(err).To(MatchError("invalid key, expected *issuerPublicKey"))
+				Expect(valid).To(BeFalse())
+			})
+		})
+	})
 })

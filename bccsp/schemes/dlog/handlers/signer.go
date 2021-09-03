@@ -76,7 +76,7 @@ func (v *Verifier) AuditNymEid(k bccsp.Key, signature, digest []byte, opts bccsp
 
 	signerOpts, ok := opts.(*bccsp.EidNymAuditOpts)
 	if !ok {
-		return false, errors.New("invalid options, expected *IdemixSignerOpts")
+		return false, errors.New("invalid options, expected *EidNymAuditOpts")
 	}
 
 	if len(signature) == 0 {

@@ -532,6 +532,10 @@ func testSigParallel(t *testing.T, curve *math.Curve, tr Translator) {
 			require.NoError(t, err)
 			require.True(t, Nym_eid.Equals(EidNym))
 
+			// and now do it with the function
+			err = sig.AuditNymEid(key.Ipk, attrs[eidIndex], eidIndex, meta.NymEIDAuditData.RNymEid, idmx.Curve, tr)
+			require.NoError(t, err)
+
 			err = sig.Ver(disclosure, key.Ipk, msg, nil, 0, 2, &revocationKey.PublicKey, epoch, idmx.Curve, tr, opts.BestEffort, nil)
 			if err != nil {
 				t.Logf("Signature should be valid but verification returned error: %s", err)

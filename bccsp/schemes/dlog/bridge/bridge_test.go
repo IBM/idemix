@@ -869,6 +869,65 @@ var _ = Describe("Idemix Bridge", func() {
 
 		})
 
+		Describe("producing a signature with a nym eid", func() {
+			var (
+				SignatureScheme handlers.SignatureScheme
+				Signer          *handlers.Signer
+				Verifier        *handlers.Verifier
+
+				digest     []byte
+				SignerOpts *bccsp.IdemixSignerOpts
+				signature  []byte
+			)
+
+			BeforeEach(func() {
+				SignatureScheme = &bridge.SignatureScheme{Idemix: &idemix.Idemix{Curve: math.Curves[math.FP256BN_AMCL]}, Translator: &amcl.Fp256bn{C: math.Curves[math.FP256BN_AMCL]}}
+				Signer = &handlers.Signer{SignatureScheme: SignatureScheme}
+				Verifier = &handlers.Verifier{SignatureScheme: SignatureScheme}
+
+				digest = []byte("a digest")
+				SignerOpts = &bccsp.IdemixSignerOpts{
+					Credential: credential,
+					Nym:        NymKey,
+					IssuerPK:   IssuerPublicKey,
+					Attributes: []bccsp.IdemixAttribute{
+						{Type: bccsp.IdemixHiddenAttribute},
+						{Type: bccsp.IdemixHiddenAttribute},
+						{Type: bccsp.IdemixHiddenAttribute},
+						{Type: bccsp.IdemixHiddenAttribute},
+						{Type: bccsp.IdemixHiddenAttribute},
+					},
+					RhIndex:  2,
+					EidIndex: 3,
+					SigType:  bccsp.EidNym,
+				}
+
+				var err error
+				signature, err = Signer.Sign(UserKey, digest, SignerOpts)
+				Expect(err).NotTo(HaveOccurred())
+			})
+
+			It("generates a proper signature", func() {
+				valid, err := Verifier.AuditNymEid(IssuerPublicKey, signature, digest, &bccsp.EidNymAuditOpts{
+					EidIndex:     3,
+					RNymEid:      SignerOpts.Metadata.NymEIDAuditData.RNymEid,
+					EnrollmentID: string([]byte{0, 1, 2}),
+				})
+				Expect(err).NotTo(HaveOccurred())
+				Expect(valid).To(BeTrue())
+			})
+
+			It("fails because it gets the wrong type of signature", func() {
+				valid, err := Verifier.AuditNymEid(IssuerPublicKey, []byte("To ride the storm, to an empire of the clouds"), digest, &bccsp.EidNymAuditOpts{
+					EidIndex:     3,
+					RNymEid:      SignerOpts.Metadata.NymEIDAuditData.RNymEid,
+					EnrollmentID: string([]byte{0, 1, 2}),
+				})
+				Expect(err.Error()).To(ContainSubstring("cannot parse invalid wire-format data"))
+				Expect(valid).To(BeFalse())
+			})
+		})
+
 		Describe("producing and verifying idemix signature with different sets of attributes", func() {
 			var (
 				SignatureScheme handlers.SignatureScheme

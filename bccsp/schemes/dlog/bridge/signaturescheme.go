@@ -109,9 +109,11 @@ func (s *SignatureScheme) AuditNymEid(
 		return err
 	}
 
+	eidAttr := s.Idemix.Curve.HashToZr([]byte(enrollmentID))
+
 	return sig.AuditNymEid(
 		iipk.PK,
-		enrollmentID,
+		eidAttr,
 		eidIndex,
 		RNymEid,
 		s.Idemix.Curve,
