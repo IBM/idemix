@@ -366,7 +366,7 @@ func testWithCurve(id math.CurveID, translator idemix1.Translator) {
 						{Type: bccsp.IdemixHiddenAttribute},
 					},
 					RhIndex:  4,
-					EidIndex: 2,
+					EidIndex: 3,
 					Epoch:    0,
 					CRI:      cri,
 					SigType:  bccsp.EidNym,
@@ -396,7 +396,7 @@ func testWithCurve(id math.CurveID, translator idemix1.Translator) {
 							{Type: bccsp.IdemixHiddenAttribute},
 						},
 						RhIndex:          4,
-						EidIndex:         2,
+						EidIndex:         3,
 						Epoch:            0,
 						VerificationType: bccsp.BestEffort,
 					},
@@ -420,7 +420,7 @@ func testWithCurve(id math.CurveID, translator idemix1.Translator) {
 							{Type: bccsp.IdemixHiddenAttribute},
 						},
 						RhIndex:          4,
-						EidIndex:         2,
+						EidIndex:         3,
 						Epoch:            0,
 						VerificationType: bccsp.ExpectEidNym,
 					},
@@ -444,7 +444,7 @@ func testWithCurve(id math.CurveID, translator idemix1.Translator) {
 							{Type: bccsp.IdemixHiddenAttribute},
 						},
 						RhIndex:          4,
-						EidIndex:         2,
+						EidIndex:         3,
 						Epoch:            0,
 						VerificationType: bccsp.ExpectEidNym,
 						Metadata:         signOpts.Metadata,
@@ -471,7 +471,7 @@ func testWithCurve(id math.CurveID, translator idemix1.Translator) {
 							{Type: bccsp.IdemixHiddenAttribute},
 						},
 						RhIndex:          4,
-						EidIndex:         2,
+						EidIndex:         3,
 						Epoch:            0,
 						VerificationType: bccsp.ExpectEidNym,
 						Metadata:         signOpts.Metadata,
@@ -497,7 +497,7 @@ func testWithCurve(id math.CurveID, translator idemix1.Translator) {
 							{Type: bccsp.IdemixHiddenAttribute},
 						},
 						RhIndex:          4,
-						EidIndex:         2,
+						EidIndex:         3,
 						Epoch:            0,
 						VerificationType: bccsp.ExpectStandard,
 					},
@@ -507,6 +507,36 @@ func testWithCurve(id math.CurveID, translator idemix1.Translator) {
 				Expect(valid).To(BeFalse())
 			})
 
+			It("nym eid auditing with the right enrollment ID succeeds", func() {
+				valid, err := CSP.Verify(
+					IssuerPublicKey,
+					signature,
+					digest,
+					&bccsp.EidNymAuditOpts{
+						EidIndex:     3,
+						EnrollmentID: string([]byte{0, 1, 2}),
+						RNymEid:      signOpts.Metadata.NymEIDAuditData.RNymEid,
+					},
+				)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(valid).To(BeTrue())
+			})
+
+			It("nym eid auditing with the wrong enrollment ID fails", func() {
+				valid, err := CSP.Verify(
+					IssuerPublicKey,
+					signature,
+					digest,
+					&bccsp.EidNymAuditOpts{
+						EidIndex:     3,
+						EnrollmentID: "Have you seen the writing on the wall?",
+						RNymEid:      signOpts.Metadata.NymEIDAuditData.RNymEid,
+					},
+				)
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(ContainSubstring("eid nym does not match"))
+				Expect(valid).To(BeFalse())
+			})
 		})
 
 		Describe("producing an idemix signature with disclosed attributes", func() {

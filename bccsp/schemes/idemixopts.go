@@ -288,6 +288,16 @@ func (o *IdemixSignerOpts) HashFunc() crypto.Hash {
 	return o.H
 }
 
+type EidNymAuditOpts struct {
+	EidIndex     int
+	EnrollmentID string
+	RNymEid      *math.Zr
+}
+
+func (o *EidNymAuditOpts) HashFunc() crypto.Hash {
+	return 0
+}
+
 // IdemixNymSignerOpts contains the options to generate an idemix pseudonym signature.
 type IdemixNymSignerOpts struct {
 	// Nym is the pseudonym to be used

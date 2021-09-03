@@ -11,6 +11,21 @@ import (
 )
 
 type SignatureScheme struct {
+	AuditNymEidStub        func(handlers.IssuerPublicKey, int, []byte, string, *math.Zr) error
+	auditNymEidMutex       sync.RWMutex
+	auditNymEidArgsForCall []struct {
+		arg1 handlers.IssuerPublicKey
+		arg2 int
+		arg3 []byte
+		arg4 string
+		arg5 *math.Zr
+	}
+	auditNymEidReturns struct {
+		result1 error
+	}
+	auditNymEidReturnsOnCall map[int]struct {
+		result1 error
+	}
 	SignStub        func([]byte, *math.Zr, *math.G1, *math.Zr, handlers.IssuerPublicKey, []idemix.IdemixAttribute, []byte, int, int, []byte, idemix.SignatureType) ([]byte, *idemix.IdemixSignerMetadata, error)
 	signMutex       sync.RWMutex
 	signArgsForCall []struct {
@@ -58,6 +73,76 @@ type SignatureScheme struct {
 	}
 	invocations      map[string][][]interface{}
 	invocationsMutex sync.RWMutex
+}
+
+func (fake *SignatureScheme) AuditNymEid(arg1 handlers.IssuerPublicKey, arg2 int, arg3 []byte, arg4 string, arg5 *math.Zr) error {
+	var arg3Copy []byte
+	if arg3 != nil {
+		arg3Copy = make([]byte, len(arg3))
+		copy(arg3Copy, arg3)
+	}
+	fake.auditNymEidMutex.Lock()
+	ret, specificReturn := fake.auditNymEidReturnsOnCall[len(fake.auditNymEidArgsForCall)]
+	fake.auditNymEidArgsForCall = append(fake.auditNymEidArgsForCall, struct {
+		arg1 handlers.IssuerPublicKey
+		arg2 int
+		arg3 []byte
+		arg4 string
+		arg5 *math.Zr
+	}{arg1, arg2, arg3Copy, arg4, arg5})
+	stub := fake.AuditNymEidStub
+	fakeReturns := fake.auditNymEidReturns
+	fake.recordInvocation("AuditNymEid", []interface{}{arg1, arg2, arg3Copy, arg4, arg5})
+	fake.auditNymEidMutex.Unlock()
+	if stub != nil {
+		return stub(arg1, arg2, arg3, arg4, arg5)
+	}
+	if specificReturn {
+		return ret.result1
+	}
+	return fakeReturns.result1
+}
+
+func (fake *SignatureScheme) AuditNymEidCallCount() int {
+	fake.auditNymEidMutex.RLock()
+	defer fake.auditNymEidMutex.RUnlock()
+	return len(fake.auditNymEidArgsForCall)
+}
+
+func (fake *SignatureScheme) AuditNymEidCalls(stub func(handlers.IssuerPublicKey, int, []byte, string, *math.Zr) error) {
+	fake.auditNymEidMutex.Lock()
+	defer fake.auditNymEidMutex.Unlock()
+	fake.AuditNymEidStub = stub
+}
+
+func (fake *SignatureScheme) AuditNymEidArgsForCall(i int) (handlers.IssuerPublicKey, int, []byte, string, *math.Zr) {
+	fake.auditNymEidMutex.RLock()
+	defer fake.auditNymEidMutex.RUnlock()
+	argsForCall := fake.auditNymEidArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3, argsForCall.arg4, argsForCall.arg5
+}
+
+func (fake *SignatureScheme) AuditNymEidReturns(result1 error) {
+	fake.auditNymEidMutex.Lock()
+	defer fake.auditNymEidMutex.Unlock()
+	fake.AuditNymEidStub = nil
+	fake.auditNymEidReturns = struct {
+		result1 error
+	}{result1}
+}
+
+func (fake *SignatureScheme) AuditNymEidReturnsOnCall(i int, result1 error) {
+	fake.auditNymEidMutex.Lock()
+	defer fake.auditNymEidMutex.Unlock()
+	fake.AuditNymEidStub = nil
+	if fake.auditNymEidReturnsOnCall == nil {
+		fake.auditNymEidReturnsOnCall = make(map[int]struct {
+			result1 error
+		})
+	}
+	fake.auditNymEidReturnsOnCall[i] = struct {
+		result1 error
+	}{result1}
 }
 
 func (fake *SignatureScheme) Sign(arg1 []byte, arg2 *math.Zr, arg3 *math.G1, arg4 *math.Zr, arg5 handlers.IssuerPublicKey, arg6 []idemix.IdemixAttribute, arg7 []byte, arg8 int, arg9 int, arg10 []byte, arg11 idemix.SignatureType) ([]byte, *idemix.IdemixSignerMetadata, error) {
@@ -245,6 +330,8 @@ func (fake *SignatureScheme) VerifyReturnsOnCall(i int, result1 error) {
 func (fake *SignatureScheme) Invocations() map[string][][]interface{} {
 	fake.invocationsMutex.RLock()
 	defer fake.invocationsMutex.RUnlock()
+	fake.auditNymEidMutex.RLock()
+	defer fake.auditNymEidMutex.RUnlock()
 	fake.signMutex.RLock()
 	defer fake.signMutex.RUnlock()
 	fake.verifyMutex.RLock()

@@ -85,6 +85,40 @@ func (s *SignatureScheme) Sign(cred []byte, sk *math.Zr, Nym *math.G1, RNym *mat
 	return sigBytes, meta, nil
 }
 
+func (s *SignatureScheme) AuditNymEid(
+	ipk handlers.IssuerPublicKey,
+	eidIndex int,
+	signature []byte,
+	enrollmentID string,
+	RNymEid *math.Zr,
+) (err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			err = errors.Errorf("failure [%s]", r)
+		}
+	}()
+
+	iipk, ok := ipk.(*IssuerPublicKey)
+	if !ok {
+		return errors.Errorf("invalid issuer public key, expected *IssuerPublicKey, got [%T]", ipk)
+	}
+
+	sig := &idemix.Signature{}
+	err = proto.Unmarshal(signature, sig)
+	if err != nil {
+		return err
+	}
+
+	return sig.AuditNymEid(
+		iipk.PK,
+		enrollmentID,
+		eidIndex,
+		RNymEid,
+		s.Idemix.Curve,
+		s.Translator,
+	)
+}
+
 // Verify checks that an idemix signature is valid with the respect to the passed issuer public key, digest, attributes,
 // revocation index (rhIndex), revocation public key, and epoch.
 func (s *SignatureScheme) Verify(

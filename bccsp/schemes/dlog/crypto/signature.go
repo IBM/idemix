@@ -543,6 +543,53 @@ func finalise(
 	return sig, m, nil
 }
 
+func (sig *Signature) AuditNymEid(
+	ipk *IssuerPublicKey,
+	enrollmentID string,
+	eidIndex int,
+	RNymEid *math.Zr,
+	curve *math.Curve,
+	t Translator,
+) error {
+	// Validate inputs
+	if ipk == nil {
+		return errors.Errorf("cannot verify idemix signature: received nil input")
+	}
+
+	if sig.EidNym == nil || sig.EidNym.Nym == nil {
+		return errors.Errorf("no EidNym provided")
+	}
+
+	if len(ipk.HAttrs) <= eidIndex {
+		return errors.Errorf("could not access H_a_eid in array")
+	}
+
+	H_a_eid, err := t.G1FromProto(ipk.HAttrs[eidIndex])
+	if err != nil {
+		return errors.Wrap(err, "could not deserialize H_a_eid")
+	}
+
+	HRand, err := t.G1FromProto(ipk.HRand)
+	if err != nil {
+		return errors.Wrap(err, "could not deserialize HRand")
+	}
+
+	EidNym, err := t.G1FromProto(sig.EidNym.Nym)
+	if err != nil {
+		return errors.Wrap(err, "could not deserialize EidNym")
+	}
+
+	eidAttr := curve.HashToZr([]byte(enrollmentID))
+
+	Nym_eid := H_a_eid.Mul2(eidAttr, HRand, RNymEid)
+
+	if !Nym_eid.Equals(EidNym) {
+		return errors.New("eid nym does not match")
+	}
+
+	return nil
+}
+
 // Ver verifies an idemix signature
 // Disclosure steers which attributes it expects to be disclosed
 // attributeValues contains the desired attribute values.

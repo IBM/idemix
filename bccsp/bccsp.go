@@ -178,6 +178,8 @@ type issuerPublicKeyVerifierMultiplexer struct {
 
 func (v *issuerPublicKeyVerifierMultiplexer) Verify(k bccsp.Key, signature, digest []byte, opts bccsp.SignerOpts) (valid bool, err error) {
 	switch opts.(type) {
+	case *bccsp.EidNymAuditOpts:
+		return v.verifier.AuditNymEid(k, signature, digest, opts)
 	case *bccsp.IdemixSignerOpts:
 		return v.verifier.Verify(k, signature, digest, opts)
 	case *bccsp.IdemixCredentialRequestSignerOpts:

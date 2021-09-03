@@ -68,6 +68,35 @@ type Verifier struct {
 	SignatureScheme SignatureScheme
 }
 
+func (v *Verifier) AuditNymEid(k bccsp.Key, signature, digest []byte, opts bccsp.SignerOpts) (bool, error) {
+	issuerPublicKey, ok := k.(*issuerPublicKey)
+	if !ok {
+		return false, errors.New("invalid key, expected *issuerPublicKey")
+	}
+
+	signerOpts, ok := opts.(*bccsp.EidNymAuditOpts)
+	if !ok {
+		return false, errors.New("invalid options, expected *IdemixSignerOpts")
+	}
+
+	if len(signature) == 0 {
+		return false, errors.New("invalid signature, it must not be empty")
+	}
+
+	err := v.SignatureScheme.AuditNymEid(
+		issuerPublicKey.pk,
+		signerOpts.EidIndex,
+		signature,
+		signerOpts.EnrollmentID,
+		signerOpts.RNymEid,
+	)
+	if err != nil {
+		return false, err
+	}
+
+	return true, nil
+}
+
 func (v *Verifier) Verify(k bccsp.Key, signature, digest []byte, opts bccsp.SignerOpts) (bool, error) {
 	issuerPublicKey, ok := k.(*issuerPublicKey)
 	if !ok {
