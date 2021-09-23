@@ -36,13 +36,6 @@ func TestIdemixAMCLMiracl(t *testing.T) {
 	testIdemix(t, curve, tr)
 }
 
-func TestIdemixGurvy256(t *testing.T) {
-	curve := math.Curves[math.BN256]
-	tr := &amcl.Gurvy{C: curve}
-
-	testIdemix(t, curve, tr)
-}
-
 func TestIdemixGurvy254(t *testing.T) {
 	curve := math.Curves[math.BN254]
 	tr := &amcl.Gurvy{C: curve}
@@ -268,16 +261,6 @@ func TestCredentialVerParallelAMCL(t *testing.T) {
 	)
 }
 
-func TestCredentialVerParallelGurvy256(t *testing.T) {
-	t.Parallel()
-	curve := math.Curves[math.BN256]
-	testCredentialVerParallel(
-		t,
-		curve,
-		&amcl.Gurvy{C: curve},
-	)
-}
-
 func TestCredentialVerParallelGurvy254(t *testing.T) {
 	t.Parallel()
 	curve := math.Curves[math.BN254]
@@ -335,16 +318,6 @@ func TestSigParallelAMCL(t *testing.T) {
 		t,
 		curve,
 		&amcl.Fp256bnMiracl{C: curve},
-	)
-}
-
-func TestSigParallelGurvy256(t *testing.T) {
-	t.Parallel()
-	curve := math.Curves[math.BN256]
-	testSigParallel(
-		t,
-		curve,
-		&amcl.Gurvy{C: curve},
 	)
 }
 
@@ -601,16 +574,6 @@ func TestNymSigParallelAMCL(t *testing.T) {
 	)
 }
 
-func TestNymSigParallelGurvy256(t *testing.T) {
-	t.Parallel()
-	curve := math.Curves[math.BN256]
-	testNymSigParallel(
-		t,
-		curve,
-		&amcl.Gurvy{C: curve},
-	)
-}
-
 func TestNymSigParallelGurvy254(t *testing.T) {
 	t.Parallel()
 	curve := math.Curves[math.BN254]
@@ -701,16 +664,6 @@ func TestIPKCheckAMCL(t *testing.T) {
 		t,
 		curve,
 		&amcl.Fp256bnMiracl{C: curve},
-	)
-}
-
-func TestIPKCheckGurvy256(t *testing.T) {
-	t.Parallel()
-	curve := math.Curves[math.BN256]
-	testIPKCheck(
-		t,
-		curve,
-		&amcl.Gurvy{C: curve},
 	)
 }
 
