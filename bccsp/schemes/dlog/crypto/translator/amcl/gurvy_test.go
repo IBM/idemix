@@ -14,7 +14,7 @@ import (
 )
 
 func TestGurvyTranslatorGen(t *testing.T) {
-	curve := math.Curves[math.BN256]
+	curve := math.Curves[math.BN254]
 	tr := &Gurvy{
 		C: curve,
 	}
@@ -33,7 +33,7 @@ func TestGurvyTranslatorGen(t *testing.T) {
 }
 
 func TestGurvyTranslatorRndG1(t *testing.T) {
-	curve := math.Curves[math.BN256]
+	curve := math.Curves[math.BN254]
 	tr := &Gurvy{
 		C: curve,
 	}
@@ -54,7 +54,7 @@ func TestGurvyTranslatorRndG1(t *testing.T) {
 }
 
 func TestGurvyTranslatorRndG2(t *testing.T) {
-	curve := math.Curves[math.BN256]
+	curve := math.Curves[math.BN254]
 	tr := &Gurvy{
 		C: curve,
 	}

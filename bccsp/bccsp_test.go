@@ -51,15 +51,12 @@ func (ks *dummyKeyStore) StoreKey(k bccsp.Key) error {
 
 var _ = Describe("Idemix Bridge", func() {
 	testWithCurve(math.FP256BN_AMCL, &amcl.Fp256bn{C: math.Curves[math.FP256BN_AMCL]})
-	testWithCurve(math.BN256, &amcl.Gurvy{C: math.Curves[math.BN256]})
 	testWithCurve(math.BN254, &amcl.Gurvy{C: math.Curves[math.BN254]})
 	testWithCurve(math.FP256BN_AMCL_MIRACL, &amcl.Fp256bnMiracl{C: math.Curves[math.FP256BN_AMCL_MIRACL]})
 })
 
 func curveName(id math.CurveID) string {
 	switch id {
-	case math.BN256:
-		return "BN256"
 	case math.FP256BN_AMCL:
 		return "FP256BN_AMCL"
 	case math.BN254:
