@@ -17,6 +17,7 @@ import (
 	idemix1 "github.com/IBM/idemix/bccsp/schemes/dlog/crypto"
 	"github.com/IBM/idemix/bccsp/schemes/dlog/crypto/translator/amcl"
 	math "github.com/IBM/mathlib"
+	"github.com/golang/protobuf/proto"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/pkg/errors"
@@ -288,6 +289,174 @@ func testWithCurve(id math.CurveID, translator idemix1.Translator) {
 				Expect(valid).To(BeTrue())
 			})
 
+			It("the signature is valid", func() {
+				valid, err := CSP.Verify(
+					IssuerPublicKey,
+					signature,
+					digest,
+					&bccsp.IdemixSignerOpts{
+						RevocationPublicKey: RevocationPublicKey,
+						Attributes: []bccsp.IdemixAttribute{
+							{Type: bccsp.IdemixHiddenAttribute},
+							{Type: bccsp.IdemixHiddenAttribute},
+							{Type: bccsp.IdemixHiddenAttribute},
+							{Type: bccsp.IdemixHiddenAttribute},
+							{Type: bccsp.IdemixHiddenAttribute},
+						},
+						RhIndex:  4,
+						EidIndex: 2,
+						Epoch:    0,
+						// VerificationType: bccsp.Basic,
+					},
+				)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(valid).To(BeTrue())
+			})
+
+			It("the signature is valid even when there's garbage in the nym eid field if we do basic verification", func() {
+				sig := &idemix1.Signature{}
+				err := proto.Unmarshal(signature, sig)
+				Expect(err).NotTo(HaveOccurred())
+
+				sig.EidNym = &idemix1.EIDNym{
+					ProofSEid: []byte("invalid garbage"),
+				}
+
+				sigBytes, err := proto.Marshal(sig)
+				Expect(err).NotTo(HaveOccurred())
+
+				valid, err := CSP.Verify(
+					IssuerPublicKey,
+					sigBytes,
+					digest,
+					&bccsp.IdemixSignerOpts{
+						RevocationPublicKey: RevocationPublicKey,
+						Attributes: []bccsp.IdemixAttribute{
+							{Type: bccsp.IdemixHiddenAttribute},
+							{Type: bccsp.IdemixHiddenAttribute},
+							{Type: bccsp.IdemixHiddenAttribute},
+							{Type: bccsp.IdemixHiddenAttribute},
+							{Type: bccsp.IdemixHiddenAttribute},
+						},
+						RhIndex:  4,
+						EidIndex: 2,
+						Epoch:    0,
+						// VerificationType: bccsp.Basic,
+					},
+				)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(valid).To(BeTrue())
+			})
+
+			It("the signature is not valid when there's garbage in the nym eid field and we do ExpectStandard verification", func() {
+				sig := &idemix1.Signature{}
+				err := proto.Unmarshal(signature, sig)
+				Expect(err).NotTo(HaveOccurred())
+
+				sig.EidNym = &idemix1.EIDNym{
+					ProofSEid: []byte("invalid garbage"),
+				}
+
+				sigBytes, err := proto.Marshal(sig)
+				Expect(err).NotTo(HaveOccurred())
+
+				valid, err := CSP.Verify(
+					IssuerPublicKey,
+					sigBytes,
+					digest,
+					&bccsp.IdemixSignerOpts{
+						RevocationPublicKey: RevocationPublicKey,
+						Attributes: []bccsp.IdemixAttribute{
+							{Type: bccsp.IdemixHiddenAttribute},
+							{Type: bccsp.IdemixHiddenAttribute},
+							{Type: bccsp.IdemixHiddenAttribute},
+							{Type: bccsp.IdemixHiddenAttribute},
+							{Type: bccsp.IdemixHiddenAttribute},
+						},
+						RhIndex:          4,
+						EidIndex:         2,
+						Epoch:            0,
+						VerificationType: bccsp.ExpectStandard,
+					},
+				)
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(ContainSubstring("EidNym available but ExpectStandard required"))
+				Expect(valid).To(BeFalse())
+			})
+
+			It("the signature is not valid when there's garbage in the nym eid field and we do ExpectEidNym verification", func() {
+				sig := &idemix1.Signature{}
+				err := proto.Unmarshal(signature, sig)
+				Expect(err).NotTo(HaveOccurred())
+
+				sig.EidNym = &idemix1.EIDNym{
+					ProofSEid: []byte("invalid garbage"),
+				}
+
+				sigBytes, err := proto.Marshal(sig)
+				Expect(err).NotTo(HaveOccurred())
+
+				valid, err := CSP.Verify(
+					IssuerPublicKey,
+					sigBytes,
+					digest,
+					&bccsp.IdemixSignerOpts{
+						RevocationPublicKey: RevocationPublicKey,
+						Attributes: []bccsp.IdemixAttribute{
+							{Type: bccsp.IdemixHiddenAttribute},
+							{Type: bccsp.IdemixHiddenAttribute},
+							{Type: bccsp.IdemixHiddenAttribute},
+							{Type: bccsp.IdemixHiddenAttribute},
+							{Type: bccsp.IdemixHiddenAttribute},
+						},
+						RhIndex:          4,
+						EidIndex:         2,
+						Epoch:            0,
+						VerificationType: bccsp.ExpectEidNym,
+					},
+				)
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(ContainSubstring("no EidNym provided but ExpectEidNym required"))
+				Expect(valid).To(BeFalse())
+			})
+
+			It("the signature is not valid when there's garbage in the nym eid field and we do BestEffort verification", func() {
+				sig := &idemix1.Signature{}
+				err := proto.Unmarshal(signature, sig)
+				Expect(err).NotTo(HaveOccurred())
+
+				sig.EidNym = &idemix1.EIDNym{
+					ProofSEid: []byte("invalid garbageinvalid garbageinvalid garbageinvalid garbageinvalid garbageinvalid garbageinvalid garbageinvalid garbage"),
+					Nym:       translator.G1ToProto(math.Curves[id].GenG1),
+				}
+
+				sigBytes, err := proto.Marshal(sig)
+				Expect(err).NotTo(HaveOccurred())
+
+				valid, err := CSP.Verify(
+					IssuerPublicKey,
+					sigBytes,
+					digest,
+					&bccsp.IdemixSignerOpts{
+						RevocationPublicKey: RevocationPublicKey,
+						Attributes: []bccsp.IdemixAttribute{
+							{Type: bccsp.IdemixHiddenAttribute},
+							{Type: bccsp.IdemixHiddenAttribute},
+							{Type: bccsp.IdemixHiddenAttribute},
+							{Type: bccsp.IdemixHiddenAttribute},
+							{Type: bccsp.IdemixHiddenAttribute},
+						},
+						RhIndex:          4,
+						EidIndex:         3,
+						Epoch:            0,
+						VerificationType: bccsp.BestEffort,
+					},
+				)
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(ContainSubstring("zero-knowledge proof is invalid"))
+				Expect(valid).To(BeFalse())
+			})
+
 			It("the signature is valid when we expect a standard signature", func() {
 				valid, err := CSP.Verify(
 					IssuerPublicKey,
@@ -376,6 +545,31 @@ func testWithCurve(id math.CurveID, translator idemix1.Translator) {
 				)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(signOpts.Metadata).NotTo(BeNil())
+			})
+
+			It("the signature is not valid if we use basic verification", func() {
+				valid, err := CSP.Verify(
+					IssuerPublicKey,
+					signature,
+					digest,
+					&bccsp.IdemixSignerOpts{
+						RevocationPublicKey: RevocationPublicKey,
+						Attributes: []bccsp.IdemixAttribute{
+							{Type: bccsp.IdemixHiddenAttribute},
+							{Type: bccsp.IdemixHiddenAttribute},
+							{Type: bccsp.IdemixHiddenAttribute},
+							{Type: bccsp.IdemixHiddenAttribute},
+							{Type: bccsp.IdemixHiddenAttribute},
+						},
+						RhIndex:  4,
+						EidIndex: 3,
+						Epoch:    0,
+						// VerificationType: bccsp.Basic,
+					},
+				)
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(ContainSubstring("zero-knowledge proof is invalid"))
+				Expect(valid).To(BeFalse())
 			})
 
 			It("the signature is valid", func() {

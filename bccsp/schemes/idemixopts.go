@@ -393,8 +393,10 @@ const (
 type VerificationType int
 
 const (
+	// Basic performs the verification without any of the extensions (e.g. it ignores the nym eid)
+	Basic VerificationType = iota
 	// BestEffort performs all verifications possible given the available information in the signature/opts
-	BestEffort VerificationType = iota
+	BestEffort
 	// ExpectStandard expects a SignatureType of type Standard
 	ExpectStandard
 	// ExpectEidNym expects a SignatureType of type EidNym
