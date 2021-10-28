@@ -12,15 +12,16 @@ import (
 	"os"
 	"path"
 
-	idemix "github.com/IBM/idemix/bccsp"
-	bccsp "github.com/IBM/idemix/bccsp/schemes"
-	idemix1 "github.com/IBM/idemix/bccsp/schemes/dlog/crypto"
-	"github.com/IBM/idemix/bccsp/schemes/dlog/crypto/translator/amcl"
 	math "github.com/IBM/mathlib"
 	"github.com/golang/protobuf/proto"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/pkg/errors"
+
+	idemix "github.com/IBM/idemix/bccsp"
+	bccsp "github.com/IBM/idemix/bccsp/schemes"
+	idemix1 "github.com/IBM/idemix/bccsp/schemes/dlog/crypto"
+	"github.com/IBM/idemix/bccsp/schemes/dlog/crypto/translator/amcl"
 )
 
 // NewDummyKeyStore instantiate a dummy key store
@@ -728,6 +729,85 @@ func testWithCurve(id math.CurveID, translator idemix1.Translator) {
 				Expect(err.Error()).To(ContainSubstring("eid nym does not match"))
 				Expect(valid).To(BeFalse())
 			})
+
+			It("valid signature against meta", func() {
+				signOpts2 := &bccsp.IdemixSignerOpts{
+					Credential: credential,
+					Nym:        NymKey,
+					IssuerPK:   IssuerPublicKey,
+					Attributes: []bccsp.IdemixAttribute{
+						{Type: bccsp.IdemixHiddenAttribute},
+						{Type: bccsp.IdemixHiddenAttribute},
+						{Type: bccsp.IdemixHiddenAttribute},
+						{Type: bccsp.IdemixHiddenAttribute},
+						{Type: bccsp.IdemixHiddenAttribute},
+					},
+					RhIndex:  4,
+					EidIndex: 3,
+					Epoch:    0,
+					CRI:      cri,
+					SigType:  bccsp.EidNym,
+					Metadata: signOpts.Metadata,
+				}
+				signature2, err := CSP.Sign(
+					UserKey,
+					digest,
+					signOpts2,
+				)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(signOpts2.Metadata).NotTo(BeNil())
+
+				Expect(signOpts2.Metadata.NymEIDAuditData.Nym.Equals(signOpts.Metadata.NymEIDAuditData.Nym)).To(BeTrue())
+				Expect(signOpts2.Metadata.NymEIDAuditData.EID.Equals(signOpts2.Metadata.NymEIDAuditData.EID)).To(BeTrue())
+				Expect(signOpts2.Metadata.NymEIDAuditData.RNymEid.Equals(signOpts.Metadata.NymEIDAuditData.RNymEid)).To(BeTrue())
+
+				valid, err := CSP.Verify(
+					IssuerPublicKey,
+					signature2,
+					digest,
+					&bccsp.IdemixSignerOpts{
+						RevocationPublicKey: RevocationPublicKey,
+						Attributes: []bccsp.IdemixAttribute{
+							{Type: bccsp.IdemixHiddenAttribute},
+							{Type: bccsp.IdemixHiddenAttribute},
+							{Type: bccsp.IdemixHiddenAttribute},
+							{Type: bccsp.IdemixHiddenAttribute},
+							{Type: bccsp.IdemixHiddenAttribute},
+						},
+						RhIndex:          4,
+						EidIndex:         3,
+						Epoch:            0,
+						VerificationType: bccsp.ExpectEidNym,
+						Metadata:         signOpts.Metadata,
+					},
+				)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(valid).To(BeTrue())
+
+				valid, err = CSP.Verify(
+					IssuerPublicKey,
+					signature2,
+					digest,
+					&bccsp.IdemixSignerOpts{
+						RevocationPublicKey: RevocationPublicKey,
+						Attributes: []bccsp.IdemixAttribute{
+							{Type: bccsp.IdemixHiddenAttribute},
+							{Type: bccsp.IdemixHiddenAttribute},
+							{Type: bccsp.IdemixHiddenAttribute},
+							{Type: bccsp.IdemixHiddenAttribute},
+							{Type: bccsp.IdemixHiddenAttribute},
+						},
+						RhIndex:          4,
+						EidIndex:         3,
+						Epoch:            0,
+						VerificationType: bccsp.ExpectEidNym,
+						Metadata:         signOpts2.Metadata,
+					},
+				)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(valid).To(BeTrue())
+			})
+
 		})
 
 		Describe("producing an idemix signature with disclosed attributes", func() {

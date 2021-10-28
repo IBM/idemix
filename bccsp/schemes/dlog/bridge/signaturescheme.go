@@ -8,12 +8,13 @@ package bridge
 import (
 	"crypto/ecdsa"
 
-	bccsp "github.com/IBM/idemix/bccsp/schemes"
-	idemix "github.com/IBM/idemix/bccsp/schemes/dlog/crypto"
-	"github.com/IBM/idemix/bccsp/schemes/dlog/handlers"
 	math "github.com/IBM/mathlib"
 	"github.com/golang/protobuf/proto"
 	"github.com/pkg/errors"
+
+	bccsp "github.com/IBM/idemix/bccsp/schemes"
+	idemix "github.com/IBM/idemix/bccsp/schemes/dlog/crypto"
+	"github.com/IBM/idemix/bccsp/schemes/dlog/handlers"
 )
 
 // SignatureScheme encapsulates the idemix algorithms to sign and verify using an idemix credential.
@@ -26,7 +27,7 @@ type SignatureScheme struct {
 // user secret key (sk), pseudonym public key (Nym) and secret key (RNym), issuer public key (ipk),
 // and attributes to be disclosed.
 func (s *SignatureScheme) Sign(cred []byte, sk *math.Zr, Nym *math.G1, RNym *math.Zr, ipk handlers.IssuerPublicKey, attributes []bccsp.IdemixAttribute,
-	msg []byte, rhIndex, eidIndex int, criRaw []byte, sigType bccsp.SignatureType) (res []byte, meta *bccsp.IdemixSignerMetadata, err error) {
+	msg []byte, rhIndex, eidIndex int, criRaw []byte, sigType bccsp.SignatureType, metadata *bccsp.IdemixSignerMetadata) (res []byte, meta *bccsp.IdemixSignerMetadata, err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			res = nil
@@ -68,11 +69,14 @@ func (s *SignatureScheme) Sign(cred []byte, sk *math.Zr, Nym *math.G1, RNym *mat
 		iipk.PK,
 		disclosure,
 		msg,
-		rhIndex, eidIndex,
+		rhIndex,
+		eidIndex,
 		cri,
 		newRandOrPanic(s.Idemix.Curve),
 		s.Translator,
-		sigType)
+		sigType,
+		metadata,
+	)
 	if err != nil {
 		return nil, nil, errors.WithMessage(err, "failed creating new signature")
 	}

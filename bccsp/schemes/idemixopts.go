@@ -237,6 +237,9 @@ func (o *IdemixCredentialSignerOpts) IssuerPublicKey() Key {
 }
 
 type NymEIDAuditData struct {
+	// Nym is the EID Nym
+	Nym *math.G1
+
 	// RNymEid is the randomness used to generate the EID Nym
 	RNymEid *math.Zr
 

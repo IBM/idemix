@@ -440,7 +440,7 @@ var _ = Describe("Idemix Bridge", func() {
 
 		Context("sign", func() {
 			It("fail on nil issuer public key", func() {
-				signature, _, err := SignatureScheme.Sign(nil, userSecretKey, nymPublicKey, nymSecretKey, nil, nil, nil, 0, 0, nil, 0)
+				signature, _, err := SignatureScheme.Sign(nil, userSecretKey, nymPublicKey, nymSecretKey, nil, nil, nil, 0, 0, nil, 0, nil)
 				Expect(err).To(MatchError("invalid issuer public key, expected *IssuerPublicKey, got [<nil>]"))
 				Expect(signature).To(BeNil())
 			})
