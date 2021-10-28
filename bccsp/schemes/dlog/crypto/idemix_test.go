@@ -169,7 +169,7 @@ func testIdemix(t *testing.T, curve *math.Curve, tr Translator) {
 	disclosure := []byte{0, 0, 0, 0, 0}
 	msg := []byte{1, 2, 3, 4, 5}
 	rhindex := 4
-	sig, _, err := idmx.NewSignature(cred, sk, Nym, RandNym, key.Ipk, disclosure, msg, rhindex, 0, cri, rng, tr, opts.Standard)
+	sig, _, err := idmx.NewSignature(cred, sk, Nym, RandNym, key.Ipk, disclosure, msg, rhindex, 0, cri, rng, tr, opts.Standard, nil)
 	require.NoError(t, err)
 
 	err = sig.Ver(disclosure, key.Ipk, msg, nil, 0, 2, &revocationKey.PublicKey, epoch, idmx.Curve, tr, opts.BestEffort, nil)
@@ -189,7 +189,7 @@ func testIdemix(t *testing.T, curve *math.Curve, tr Translator) {
 	require.Equal(t, "no EidNym provided but ExpectEidNym required", err.Error())
 
 	eidIndex := 2
-	sig, meta, err := idmx.NewSignature(cred, sk, Nym, RandNym, key.Ipk, disclosure, msg, rhindex, eidIndex, cri, rng, tr, opts.EidNym)
+	sig, meta, err := idmx.NewSignature(cred, sk, Nym, RandNym, key.Ipk, disclosure, msg, rhindex, eidIndex, cri, rng, tr, opts.EidNym, nil)
 	require.NoError(t, err)
 
 	// assert that the returned randomness is the right one
@@ -218,6 +218,17 @@ func testIdemix(t *testing.T, curve *math.Curve, tr Translator) {
 	require.NoError(t, err)
 	err = sig.Ver(disclosure, key.Ipk, msg, attrs, 0, 2, &revocationKey.PublicKey, epoch, idmx.Curve, tr, opts.ExpectEidNym, meta)
 	require.NoError(t, err)
+
+	sig, meta2, err := idmx.NewSignature(cred, sk, Nym, RandNym, key.Ipk, disclosure, msg, rhindex, eidIndex, cri, rng, tr, opts.EidNym, meta)
+	require.NoError(t, err)
+	require.True(t, meta.NymEIDAuditData.RNymEid.Equals(meta2.NymEIDAuditData.RNymEid))
+	require.True(t, meta.NymEIDAuditData.Nym.Equals(meta2.NymEIDAuditData.Nym))
+	require.True(t, meta.NymEIDAuditData.EID.Equals(meta2.NymEIDAuditData.EID))
+	err = sig.Ver(disclosure, key.Ipk, msg, attrs, rhindex, 2, &revocationKey.PublicKey, epoch, idmx.Curve, tr, opts.ExpectEidNym, meta2)
+	require.NoError(t, err)
+	err = sig.Ver(disclosure, key.Ipk, msg, attrs, rhindex, 2, &revocationKey.PublicKey, epoch, idmx.Curve, tr, opts.ExpectEidNym, meta)
+	require.NoError(t, err)
+
 	// tamper with the randomness of the nym eid to expect a failed verification
 	meta.NymEIDAuditData.EID = curve.NewZrFromInt(35)
 	err = sig.Ver(disclosure, key.Ipk, msg, attrs, 0, 2, &revocationKey.PublicKey, epoch, idmx.Curve, tr, opts.BestEffort, meta)
@@ -229,7 +240,7 @@ func testIdemix(t *testing.T, curve *math.Curve, tr Translator) {
 
 	// Test signing selective disclosure
 	disclosure = []byte{0, 1, 1, 1, 0}
-	sig, _, err = idmx.NewSignature(cred, sk, Nym, RandNym, key.Ipk, disclosure, msg, rhindex, 0, cri, rng, tr, opts.Standard)
+	sig, _, err = idmx.NewSignature(cred, sk, Nym, RandNym, key.Ipk, disclosure, msg, rhindex, 0, cri, rng, tr, opts.Standard, nil)
 	require.NoError(t, err)
 
 	err = sig.Ver(disclosure, key.Ipk, msg, attrs, rhindex, 2, &revocationKey.PublicKey, epoch, idmx.Curve, tr, opts.BestEffort, nil)
@@ -393,7 +404,7 @@ func testSigParallel(t *testing.T, curve *math.Curve, tr Translator) {
 			disclosure := []byte{0, 0, 0, 0, 0}
 			msg := []byte{1, 2, 3, 4, 5}
 			rhindex := 4
-			sig, _, err := idmx.NewSignature(cred, sk, Nym, RandNym, key.Ipk, disclosure, msg, rhindex, 0, cri, rng, tr, opts.Standard)
+			sig, _, err := idmx.NewSignature(cred, sk, Nym, RandNym, key.Ipk, disclosure, msg, rhindex, 0, cri, rng, tr, opts.Standard, nil)
 			require.NoError(t, err)
 
 			err = sig.Ver(disclosure, key.Ipk, msg, nil, 0, 2, &revocationKey.PublicKey, epoch, idmx.Curve, tr, opts.BestEffort, nil)
@@ -415,7 +426,7 @@ func testSigParallel(t *testing.T, curve *math.Curve, tr Translator) {
 			require.Equal(t, "no EidNym provided but ExpectEidNym required", err.Error())
 
 			eidIndex := 2
-			sig, meta, err := idmx.NewSignature(cred, sk, Nym, RandNym, key.Ipk, disclosure, msg, rhindex, eidIndex, cri, rng, tr, opts.EidNym)
+			sig, meta, err := idmx.NewSignature(cred, sk, Nym, RandNym, key.Ipk, disclosure, msg, rhindex, eidIndex, cri, rng, tr, opts.EidNym, nil)
 			require.NoError(t, err)
 
 			// assert that the returned randomness is the right one
@@ -468,7 +479,7 @@ func testSigParallel(t *testing.T, curve *math.Curve, tr Translator) {
 
 			// Test signing selective disclosure
 			disclosure = []byte{0, 1, 1, 1, 0}
-			sig, _, err = idmx.NewSignature(cred, sk, Nym, RandNym, key.Ipk, disclosure, msg, rhindex, 0, cri, rng, tr, opts.Standard)
+			sig, _, err = idmx.NewSignature(cred, sk, Nym, RandNym, key.Ipk, disclosure, msg, rhindex, 0, cri, rng, tr, opts.Standard, nil)
 			require.NoError(t, err)
 
 			err = sig.Ver(disclosure, key.Ipk, msg, attrs, rhindex, 2, &revocationKey.PublicKey, epoch, idmx.Curve, tr, opts.BestEffort, nil)
@@ -492,7 +503,7 @@ func testSigParallel(t *testing.T, curve *math.Curve, tr Translator) {
 			rhindex := 4
 
 			eidIndex := 2
-			sig, meta, err := idmx.NewSignature(cred, sk, Nym, RandNym, key.Ipk, disclosure, msg, rhindex, eidIndex, cri, rng, tr, opts.EidNym)
+			sig, meta, err := idmx.NewSignature(cred, sk, Nym, RandNym, key.Ipk, disclosure, msg, rhindex, eidIndex, cri, rng, tr, opts.EidNym, nil)
 			require.NoError(t, err)
 
 			// assert that the returned randomness is the right one
@@ -548,7 +559,7 @@ func testSigParallel(t *testing.T, curve *math.Curve, tr Translator) {
 
 			// Test signing selective disclosure
 			disclosure := []byte{0, 1, 1, 1, 0}
-			sig, _, err := idmx.NewSignature(cred, sk, Nym, RandNym, key.Ipk, disclosure, msg, rhindex, 0, cri, rng, tr, opts.Standard)
+			sig, _, err := idmx.NewSignature(cred, sk, Nym, RandNym, key.Ipk, disclosure, msg, rhindex, 0, cri, rng, tr, opts.Standard, nil)
 			require.NoError(t, err)
 
 			err = sig.Ver(disclosure, key.Ipk, msg, attrs, rhindex, 2, &revocationKey.PublicKey, epoch, idmx.Curve, tr, opts.BestEffort, nil)
