@@ -887,7 +887,7 @@ func (sig *Signature) Ver(
 		NymEID, err := curve.NewG1FromBytes(meta.NymEID)
 		if err != nil {
 			return errors.Errorf("signature invalid: nym eid validation failed")
-        }
+		}
 		if !NymEID.Equals(SigNymEID) {
 			return errors.Errorf("signature invalid: nym eid validation failed")
 		}
