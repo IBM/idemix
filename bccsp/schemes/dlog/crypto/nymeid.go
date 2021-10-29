@@ -1,3 +1,9 @@
+/*
+Copyright IBM Corp. All Rights Reserved.
+
+SPDX-License-Identifier: Apache-2.0
+*/
+
 package idemix
 
 import (
@@ -7,7 +13,7 @@ import (
 
 type NymEID []byte
 
-func (sig NymEID) AuditNymEid(
+func (nym NymEID) AuditNymEid(
 	ipk *IssuerPublicKey,
 	eidAttr *math.Zr,
 	eidIndex int,
@@ -20,7 +26,7 @@ func (sig NymEID) AuditNymEid(
 		return errors.Errorf("cannot verify idemix signature: received nil input")
 	}
 
-	if len(sig) == 0 {
+	if len(nym) == 0 {
 		return errors.Errorf("no EidNym provided")
 	}
 
@@ -38,7 +44,7 @@ func (sig NymEID) AuditNymEid(
 		return errors.Wrap(err, "could not deserialize HRand")
 	}
 
-	EidNym, err := t.G1FromRawBytes(sig)
+	EidNym, err := curve.NewG1FromBytes(nym)
 	if err != nil {
 		return errors.Wrap(err, "could not deserialize EidNym")
 	}
@@ -51,4 +57,3 @@ func (sig NymEID) AuditNymEid(
 
 	return nil
 }
-

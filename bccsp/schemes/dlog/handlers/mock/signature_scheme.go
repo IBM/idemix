@@ -57,7 +57,7 @@ type SignatureScheme struct {
 	verifyReturnsOnCall map[int]struct {
 		result1 error
 	}
-	AuditNymEidStub        func(ipk handlers.IssuerPublicKey, eidIndex int, signature []byte, enrollmentID string, RNymEid *math.Zr) error
+	AuditNymEidStub        func(ipk handlers.IssuerPublicKey, eidIndex int, signature []byte, enrollmentID string, RNymEid *math.Zr, verType bccsp.AuditVerificationType) error
 	auditNymEidMutex       sync.RWMutex
 	auditNymEidArgsForCall []struct {
 		ipk          handlers.IssuerPublicKey
@@ -65,6 +65,7 @@ type SignatureScheme struct {
 		signature    []byte
 		enrollmentID string
 		RNymEid      *math.Zr
+		verType      bccsp.AuditVerificationType
 	}
 	auditNymEidReturns struct {
 		result1 error
@@ -233,7 +234,7 @@ func (fake *SignatureScheme) VerifyReturnsOnCall(i int, result1 error) {
 	}{result1}
 }
 
-func (fake *SignatureScheme) AuditNymEid(ipk handlers.IssuerPublicKey, eidIndex int, signature []byte, enrollmentID string, RNymEid *math.Zr) error {
+func (fake *SignatureScheme) AuditNymEid(ipk handlers.IssuerPublicKey, eidIndex int, signature []byte, enrollmentID string, RNymEid *math.Zr, verType bccsp.AuditVerificationType) error {
 	var signatureCopy []byte
 	if signature != nil {
 		signatureCopy = make([]byte, len(signature))
@@ -247,11 +248,12 @@ func (fake *SignatureScheme) AuditNymEid(ipk handlers.IssuerPublicKey, eidIndex 
 		signature    []byte
 		enrollmentID string
 		RNymEid      *math.Zr
-	}{ipk, eidIndex, signatureCopy, enrollmentID, RNymEid})
-	fake.recordInvocation("AuditNymEid", []interface{}{ipk, eidIndex, signatureCopy, enrollmentID, RNymEid})
+		verType      bccsp.AuditVerificationType
+	}{ipk, eidIndex, signatureCopy, enrollmentID, RNymEid, verType})
+	fake.recordInvocation("AuditNymEid", []interface{}{ipk, eidIndex, signatureCopy, enrollmentID, RNymEid, verType})
 	fake.auditNymEidMutex.Unlock()
 	if fake.AuditNymEidStub != nil {
-		return fake.AuditNymEidStub(ipk, eidIndex, signature, enrollmentID, RNymEid)
+		return fake.AuditNymEidStub(ipk, eidIndex, signature, enrollmentID, RNymEid, verType)
 	}
 	if specificReturn {
 		return ret.result1
@@ -265,10 +267,10 @@ func (fake *SignatureScheme) AuditNymEidCallCount() int {
 	return len(fake.auditNymEidArgsForCall)
 }
 
-func (fake *SignatureScheme) AuditNymEidArgsForCall(i int) (handlers.IssuerPublicKey, int, []byte, string, *math.Zr) {
+func (fake *SignatureScheme) AuditNymEidArgsForCall(i int) (handlers.IssuerPublicKey, int, []byte, string, *math.Zr, bccsp.AuditVerificationType) {
 	fake.auditNymEidMutex.RLock()
 	defer fake.auditNymEidMutex.RUnlock()
-	return fake.auditNymEidArgsForCall[i].ipk, fake.auditNymEidArgsForCall[i].eidIndex, fake.auditNymEidArgsForCall[i].signature, fake.auditNymEidArgsForCall[i].enrollmentID, fake.auditNymEidArgsForCall[i].RNymEid
+	return fake.auditNymEidArgsForCall[i].ipk, fake.auditNymEidArgsForCall[i].eidIndex, fake.auditNymEidArgsForCall[i].signature, fake.auditNymEidArgsForCall[i].enrollmentID, fake.auditNymEidArgsForCall[i].RNymEid, fake.auditNymEidArgsForCall[i].verType
 }
 
 func (fake *SignatureScheme) AuditNymEidReturns(result1 error) {
