@@ -92,6 +92,7 @@ func (v *Verifier) AuditNymEid(k bccsp.Key, signature, digest []byte, opts bccsp
 		signature,
 		signerOpts.EnrollmentID,
 		signerOpts.RNymEid,
+		signerOpts.AuditVerificationType,
 	)
 	if err != nil {
 		return false, err

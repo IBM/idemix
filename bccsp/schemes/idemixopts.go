@@ -293,6 +293,7 @@ func (o *IdemixSignerOpts) HashFunc() crypto.Hash {
 }
 
 type EidNymAuditOpts struct {
+	AuditVerificationType AuditVerificationType
 	EidIndex     int
 	EnrollmentID string
 	RNymEid      *math.Zr
@@ -405,4 +406,15 @@ const (
 	ExpectStandard
 	// ExpectEidNym expects a SignatureType of type EidNym
 	ExpectEidNym
+)
+
+
+// AuditVerificationType describes the type of audit verification that is required
+type AuditVerificationType int
+
+const (
+	// AuditExpectSignature performs the audit verification against a signature
+	AuditExpectSignature AuditVerificationType = iota
+	// AuditExpectEidNym performs the audit verification against a Nym EID
+	AuditExpectEidNym
 )
