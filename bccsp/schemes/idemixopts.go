@@ -248,6 +248,7 @@ type NymEIDAuditData struct {
 }
 
 type IdemixSignerMetadata struct {
+	NymEID []byte
 	NymEIDAuditData *NymEIDAuditData
 }
 
