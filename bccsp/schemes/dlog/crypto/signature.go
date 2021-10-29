@@ -393,7 +393,7 @@ func finalise(
 			r_eid = curve.NewRandomZr(rng)
 		}
 
-		r_a_eid := rAttrs[eidIndex]
+		r_a_eid := rAttrs[sort.SearchInts(HiddenIndices, eidIndex)]
 		H_a_eid, err := tr.G1FromProto(ipk.HAttrs[eidIndex])
 		if err != nil {
 			return nil, nil, err
