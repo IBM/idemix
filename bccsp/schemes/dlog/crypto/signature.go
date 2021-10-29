@@ -875,6 +875,24 @@ func (sig *Signature) Ver(
 		}
 	}
 
+	if meta != nil && len(meta.NymEID) != 0 {
+		if sig.EidNym == nil || sig.EidNym.Nym == nil {
+			return errors.Errorf("signature invalid: nym eid validation failed")
+		}
+		SigNymEID, err := t.G1FromProto(sig.EidNym.Nym)
+		if err != nil {
+			return err
+		}
+
+		NymEID, err := curve.NewG1FromBytes(meta.NymEID)
+		if err != nil {
+			return errors.Errorf("signature invalid: nym eid validation failed")
+        }
+		if !NymEID.Equals(SigNymEID) {
+			return errors.Errorf("signature invalid: nym eid validation failed")
+		}
+	}
+
 	recomputedProofC := curve.HashToZr(proofData)
 	if !ProofC.Equals(recomputedProofC) {
 		// This debug line helps identify where the mismatch happened
