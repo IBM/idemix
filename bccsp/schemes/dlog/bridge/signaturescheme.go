@@ -95,6 +95,7 @@ func (s *SignatureScheme) AuditNymEid(
 	signature []byte,
 	enrollmentID string,
 	RNymEid *math.Zr,
+	verType bccsp.AuditVerificationType,
 ) (err error) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -107,22 +108,38 @@ func (s *SignatureScheme) AuditNymEid(
 		return errors.Errorf("invalid issuer public key, expected *IssuerPublicKey, got [%T]", ipk)
 	}
 
-	sig := &idemix.Signature{}
-	err = proto.Unmarshal(signature, sig)
-	if err != nil {
-		return err
-	}
-
 	eidAttr := s.Idemix.Curve.HashToZr([]byte(enrollmentID))
 
-	return sig.AuditNymEid(
-		iipk.PK,
-		eidAttr,
-		eidIndex,
-		RNymEid,
-		s.Idemix.Curve,
-		s.Translator,
-	)
+	switch verType {
+	case bccsp.AuditExpectSignature:
+		sig := &idemix.Signature{}
+		err = proto.Unmarshal(signature, sig)
+		if err != nil {
+			return err
+		}
+		return sig.AuditNymEid(
+			iipk.PK,
+			eidAttr,
+			eidIndex,
+			RNymEid,
+			s.Idemix.Curve,
+			s.Translator,
+		)
+	case bccsp.AuditExpectEidNym:
+		// 1. cast signature to NymEID
+		nymEID := idemix.NymEID(signature)
+		// 2. check audit on nymEID
+		return nymEID.AuditNymEid(
+			iipk.PK,
+			eidAttr,
+			eidIndex,
+			RNymEid,
+			s.Idemix.Curve,
+			s.Translator,
+		)
+	default:
+		return errors.Errorf("invalid audit type [%d]", verType)
+	}
 }
 
 // Verify checks that an idemix signature is valid with the respect to the passed issuer public key, digest, attributes,
