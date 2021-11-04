@@ -870,7 +870,7 @@ func (sig *Signature) Ver(
 				return errors.Errorf("signature invalid: nym eid validation failed, does not match regenerated nym eid")
 			}
 
-			if !EidNym.Equals(meta.NymEIDAuditData.Nym) {
+			if meta.NymEIDAuditData.Nym != nil && !EidNym.Equals(meta.NymEIDAuditData.Nym) {
 				return errors.Errorf("signature invalid: nym eid validation failed, does not match metadata")
 			}
 		}
@@ -881,7 +881,7 @@ func (sig *Signature) Ver(
 				return errors.Errorf("signature invalid: nym eid validation failed, failed to unmarshal meta nym ied")
 			}
 			if !NymEID.Equals(EidNym) {
-				return errors.Errorf("signature invalid: nym eid validation failed, signatured nym eid does not match metadata")
+				return errors.Errorf("signature invalid: nym eid validation failed, signature nym eid does not match metadata")
 			}
 		}
 	}
