@@ -20,21 +20,26 @@ import (
 	"os"
 	"path/filepath"
 
+	math "github.com/IBM/mathlib"
+	"github.com/golang/protobuf/proto"
+	"github.com/pkg/errors"
+	"gopkg.in/alecthomas/kingpin.v2"
+
 	imsp "github.com/IBM/idemix"
 	idemix "github.com/IBM/idemix/bccsp/schemes/dlog/crypto"
 	"github.com/IBM/idemix/bccsp/schemes/dlog/crypto/translator/amcl"
 	"github.com/IBM/idemix/tools/idemixgen/idemixca"
 	"github.com/IBM/idemix/tools/idemixgen/metadata"
-	math "github.com/IBM/mathlib"
-	"github.com/golang/protobuf/proto"
-	"github.com/pkg/errors"
-	"gopkg.in/alecthomas/kingpin.v2"
 )
 
 const (
 	IdemixDirIssuer             = "ca"
 	IdemixConfigIssuerSecretKey = "IssuerSecretKey"
 	IdemixConfigRevocationKey   = "RevocationKey"
+
+	FP256BN_AMCL = "FP256BN_AMCL"
+	BN254 = "BN254"
+	FP256BN_AMCL_MIRACL = "FP256BN_AMCL_MIRACL"
 )
 
 // command line flags
@@ -42,6 +47,7 @@ var (
 	app = kingpin.New("idemixgen", "Utility for generating key material to be used with the Identity Mixer MSP in Hyperledger Fabric")
 
 	outputDir = app.Flag("output", "The output directory in which to place artifacts").Default("idemix-config").String()
+	curveID = app.Flag("curve", "The curve to use to generate the crypto material").Short('c').Default(FP256BN_AMCL).Enum(FP256BN_AMCL, BN254, FP256BN_AMCL_MIRACL)
 
 	genIssuerKey            = app.Command("ca-keygen", "Generate CA key material")
 	genSignerConfig         = app.Command("signerconfig", "Generate a default signer for this Idemix MSP")
@@ -57,7 +63,19 @@ var (
 func main() {
 	app.HelpFlag.Short('h')
 
-	curve := math.Curves[math.FP256BN_AMCL]
+	command := kingpin.MustParse(app.Parse(os.Args[1:]))
+
+	var curve *math.Curve
+	switch *curveID {
+	case FP256BN_AMCL:
+        curve = math.Curves[math.FP256BN_AMCL]
+	case BN254:
+		curve = math.Curves[math.BN254]
+	case FP256BN_AMCL_MIRACL:
+		curve = math.Curves[math.FP256BN_AMCL_MIRACL]
+	default:
+		handleError(fmt.Errorf("invalid curve [%s]", *curveID))
+	}
 
 	tr := &amcl.Fp256bn{
 		C: curve,
@@ -67,7 +85,7 @@ func main() {
 		Curve: curve,
 	}
 
-	switch kingpin.MustParse(app.Parse(os.Args[1:])) {
+	switch  command {
 
 	case genIssuerKey.FullCommand():
 		isk, ipk, err := idemixca.GenerateIssuerKey(idmx, tr)
