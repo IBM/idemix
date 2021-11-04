@@ -37,8 +37,8 @@ const (
 	IdemixConfigIssuerSecretKey = "IssuerSecretKey"
 	IdemixConfigRevocationKey   = "RevocationKey"
 
-	FP256BN_AMCL = "FP256BN_AMCL"
-	BN254 = "BN254"
+	FP256BN_AMCL        = "FP256BN_AMCL"
+	BN254               = "BN254"
 	FP256BN_AMCL_MIRACL = "FP256BN_AMCL_MIRACL"
 )
 
@@ -47,7 +47,7 @@ var (
 	app = kingpin.New("idemixgen", "Utility for generating key material to be used with the Identity Mixer MSP in Hyperledger Fabric")
 
 	outputDir = app.Flag("output", "The output directory in which to place artifacts").Default("idemix-config").String()
-	curveID = app.Flag("curve", "The curve to use to generate the crypto material").Short('c').Default(FP256BN_AMCL).Enum(FP256BN_AMCL, BN254, FP256BN_AMCL_MIRACL)
+	curveID   = app.Flag("curve", "The curve to use to generate the crypto material").Short('c').Default(FP256BN_AMCL).Enum(FP256BN_AMCL, BN254, FP256BN_AMCL_MIRACL)
 
 	genIssuerKey            = app.Command("ca-keygen", "Generate CA key material")
 	genSignerConfig         = app.Command("signerconfig", "Generate a default signer for this Idemix MSP")
@@ -68,7 +68,7 @@ func main() {
 	var curve *math.Curve
 	switch *curveID {
 	case FP256BN_AMCL:
-        curve = math.Curves[math.FP256BN_AMCL]
+		curve = math.Curves[math.FP256BN_AMCL]
 	case BN254:
 		curve = math.Curves[math.BN254]
 	case FP256BN_AMCL_MIRACL:
@@ -85,7 +85,7 @@ func main() {
 		Curve: curve,
 	}
 
-	switch  command {
+	switch command {
 
 	case genIssuerKey.FullCommand():
 		isk, ipk, err := idemixca.GenerateIssuerKey(idmx, tr)
