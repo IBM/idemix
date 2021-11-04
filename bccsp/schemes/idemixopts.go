@@ -236,6 +236,8 @@ func (o *IdemixCredentialSignerOpts) IssuerPublicKey() Key {
 	return o.IssuerPK
 }
 
+// NymEIDAuditData contains the data that is used to audit the nym EID.
+// Notice that this data should be used only after validating the corresponding signature.
 type NymEIDAuditData struct {
 	// Nym is the EID Nym
 	Nym *math.G1
