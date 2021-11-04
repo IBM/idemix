@@ -233,10 +233,10 @@ func testIdemix(t *testing.T, curve *math.Curve, tr Translator) {
 	meta.NymEIDAuditData.EID = curve.NewZrFromInt(35)
 	err = sig.Ver(disclosure, key.Ipk, msg, attrs, 0, 2, &revocationKey.PublicKey, epoch, idmx.Curve, tr, opts.BestEffort, meta)
 	require.Error(t, err)
-	require.Equal(t, "signature invalid: nym eid validation failed", err.Error())
+	require.Equal(t, "signature invalid: nym eid validation failed, does not match regenerated nym eid", err.Error())
 	err = sig.Ver(disclosure, key.Ipk, msg, attrs, 0, 2, &revocationKey.PublicKey, epoch, idmx.Curve, tr, opts.ExpectEidNym, meta)
 	require.Error(t, err)
-	require.Equal(t, "signature invalid: nym eid validation failed", err.Error())
+	require.Equal(t, "signature invalid: nym eid validation failed, does not match regenerated nym eid", err.Error())
 
 	// Test signing selective disclosure
 	disclosure = []byte{0, 1, 1, 1, 0}
@@ -472,10 +472,10 @@ func testSigParallel(t *testing.T, curve *math.Curve, tr Translator) {
 			meta.NymEIDAuditData.EID = curve.NewZrFromInt(35)
 			err = sig.Ver(disclosure, key.Ipk, msg, attrs, 0, 2, &revocationKey.PublicKey, epoch, idmx.Curve, tr, opts.BestEffort, meta)
 			require.Error(t, err)
-			require.Equal(t, "signature invalid: nym eid validation failed", err.Error())
+			require.Equal(t, "signature invalid: nym eid validation failed, does not match regenerated nym eid", err.Error())
 			err = sig.Ver(disclosure, key.Ipk, msg, attrs, 0, 2, &revocationKey.PublicKey, epoch, idmx.Curve, tr, opts.ExpectEidNym, meta)
 			require.Error(t, err)
-			require.Equal(t, "signature invalid: nym eid validation failed", err.Error())
+			require.Equal(t, "signature invalid: nym eid validation failed, does not match regenerated nym eid", err.Error())
 
 			// Test signing selective disclosure
 			disclosure = []byte{0, 1, 1, 1, 0}
@@ -544,10 +544,10 @@ func testSigParallel(t *testing.T, curve *math.Curve, tr Translator) {
 			meta.NymEIDAuditData.EID = curve.NewZrFromInt(35)
 			err = sig.Ver(disclosure, key.Ipk, msg, attrs, 0, 2, &revocationKey.PublicKey, epoch, idmx.Curve, tr, opts.BestEffort, meta)
 			require.Error(t, err)
-			require.Equal(t, "signature invalid: nym eid validation failed", err.Error())
+			require.Equal(t, "signature invalid: nym eid validation failed, does not match regenerated nym eid", err.Error())
 			err = sig.Ver(disclosure, key.Ipk, msg, attrs, 0, 2, &revocationKey.PublicKey, epoch, idmx.Curve, tr, opts.ExpectEidNym, meta)
 			require.Error(t, err)
-			require.Equal(t, "signature invalid: nym eid validation failed", err.Error())
+			require.Equal(t, "signature invalid: nym eid validation failed, does not match regenerated nym eid", err.Error())
 		}()
 	}
 

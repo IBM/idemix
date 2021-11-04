@@ -378,18 +378,17 @@ func finalise(
 	var r_r_eid, r_eid *math.Zr
 	var EID *math.Zr
 	if sigType == opts.EidNym {
+		EID = curve.NewZrFromBytes(cred.Attrs[eidIndex])
 		if metadata != nil {
 			if metadata.NymEIDAuditData == nil {
 				return nil, nil, errors.Errorf("invalid argument, expected metadata")
 			}
 
-			EID = curve.NewZrFromBytes(cred.Attrs[eidIndex])
 			if !metadata.NymEIDAuditData.EID.Equals(EID) {
 				return nil, nil, errors.Errorf("invalid argument, metadata does not match (1)")
 			}
 			r_eid = metadata.NymEIDAuditData.RNymEid
 		} else {
-			EID = curve.NewZrFromBytes(cred.Attrs[eidIndex])
 			r_eid = curve.NewRandomZr(rng)
 		}
 
@@ -854,42 +853,36 @@ func (sig *Signature) Ver(
 	appendBytesBig(proofData, index, Nonce)
 
 	// audit eid nym if data provided and verification requested
-	if verifyEIDNym && meta != nil && meta.NymEIDAuditData != nil {
-		H_a_eid, err := t.G1FromProto(ipk.HAttrs[eidIndex])
-		if err != nil {
-			return err
-		}
-
+	if verifyEIDNym && meta != nil {
 		EidNym, err := t.G1FromProto(sig.EidNym.Nym)
 		if err != nil {
 			return err
 		}
 
-		Nym_eid := H_a_eid.Mul2(meta.NymEIDAuditData.EID, HRand, meta.NymEIDAuditData.RNymEid)
-		if !Nym_eid.Equals(EidNym) {
-			return errors.Errorf("signature invalid: nym eid validation failed")
+		if meta.NymEIDAuditData != nil {
+			H_a_eid, err := t.G1FromProto(ipk.HAttrs[eidIndex])
+			if err != nil {
+				return err
+			}
+
+			Nym_eid := H_a_eid.Mul2(meta.NymEIDAuditData.EID, HRand, meta.NymEIDAuditData.RNymEid)
+			if !Nym_eid.Equals(EidNym) {
+				return errors.Errorf("signature invalid: nym eid validation failed, does not match regenerated nym eid")
+			}
+
+			if !EidNym.Equals(meta.NymEIDAuditData.Nym) {
+				return errors.Errorf("signature invalid: nym eid validation failed, does not match metadata")
+			}
 		}
 
-		if !meta.NymEIDAuditData.Nym.Equals(EidNym) {
-			return errors.Errorf("signature invalid: nym eid validation failed")
-		}
-	}
-
-	if meta != nil && len(meta.NymEID) != 0 {
-		if sig.EidNym == nil || sig.EidNym.Nym == nil {
-			return errors.Errorf("signature invalid: nym eid validation failed")
-		}
-		SigNymEID, err := t.G1FromProto(sig.EidNym.Nym)
-		if err != nil {
-			return err
-		}
-
-		NymEID, err := curve.NewG1FromBytes(meta.NymEID)
-		if err != nil {
-			return errors.Errorf("signature invalid: nym eid validation failed")
-		}
-		if !NymEID.Equals(SigNymEID) {
-			return errors.Errorf("signature invalid: nym eid validation failed")
+		if len(meta.NymEID) != 0 {
+			NymEID, err := curve.NewG1FromBytes(meta.NymEID)
+			if err != nil {
+				return errors.Errorf("signature invalid: nym eid validation failed, failed to unmarshal meta nym ied")
+			}
+			if !NymEID.Equals(EidNym) {
+				return errors.Errorf("signature invalid: nym eid validation failed, signatured nym eid does not match metadata")
+			}
 		}
 	}
 
