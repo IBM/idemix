@@ -632,6 +632,11 @@ func (sig *Signature) Ver(
 	verType opts.VerificationType,
 	meta *opts.IdemixSignerMetadata,
 ) error {
+	idemixMu.Lock()
+	defer func() {
+		idemixMu.Unlock()
+	}()
+
 	// Validate inputs
 	if ipk == nil || revPk == nil {
 		return errors.Errorf("cannot verify idemix signature: received nil input")

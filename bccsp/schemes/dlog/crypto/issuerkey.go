@@ -137,6 +137,11 @@ func newIssuerKeyFromBytes(raw []byte) (*IssuerKey, error) {
 // Check checks that this issuer public key is valid, i.e.
 // that all components are present and a ZK proofs verifies
 func (IPk *IssuerPublicKey) Check(curve *math.Curve, t Translator) error {
+	idemixMu.Lock()
+	defer func() {
+		idemixMu.Unlock()
+	}()
+
 	// Unmarshall the public key
 	NumAttrs := len(IPk.GetAttributeNames())
 	HSk, err := t.G1FromProto(IPk.GetHSk())

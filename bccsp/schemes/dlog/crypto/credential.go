@@ -8,11 +8,15 @@ package idemix
 
 import (
 	"io"
+	"sync"
 
 	amcl "github.com/IBM/idemix/bccsp/schemes/dlog/crypto/translator/amcl"
 	math "github.com/IBM/mathlib"
 	"github.com/pkg/errors"
 )
+
+// TODO: Putting a barrier here cause amcl produces a race condition. Remove when concurrent safe solution exists.
+var idemixMu *sync.Mutex = &sync.Mutex{}
 
 type Translator interface {
 	G1ToProto(*math.G1) *amcl.ECP
@@ -205,12 +209,16 @@ func (cred *Credential) Ver(sk *math.Zr, ipk *IssuerPublicKey, curve *math.Curve
 	}
 
 	// Verify BBS+ signature. Namely: e(w \cdot g_2^e, A) =? e(g_2, B)
+	// TODO: Putting a barrier here cause amcl produces a race condition. Remove when concurrent safe solution exists.
+	idemixMu.Lock()
 	a := curve.GenG2.Mul(E)
 	a.Add(W)
 	a.Affine()
 
 	left := curve.FExp(curve.Pairing(a, A))
 	right := curve.FExp(curve.Pairing(curve.GenG2, B))
+
+	idemixMu.Unlock()
 
 	if !left.Equals(right) {
 		return errors.Errorf("credential is not cryptographically valid")
