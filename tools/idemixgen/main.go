@@ -60,25 +60,33 @@ var (
 	version = app.Command("version", "Show version information")
 )
 
+type Translator interface {
+	G1ToProto(*math.G1) *amcl.ECP
+	G1FromProto(*amcl.ECP) (*math.G1, error)
+	G1FromRawBytes([]byte) (*math.G1, error)
+	G2ToProto(*math.G2) *amcl.ECP2
+	G2FromProto(*amcl.ECP2) (*math.G2, error)
+}
+
 func main() {
 	app.HelpFlag.Short('h')
 
 	command := kingpin.MustParse(app.Parse(os.Args[1:]))
 
 	var curve *math.Curve
+	var tr Translator
 	switch *curveID {
 	case FP256BN_AMCL:
 		curve = math.Curves[math.FP256BN_AMCL]
+		tr = &amcl.Fp256bn{C: curve}
 	case BN254:
 		curve = math.Curves[math.BN254]
+		tr = &amcl.Gurvy{C: curve}
 	case FP256BN_AMCL_MIRACL:
 		curve = math.Curves[math.FP256BN_AMCL_MIRACL]
+		tr = &amcl.Fp256bnMiracl{C: curve}
 	default:
 		handleError(fmt.Errorf("invalid curve [%s]", *curveID))
-	}
-
-	tr := &amcl.Fp256bn{
-		C: curve,
 	}
 
 	idmx := &idemix.Idemix{
