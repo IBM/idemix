@@ -14,6 +14,8 @@ import (
 	"path/filepath"
 	"time"
 
+	idemix2 "github.com/IBM/idemix/bccsp/schemes/dlog/crypto"
+
 	idemix "github.com/IBM/idemix/bccsp"
 	"github.com/IBM/idemix/bccsp/keystore"
 	bccsp "github.com/IBM/idemix/bccsp/schemes"
@@ -82,11 +84,37 @@ var mspLogger = flogging.MustGetLogger("idemix")
 var mspIdentityLogger = flogging.MustGetLogger("idemix.identity")
 
 // NewIdemixMsp creates a new instance of idemixmsp
+// with the default curve of FP256BN_AMCL
 func NewIdemixMsp(version MSPVersion) (MSP, error) {
+	mspLogger.Debugf("Creating Idemix-based MSP instance with default curve ")
+	return NewIdemixMspCurve(version, math.FP256BN_AMCL)
+}
+
+// NewIdemixMspCurve creates a new instance of idemixmsp allowing the Elliptic Curve to be specified
+// Must be one of the support curves from https://github.com/IBM/mathlib
+func NewIdemixMspCurve(version MSPVersion, curveID math.CurveID) (MSP, error) {
 	mspLogger.Debugf("Creating Idemix-based MSP instance")
 
-	curve := math.Curves[math.FP256BN_AMCL]
-	csp, err := idemix.New(&keystore.Dummy{}, curve, &amcl.Fp256bn{C: curve}, true)
+	var curve *math.Curve
+	var tr idemix2.Translator
+
+	// as per the idemixgen file determine which
+	// curve is being used, and proceed accordingly
+	switch curveID {
+	case math.FP256BN_AMCL:
+		curve = math.Curves[math.FP256BN_AMCL]
+		tr = &amcl.Fp256bn{C: curve}
+	case math.BN254:
+		curve = math.Curves[math.BN254]
+		tr = &amcl.Gurvy{C: curve}
+	case math.FP256BN_AMCL_MIRACL:
+		curve = math.Curves[math.FP256BN_AMCL_MIRACL]
+		tr = &amcl.Fp256bnMiracl{C: curve}
+	default:
+		return nil, fmt.Errorf("invalid curve [%d]", curveID)
+	}
+
+	csp, err := idemix.New(&keystore.Dummy{}, curve, tr, true)
 	if err != nil {
 		panic(fmt.Sprintf("unexpected condition, error received [%s]", err))
 	}
