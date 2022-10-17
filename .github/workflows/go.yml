@@ -5,16 +5,18 @@ on:
     branches: [ main ]
   pull_request:
     branches: [ main ]
+  workflow_dispatch:
+    
 
 jobs:
 
   build:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
 
     - name: Set up Go
-      uses: actions/setup-go@v2
+      uses: actions/setup-go@v3
       with:
         go-version: 1.16
 
@@ -26,3 +28,12 @@ jobs:
 
     - name: Race test
       run: make unit-tests-race
+
+    - name: Build Binaries
+      run: make binaries
+
+    - uses: actions/upload-artifact@v3
+      with:
+        name: binaries
+        path: |
+          bin/

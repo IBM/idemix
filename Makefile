@@ -22,3 +22,11 @@ check-deps:
 .PHONY: idemixgen
 idemixgen:
 	@go install ./tools/idemixgen
+
+.PHONY: binaries
+binaries: 
+	mkdir -p bin/amd64
+	GOOS=linux GOARCH=amd64 go build -o bin/amd64/idemixgen tools/idemixgen/main.go
+
+	mkdir -p bin/arm64
+	GOOS=darwin GOARCH=arm64 go build -o bin/arm64/idemixgen tools/idemixgen/main.go
