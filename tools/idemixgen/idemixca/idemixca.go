@@ -11,9 +11,9 @@ import (
 
 	imsp "github.com/IBM/idemix"
 	idemix "github.com/IBM/idemix/bccsp/schemes/dlog/crypto"
+	im "github.com/IBM/idemix/msp"
 	math "github.com/IBM/mathlib"
 	"github.com/golang/protobuf/proto"
-	m "github.com/hyperledger/fabric-protos-go/msp"
 	"github.com/pkg/errors"
 )
 
@@ -88,7 +88,7 @@ func GenerateSignerConfig(roleMask int, ouString string, enrollmentId string, re
 		return nil, errors.WithMessage(err, "failed to marshal CRI")
 	}
 
-	signer := &m.IdemixMSPSignerConfig{
+	signer := &im.IdemixMSPSignerConfig{
 		Cred:                            credBytes,
 		Sk:                              sk.Bytes(),
 		OrganizationalUnitIdentifier:    ouString,

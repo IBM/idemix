@@ -11,6 +11,7 @@ import (
 
 	idemix "github.com/IBM/idemix/bccsp/schemes/dlog/crypto"
 	amclt "github.com/IBM/idemix/bccsp/schemes/dlog/crypto/translator/amcl"
+	im "github.com/IBM/idemix/msp"
 	math "github.com/IBM/mathlib"
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-protos-go/msp"
@@ -98,7 +99,7 @@ func TestSetupBad(t *testing.T) {
 
 	conf, err = GetIdemixMspConfig("testdata/idemix/MSP1OU1", "IdemixMSP1")
 	require.NoError(t, err)
-	idemixconfig := &msp.IdemixMSPConfig{}
+	idemixconfig := &im.IdemixMSPConfig{}
 	err = proto.Unmarshal(conf.Config, idemixconfig)
 	require.NoError(t, err)
 
