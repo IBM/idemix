@@ -249,9 +249,24 @@ type NymEIDAuditData struct {
 	EID *math.Zr
 }
 
+// RHAuditData contains the data that is used to audit the RH.
+// Notice that this data should be used only after validating the corresponding signature.
+type RHAuditData struct {
+	// CommRH is the commitment to randomness
+	CommRH *math.G1
+
+	// RCommRH is the randomness used to generate the committment
+	RCommRH *math.Zr
+
+	// RH is the revocation handle
+	RH *math.Zr
+}
+
 type IdemixSignerMetadata struct {
 	NymEID          []byte
 	NymEIDAuditData *NymEIDAuditData
+	RH              []byte
+	RHAuditData     *RHAuditData
 }
 
 // IdemixSignerOpts contains the options to generate an Idemix signature
@@ -302,6 +317,17 @@ type EidNymAuditOpts struct {
 }
 
 func (o *EidNymAuditOpts) HashFunc() crypto.Hash {
+	return 0
+}
+
+type RhAuditOpts struct {
+	AuditVerificationType AuditVerificationType
+	RhIndex               int
+	RevocationHandle      string
+	RRh                   *math.Zr
+}
+
+func (o *RhAuditOpts) HashFunc() crypto.Hash {
 	return 0
 }
 
@@ -394,6 +420,8 @@ const (
 	Standard SignatureType = iota
 	// EidNym adds a hiding and binding commitment to the enrollment id and proves its correctness
 	EidNym
+	// EidNymAndRh adds a hiding and binding commitment to both the enrollment id and the revocation handle and proves their correctness
+	EidNymAndRh
 )
 
 // VerificationType describes the type of verification that is required
@@ -408,6 +436,8 @@ const (
 	ExpectStandard
 	// ExpectEidNym expects a SignatureType of type EidNym
 	ExpectEidNym
+	// ExpectEidNymAndRh expects a SignatureType of EidNymAndRh
+	ExpectEidNymAndRh
 )
 
 // AuditVerificationType describes the type of audit verification that is required
@@ -418,4 +448,6 @@ const (
 	AuditExpectSignature AuditVerificationType = iota
 	// AuditExpectEidNym performs the audit verification against a Nym EID
 	AuditExpectEidNym
+	// AuditExpectEidNymAndRh performs the audit verification against a Nym EID and a revocation handle
+	AuditExpectEidNymAndRh
 )
