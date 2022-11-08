@@ -19,7 +19,7 @@ import (
 	bccsp "github.com/IBM/idemix/bccsp/schemes"
 	"github.com/IBM/idemix/bccsp/schemes/dlog/crypto/translator/amcl"
 	"github.com/IBM/idemix/common/flogging"
-	im "github.com/IBM/idemix/msp"
+	im "github.com/IBM/idemix/idemixmsp"
 	math "github.com/IBM/mathlib"
 	"github.com/golang/protobuf/proto"
 

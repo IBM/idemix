@@ -6,8 +6,8 @@ require (
 	github.com/IBM/mathlib v0.0.0-20220112091634-0a7378db6912
 	github.com/alecthomas/template v0.0.0-20190718012654-fb15b899a751 // indirect
 	github.com/alecthomas/units v0.0.0-20210912230133-d1bdfacee922 // indirect
-	github.com/bmatcuk/doublestar/v4 v4.2.0 // indirect
-	github.com/golang/protobuf v1.3.3
+	github.com/bmatcuk/doublestar/v4 v4.4.0 // indirect
+	github.com/golang/protobuf v1.5.0
 	github.com/google/addlicense v1.0.0 // indirect
 	github.com/hyperledger/fabric-protos-go v0.0.0-20210911123859-041d13f0980c
 	github.com/onsi/ginkgo v1.14.0
@@ -18,6 +18,7 @@ require (
 	go.uber.org/zap v1.16.0
 	golang.org/x/sync v0.1.0 // indirect
 	google.golang.org/grpc v1.31.0
+	google.golang.org/protobuf v1.28.1 // indirect
 	gopkg.in/alecthomas/kingpin.v2 v2.2.6
 )
 

@@ -11,7 +11,7 @@ import (
 
 	imsp "github.com/IBM/idemix"
 	idemix "github.com/IBM/idemix/bccsp/schemes/dlog/crypto"
-	im "github.com/IBM/idemix/msp"
+	im "github.com/IBM/idemix/idemixmsp"
 	math "github.com/IBM/mathlib"
 	"github.com/golang/protobuf/proto"
 	"github.com/pkg/errors"

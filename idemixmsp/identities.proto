@@ -4,9 +4,10 @@
 // SPDX-License-Identifier: Apache-2.0
 
 syntax = "proto3";
-option go_package = "github.com/hyperledger/fabric-protos-go/msp";
 
-package msp;
+option go_package = "github.com/IBM/idemix/idemixmsp";
+
+package idemixmsp;
 
 // This struct represents an Idemix Identity
 // to be used to serialize it and deserialize it.
