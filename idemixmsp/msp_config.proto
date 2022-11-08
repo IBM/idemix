@@ -7,12 +7,9 @@
 // SPDX-License-Identifier: Apache-2.0
 
 syntax = "proto3";
+option go_package = "github.com/IBM/idemix/idemixmsp";
 
-option go_package = "github.com/hyperledger/fabric-protos-go/msp";
-option java_package = "org.hyperledger.fabric.protos.msp";
-option java_outer_classname = "MspConfigPackage";
-
-package msp;
+package idemixmsp;
 
 message IdemixMSPConfig {
     // Name holds the identifier of the MSP

@@ -317,7 +317,7 @@ var _ = Describe("Idemix Bridge", func() {
 
 			It("fail on invalid credential request", func() {
 				err := CredRequest.Verify([]byte{0, 1, 2, 3, 4}, issuerPublicKey, IssuerNonce)
-				Expect(err.Error()).To(ContainSubstring("illegal tag 0 (wire type 0)"))
+				Expect(err.Error()).To(ContainSubstring("cannot parse invalid wire-format data"))
 			})
 
 			It("fail on nil issuer public key", func() {
@@ -425,7 +425,7 @@ var _ = Describe("Idemix Bridge", func() {
 
 			It("fail on malformed cri", func() {
 				err := Revocation.Verify(nil, []byte{0, 1, 2, 3, 4}, 0, 0)
-				Expect(err.Error()).To(ContainSubstring("illegal tag 0 (wire type 0)"))
+				Expect(err.Error()).To(ContainSubstring("cannot parse invalid wire-format data"))
 			})
 		})
 	})
@@ -459,7 +459,7 @@ var _ = Describe("Idemix Bridge", func() {
 
 			It("fail on invalid signature", func() {
 				err := SignatureScheme.Verify(issuerPublicKey, []byte{0, 1, 2, 3, 4}, nil, nil, 0, 2, nil, 0, 0, nil)
-				Expect(err.Error()).To(ContainSubstring("illegal tag 0 (wire type 0)"))
+				Expect(err.Error()).To(ContainSubstring("cannot parse invalid wire-format data"))
 			})
 
 			It("fail on invalid attributes", func() {
@@ -765,7 +765,7 @@ var _ = Describe("Idemix Bridge", func() {
 						},
 					},
 				)
-				Expect(err.Error()).To(ContainSubstring("illegal tag 0 (wire type 0)"))
+				Expect(err.Error()).To(ContainSubstring("cannot parse invalid wire-format data"))
 				Expect(valid).To(BeFalse())
 			})
 
@@ -923,7 +923,7 @@ var _ = Describe("Idemix Bridge", func() {
 					RNymEid:      SignerOpts.Metadata.NymEIDAuditData.RNymEid,
 					EnrollmentID: string([]byte{0, 1, 2}),
 				})
-				Expect(err).To(MatchError("proto: can't skip unknown wire type 4"))
+				Expect(err.Error()).To(ContainSubstring("cannot parse invalid wire-format data"))
 				Expect(valid).To(BeFalse())
 			})
 		})
@@ -1094,7 +1094,7 @@ var _ = Describe("Idemix Bridge", func() {
 						CRI:        cri,
 					},
 				)
-				Expect(err.Error()).To(ContainSubstring("illegal tag 0 (wire type 0)"))
+				Expect(err.Error()).To(ContainSubstring("cannot parse invalid wire-format data"))
 				Expect(signature).To(BeNil())
 			})
 
