@@ -197,7 +197,7 @@ func testIdemix(t *testing.T, curve *math.Curve, tr Translator) {
 	require.NoError(t, err, "G1FromProto failed: \"%s\"", err)
 	HRand, err := tr.G1FromProto(key.Ipk.HRand)
 	require.NoError(t, err, "G1FromProto failed: \"%s\"", err)
-	Nym_eid := H_a_eid.Mul2(attrs[eidIndex], HRand, meta.NymEIDAuditData.RNymEid)
+	Nym_eid := H_a_eid.Mul2(attrs[eidIndex], HRand, meta.EidNymAuditData.Rand)
 	EidNym, err := tr.G1FromProto(sig.EidNym.Nym)
 	require.NoError(t, err, "G1FromProto failed: \"%s\"", err)
 	require.True(t, Nym_eid.Equals(EidNym))
@@ -221,33 +221,33 @@ func testIdemix(t *testing.T, curve *math.Curve, tr Translator) {
 
 	sig, meta2, err := idmx.NewSignature(cred, sk, Nym, RandNym, key.Ipk, disclosure, msg, rhindex, eidIndex, cri, rng, tr, opts.EidNym, meta)
 	require.NoError(t, err)
-	require.True(t, meta.NymEIDAuditData.RNymEid.Equals(meta2.NymEIDAuditData.RNymEid))
-	require.True(t, meta.NymEIDAuditData.Nym.Equals(meta2.NymEIDAuditData.Nym))
-	require.True(t, meta.NymEIDAuditData.EID.Equals(meta2.NymEIDAuditData.EID))
+	require.True(t, meta.EidNymAuditData.Rand.Equals(meta2.EidNymAuditData.Rand))
+	require.True(t, meta.EidNymAuditData.Nym.Equals(meta2.EidNymAuditData.Nym))
+	require.True(t, meta.EidNymAuditData.Attr.Equals(meta2.EidNymAuditData.Attr))
 	err = sig.Ver(disclosure, key.Ipk, msg, attrs, rhindex, 2, &revocationKey.PublicKey, epoch, idmx.Curve, tr, opts.ExpectEidNym, meta2)
 	require.NoError(t, err)
 	err = sig.Ver(disclosure, key.Ipk, msg, attrs, rhindex, 2, &revocationKey.PublicKey, epoch, idmx.Curve, tr, opts.ExpectEidNym, meta)
 	require.NoError(t, err)
-	meta2.NymEID = meta2.NymEIDAuditData.Nym.Bytes()
+	meta2.EidNym = meta2.EidNymAuditData.Nym.Bytes()
 	err = sig.Ver(disclosure, key.Ipk, msg, attrs, rhindex, 2, &revocationKey.PublicKey, epoch, idmx.Curve, tr, opts.ExpectEidNym, meta2)
 	require.NoError(t, err)
-	meta2.NymEID = []byte{0, 1, 2}
+	meta2.EidNym = []byte{0, 1, 2}
 	err = sig.Ver(disclosure, key.Ipk, msg, attrs, rhindex, 2, &revocationKey.PublicKey, epoch, idmx.Curve, tr, opts.ExpectEidNym, meta2)
 	require.Equal(t, "signature invalid: nym eid validation failed, failed to unmarshal meta nym ied", err.Error())
-	meta2.NymEID = meta2.NymEIDAuditData.Nym.Mul(curve.NewZrFromInt(2)).Bytes()
+	meta2.EidNym = meta2.EidNymAuditData.Nym.Mul(curve.NewZrFromInt(2)).Bytes()
 	err = sig.Ver(disclosure, key.Ipk, msg, attrs, rhindex, 2, &revocationKey.PublicKey, epoch, idmx.Curve, tr, opts.ExpectEidNym, meta2)
 	require.Equal(t, "signature invalid: nym eid validation failed, signature nym eid does not match metadata", err.Error())
-	meta2.NymEID = nil
-	meta2.NymEIDAuditData.Nym = meta2.NymEIDAuditData.Nym.Mul(curve.NewZrFromInt(2))
+	meta2.EidNym = nil
+	meta2.EidNymAuditData.Nym = meta2.EidNymAuditData.Nym.Mul(curve.NewZrFromInt(2))
 	err = sig.Ver(disclosure, key.Ipk, msg, attrs, rhindex, 2, &revocationKey.PublicKey, epoch, idmx.Curve, tr, opts.ExpectEidNym, meta2)
 	require.Error(t, err)
 	require.Equal(t, "signature invalid: nym eid validation failed, does not match metadata", err.Error())
-	meta2.NymEIDAuditData.Nym = nil
+	meta2.EidNymAuditData.Nym = nil
 	err = sig.Ver(disclosure, key.Ipk, msg, attrs, rhindex, 2, &revocationKey.PublicKey, epoch, idmx.Curve, tr, opts.ExpectEidNym, meta2)
 	require.NoError(t, err)
 
 	// tamper with the randomness of the nym eid to expect a failed verification
-	meta.NymEIDAuditData.EID = curve.NewZrFromInt(35)
+	meta.EidNymAuditData.Attr = curve.NewZrFromInt(35)
 	err = sig.Ver(disclosure, key.Ipk, msg, attrs, 0, 2, &revocationKey.PublicKey, epoch, idmx.Curve, tr, opts.BestEffort, meta)
 	require.Error(t, err)
 	require.Equal(t, "signature invalid: nym eid validation failed, does not match regenerated nym eid", err.Error())
@@ -459,7 +459,7 @@ func testSigParallel(t *testing.T, curve *math.Curve, tr Translator) {
 				t.Fail()
 				return
 			}
-			Nym_eid := H_a_eid.Mul2(attrs[eidIndex], HRand, meta.NymEIDAuditData.RNymEid)
+			Nym_eid := H_a_eid.Mul2(attrs[eidIndex], HRand, meta.EidNymAuditData.Rand)
 			EidNym, err := tr.G1FromProto(sig.EidNym.Nym)
 			if err != nil {
 				t.Logf("G1FromProto returned error: %s", err)
@@ -486,7 +486,7 @@ func testSigParallel(t *testing.T, curve *math.Curve, tr Translator) {
 			err = sig.Ver(disclosure, key.Ipk, msg, attrs, 0, 2, &revocationKey.PublicKey, epoch, idmx.Curve, tr, opts.ExpectEidNym, meta)
 			require.NoError(t, err)
 			// tamper with the randomness of the nym eid to expect a failed verification
-			meta.NymEIDAuditData.EID = curve.NewZrFromInt(35)
+			meta.EidNymAuditData.Attr = curve.NewZrFromInt(35)
 			err = sig.Ver(disclosure, key.Ipk, msg, attrs, 0, 2, &revocationKey.PublicKey, epoch, idmx.Curve, tr, opts.BestEffort, meta)
 			require.Error(t, err)
 			require.Equal(t, "signature invalid: nym eid validation failed, does not match regenerated nym eid", err.Error())
@@ -528,16 +528,16 @@ func testSigParallel(t *testing.T, curve *math.Curve, tr Translator) {
 			require.NoError(t, err)
 			HRand, err := tr.G1FromProto(key.Ipk.HRand)
 			require.NoError(t, err)
-			Nym_eid := H_a_eid.Mul2(attrs[eidIndex], HRand, meta.NymEIDAuditData.RNymEid)
+			Nym_eid := H_a_eid.Mul2(attrs[eidIndex], HRand, meta.EidNymAuditData.Rand)
 			EidNym, err := tr.G1FromProto(sig.EidNym.Nym)
 			require.NoError(t, err)
 			require.True(t, Nym_eid.Equals(EidNym))
 
 			// and now do it with the function
-			err = sig.AuditNymEid(key.Ipk, attrs[eidIndex], eidIndex, meta.NymEIDAuditData.RNymEid, idmx.Curve, tr)
+			err = sig.AuditNymEid(key.Ipk, attrs[eidIndex], eidIndex, meta.EidNymAuditData.Rand, idmx.Curve, tr)
 			require.NoError(t, err)
 
-			err = NymEID(meta.NymEIDAuditData.Nym.Bytes()).AuditNymEid(key.Ipk, attrs[eidIndex], eidIndex, meta.NymEIDAuditData.RNymEid, idmx.Curve, tr)
+			err = NymEID(meta.EidNymAuditData.Nym.Bytes()).AuditNymEid(key.Ipk, attrs[eidIndex], eidIndex, meta.EidNymAuditData.Rand, idmx.Curve, tr)
 			require.NoError(t, err)
 
 			err = sig.Ver(disclosure, key.Ipk, msg, nil, 0, 2, &revocationKey.PublicKey, epoch, idmx.Curve, tr, opts.BestEffort, nil)
@@ -558,7 +558,7 @@ func testSigParallel(t *testing.T, curve *math.Curve, tr Translator) {
 			err = sig.Ver(disclosure, key.Ipk, msg, attrs, 0, 2, &revocationKey.PublicKey, epoch, idmx.Curve, tr, opts.ExpectEidNym, meta)
 			require.NoError(t, err)
 			// tamper with the randomness of the nym eid to expect a failed verification
-			meta.NymEIDAuditData.EID = curve.NewZrFromInt(35)
+			meta.EidNymAuditData.Attr = curve.NewZrFromInt(35)
 			err = sig.Ver(disclosure, key.Ipk, msg, attrs, 0, 2, &revocationKey.PublicKey, epoch, idmx.Curve, tr, opts.BestEffort, meta)
 			require.Error(t, err)
 			require.Equal(t, "signature invalid: nym eid validation failed, does not match regenerated nym eid", err.Error())

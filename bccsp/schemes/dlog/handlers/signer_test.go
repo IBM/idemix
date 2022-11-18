@@ -69,7 +69,7 @@ var _ = Describe("Signature", func() {
 			BeforeEach(func() {
 				fakeSignature = []byte("fake signature")
 				randomRandomness = math.Curves[math.FP256BN_AMCL].NewZrFromInt(35)
-				fakeSignatureScheme.SignReturns(fakeSignature, &bccsp.IdemixSignerMetadata{NymEIDAuditData: &bccsp.NymEIDAuditData{RNymEid: randomRandomness}}, nil)
+				fakeSignatureScheme.SignReturns(fakeSignature, &bccsp.IdemixSignerMetadata{EidNymAuditData: &bccsp.AttrNymAuditData{Rand: randomRandomness}}, nil)
 			})
 
 			It("returns no error and a signature", func() {
@@ -84,7 +84,7 @@ var _ = Describe("Signature", func() {
 				)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(signature).To(BeEquivalentTo(fakeSignature))
-				Expect(opts.Metadata).To(BeEquivalentTo(&bccsp.IdemixSignerMetadata{NymEIDAuditData: &bccsp.NymEIDAuditData{RNymEid: randomRandomness}}))
+				Expect(opts.Metadata).To(BeEquivalentTo(&bccsp.IdemixSignerMetadata{EidNymAuditData: &bccsp.AttrNymAuditData{Rand: randomRandomness}}))
 			})
 		})
 

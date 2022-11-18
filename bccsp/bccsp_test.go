@@ -647,7 +647,7 @@ func testWithCurve(id math.CurveID, translator idemix1.Translator) {
 			})
 
 			It("the signature is not valid when we expect an eid nym and request auditing of the eid nym with a wrong randomness", func() {
-				signOpts.Metadata.NymEIDAuditData.RNymEid = signOpts.Metadata.NymEIDAuditData.EID
+				signOpts.Metadata.EidNymAuditData.Rand = signOpts.Metadata.EidNymAuditData.Attr
 
 				valid, err := CSP.Verify(
 					IssuerPublicKey,
@@ -707,7 +707,7 @@ func testWithCurve(id math.CurveID, translator idemix1.Translator) {
 					&bccsp.EidNymAuditOpts{
 						EidIndex:     3,
 						EnrollmentID: string([]byte{0, 1, 2}),
-						RNymEid:      signOpts.Metadata.NymEIDAuditData.RNymEid,
+						RNymEid:      signOpts.Metadata.EidNymAuditData.Rand,
 					},
 				)
 				Expect(err).NotTo(HaveOccurred())
@@ -715,13 +715,13 @@ func testWithCurve(id math.CurveID, translator idemix1.Translator) {
 
 				valid, err = CSP.Verify(
 					IssuerPublicKey,
-					signOpts.Metadata.NymEIDAuditData.Nym.Bytes(),
+					signOpts.Metadata.EidNymAuditData.Nym.Bytes(),
 					digest,
 					&bccsp.EidNymAuditOpts{
 						AuditVerificationType: bccsp.AuditExpectEidNym,
 						EidIndex:              3,
 						EnrollmentID:          string([]byte{0, 1, 2}),
-						RNymEid:               signOpts.Metadata.NymEIDAuditData.RNymEid,
+						RNymEid:               signOpts.Metadata.EidNymAuditData.Rand,
 					},
 				)
 				Expect(err).NotTo(HaveOccurred())
@@ -736,7 +736,7 @@ func testWithCurve(id math.CurveID, translator idemix1.Translator) {
 					&bccsp.EidNymAuditOpts{
 						EidIndex:     3,
 						EnrollmentID: "Have you seen the writing on the wall?",
-						RNymEid:      signOpts.Metadata.NymEIDAuditData.RNymEid,
+						RNymEid:      signOpts.Metadata.EidNymAuditData.Rand,
 					},
 				)
 				Expect(err).To(HaveOccurred())
@@ -745,13 +745,13 @@ func testWithCurve(id math.CurveID, translator idemix1.Translator) {
 
 				valid, err = CSP.Verify(
 					IssuerPublicKey,
-					signOpts.Metadata.NymEIDAuditData.Nym.Bytes(),
+					signOpts.Metadata.EidNymAuditData.Nym.Bytes(),
 					digest,
 					&bccsp.EidNymAuditOpts{
 						AuditVerificationType: bccsp.AuditExpectEidNym,
 						EidIndex:              3,
 						EnrollmentID:          "Have you seen the writing on the wall?",
-						RNymEid:               signOpts.Metadata.NymEIDAuditData.RNymEid,
+						RNymEid:               signOpts.Metadata.EidNymAuditData.Rand,
 					},
 				)
 				Expect(err).To(HaveOccurred())
@@ -786,9 +786,9 @@ func testWithCurve(id math.CurveID, translator idemix1.Translator) {
 				Expect(err).NotTo(HaveOccurred())
 				Expect(signOpts2.Metadata).NotTo(BeNil())
 
-				Expect(signOpts2.Metadata.NymEIDAuditData.Nym.Equals(signOpts.Metadata.NymEIDAuditData.Nym)).To(BeTrue())
-				Expect(signOpts2.Metadata.NymEIDAuditData.EID.Equals(signOpts2.Metadata.NymEIDAuditData.EID)).To(BeTrue())
-				Expect(signOpts2.Metadata.NymEIDAuditData.RNymEid.Equals(signOpts.Metadata.NymEIDAuditData.RNymEid)).To(BeTrue())
+				Expect(signOpts2.Metadata.EidNymAuditData.Nym.Equals(signOpts.Metadata.EidNymAuditData.Nym)).To(BeTrue())
+				Expect(signOpts2.Metadata.EidNymAuditData.Attr.Equals(signOpts2.Metadata.EidNymAuditData.Attr)).To(BeTrue())
+				Expect(signOpts2.Metadata.EidNymAuditData.Rand.Equals(signOpts.Metadata.EidNymAuditData.Rand)).To(BeTrue())
 
 				valid, err := CSP.Verify(
 					IssuerPublicKey,

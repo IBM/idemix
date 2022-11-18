@@ -21,6 +21,7 @@ import (
 // signLabel is the label used in zero-knowledge proof (ZKP) to identify that this ZKP is a signature of knowledge
 const signLabel = "sign"
 const signWithEidNymLabel = "signWithEidNym"
+const signWithEidNymRhNymLabel = "signWithEidNymRhNym"
 
 // A signature that is produced using an Identity Mixer credential is a so-called signature of knowledge
 // (for details see C.P.Schnorr "Efficient Identification and Signatures for Smart Cards")
@@ -66,13 +67,62 @@ func (i *Idemix) NewSignature(
 	metadata *opts.IdemixSignerMetadata,
 ) (*Signature, *opts.IdemixSignerMetadata, error) {
 	switch sigType {
-	case opts.Standard:
+	case opts.Standard: // Generation of standard signature
 		return newSignature(cred, sk, Nym, RNym, ipk, Disclosure, msg, rhIndex, cri, rng, i.Curve, tr, metadata)
-	case opts.EidNym:
+	case opts.EidNym: // Generation of pseudonymous eid signature
 		return newSignatureWithEIDNym(cred, sk, Nym, RNym, ipk, Disclosure, msg, rhIndex, eidIndex, cri, rng, i.Curve, tr, metadata)
+	case opts.EidNymRhNym: // Generation of pseudonymous eid and rh signature
+		return newSignatureWithEIDNymAndRHNym(cred, sk, Nym, RNym, ipk, Disclosure, msg, rhIndex, eidIndex, cri, rng, i.Curve, tr, metadata)
 	}
 
 	panic(fmt.Sprintf("programming error, requested signature type %d", sigType))
+}
+
+func newSignature(
+	cred *Credential,
+	sk *math.Zr,
+	Nym *math.G1,
+	RNym *math.Zr,
+	ipk *IssuerPublicKey,
+	Disclosure []byte,
+	msg []byte,
+	rhIndex int,
+	cri *CredentialRevocationInformation,
+	rng io.Reader,
+	curve *math.Curve,
+	tr Translator,
+	metadata *opts.IdemixSignerMetadata,
+) (*Signature, *opts.IdemixSignerMetadata, error) {
+	t1, t2, t3, APrime, ABar, BPrime, nonRevokedProofHashData, E, Nonce, rSk, rSPrime, rR2, rR3, r2, r3, re, sPrime, rRNym, rAttrs, prover, HiddenIndices, err := prepare(cred, sk, Nym, RNym, ipk, Disclosure, msg, rhIndex, cri, rng, curve, tr)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return finalise(
+		cred,
+		sk,
+		Nym,
+		RNym,
+		ipk,
+		Disclosure,
+		msg,
+		rhIndex, -1,
+		cri,
+		rng,
+		curve,
+		tr,
+		t1, t2, t3,
+		APrime, ABar, BPrime,
+		nonRevokedProofHashData,
+		E,
+		Nonce,
+		rSk, rSPrime, rR2, rR3, r2, r3, re, sPrime, rRNym,
+		rAttrs,
+		prover,
+		HiddenIndices,
+		opts.Standard,
+		metadata,
+	)
 }
 
 func newSignatureWithEIDNym(
@@ -126,7 +176,7 @@ func newSignatureWithEIDNym(
 	)
 }
 
-func newSignature(
+func newSignatureWithEIDNymAndRHNym(
 	cred *Credential,
 	sk *math.Zr,
 	Nym *math.G1,
@@ -134,13 +184,21 @@ func newSignature(
 	ipk *IssuerPublicKey,
 	Disclosure []byte,
 	msg []byte,
-	rhIndex int,
+	rhIndex, eidIndex int,
 	cri *CredentialRevocationInformation,
 	rng io.Reader,
 	curve *math.Curve,
 	tr Translator,
 	metadata *opts.IdemixSignerMetadata,
 ) (*Signature, *opts.IdemixSignerMetadata, error) {
+	if Disclosure[eidIndex] != 0 {
+		return nil, nil, errors.Errorf("cannot create idemix signature: disclosure of enrollment ID requested for NewSignatureWithEIDNym")
+	}
+
+	if Disclosure[rhIndex] != 0 {
+		return nil, nil, errors.Errorf("cannot create idemix signature: disclosure of revocation handle requested for NewSignatureWithEIDNymAndRHNym")
+	}
+
 	t1, t2, t3, APrime, ABar, BPrime, nonRevokedProofHashData, E, Nonce, rSk, rSPrime, rR2, rR3, r2, r3, re, sPrime, rRNym, rAttrs, prover, HiddenIndices, err := prepare(cred, sk, Nym, RNym, ipk, Disclosure, msg, rhIndex, cri, rng, curve, tr)
 	if err != nil {
 		return nil, nil, err
@@ -154,7 +212,7 @@ func newSignature(
 		ipk,
 		Disclosure,
 		msg,
-		rhIndex, -1,
+		rhIndex, eidIndex,
 		cri,
 		rng,
 		curve,
@@ -168,7 +226,7 @@ func newSignature(
 		rAttrs,
 		prover,
 		HiddenIndices,
-		opts.Standard,
+		opts.EidNymRhNym,
 		metadata,
 	)
 }
@@ -373,51 +431,56 @@ func finalise(
 	metadata *opts.IdemixSignerMetadata,
 ) (*Signature, *opts.IdemixSignerMetadata, error) {
 
-	var Nym_eid *math.G1
-	var t4 *math.G1
-	var r_r_eid, r_eid *math.Zr
-	var EID *math.Zr
-	if sigType == opts.EidNym {
-		EID = curve.NewZrFromBytes(cred.Attrs[eidIndex])
-		if metadata != nil {
-			if metadata.NymEIDAuditData == nil {
-				return nil, nil, errors.Errorf("invalid argument, expected metadata")
-			}
+	var Nym_eid, Nym_rh *math.G1
+	var t4_eid, t4_rh *math.G1
+	var r_r_eid, r_eid, r_r_rh, r_rh *math.Zr
+	var EID, RH *math.Zr
+	var err error
 
-			if !metadata.NymEIDAuditData.EID.Equals(EID) {
-				return nil, nil, errors.Errorf("invalid argument, metadata does not match (1)")
-			}
-			r_eid = metadata.NymEIDAuditData.RNymEid
-		} else {
-			r_eid = curve.NewRandomZr(rng)
-		}
-
-		r_a_eid := rAttrs[sort.SearchInts(HiddenIndices, eidIndex)]
-		H_a_eid, err := tr.G1FromProto(ipk.HAttrs[eidIndex])
+	if sigType == opts.EidNym || sigType == opts.EidNymRhNym {
+		err = generateAttrNym(
+			cred,
+			ipk,
+			EID,
+			r_r_eid,
+			r_eid,
+			eidIndex,
+			Nym_eid,
+			t4_eid,
+			rng,
+			curve,
+			tr,
+			rAttrs,
+			HiddenIndices,
+			metadata,
+			metadata.EidNymAuditData,
+		)
 		if err != nil {
 			return nil, nil, err
 		}
+	}
 
-		a_eid := EID
-		HRand, err := tr.G1FromProto(ipk.HRand)
+	if sigType == opts.EidNymRhNym {
+		err = generateAttrNym(
+			cred,
+			ipk,
+			RH,
+			r_r_rh,
+			r_rh,
+			rhIndex,
+			Nym_rh,
+			t4_rh,
+			rng,
+			curve,
+			tr,
+			rAttrs,
+			HiddenIndices,
+			metadata,
+			metadata.RhNymAuditData,
+		)
 		if err != nil {
 			return nil, nil, err
 		}
-
-		// Generate new required randomness r_r_eid
-		r_r_eid = curve.NewRandomZr(rng)
-
-		// Nym_eid is a hiding and binding commitment to the enrollment id
-		Nym_eid = H_a_eid.Mul2(a_eid, HRand, r_eid) // H_{a_{eid}}^{a_{eid}} \cdot H_{r}^{r_{eid}}
-
-		if metadata != nil {
-			if !metadata.NymEIDAuditData.Nym.Equals(Nym_eid) {
-				return nil, nil, errors.Errorf("invalid argument, metadata does not match (2)")
-			}
-		}
-
-		// t4 is the new t-value for the eid nym computed above
-		t4 = H_a_eid.Mul2(r_a_eid, HRand, r_r_eid) // H_{a_{eid}}^{r_{a_{2}}} \cdot H_{r}^{r_{r_{eid}}}
 	}
 
 	// Step 2: Compute the Fiat-Shamir hash, forming the challenge of the ZKP.
@@ -430,9 +493,16 @@ func finalise(
 	// disclosed attributes
 	// message being signed
 	// the amount of bytes needed for the nonrevocation proof
-	pdl := len([]byte(signLabel)) + 7*(2*curve.FieldBytes+1) + curve.FieldBytes + len(Disclosure) + len(msg) + ProofBytes[RevocationAlgorithm(cri.RevocationAlg)]
-	if sigType == opts.EidNym {
-		pdl = len([]byte(signWithEidNymLabel)) + 9*(2*curve.FieldBytes+1) + curve.FieldBytes + len(Disclosure) + len(msg) + ProofBytes[RevocationAlgorithm(cri.RevocationAlg)]
+	pdl := curve.FieldBytes + len(Disclosure) + len(msg) + ProofBytes[RevocationAlgorithm(cri.RevocationAlg)]
+	switch sigType {
+	case opts.Standard:
+		pdl += len([]byte(signLabel)) + 7*(2*curve.FieldBytes+1)
+	case opts.EidNym:
+		pdl += len([]byte(signWithEidNymLabel)) + 9*(2*curve.FieldBytes+1)
+	case opts.EidNymRhNym:
+		pdl += len([]byte(signWithEidNymRhNymLabel)) + 11*(2*curve.FieldBytes+1)
+	default:
+		panic("programming error")
 	}
 	proofData := make([]byte, pdl)
 	index := 0
@@ -441,6 +511,8 @@ func finalise(
 		index = appendBytesString(proofData, index, signLabel)
 	case opts.EidNym:
 		index = appendBytesString(proofData, index, signWithEidNymLabel)
+	case opts.EidNymRhNym:
+		index = appendBytesString(proofData, index, signWithEidNymRhNymLabel)
 	default:
 		panic("programming error")
 	}
@@ -451,9 +523,13 @@ func finalise(
 	index = appendBytesG1(proofData, index, ABar)
 	index = appendBytesG1(proofData, index, BPrime)
 	index = appendBytesG1(proofData, index, Nym)
-	if sigType == opts.EidNym {
+	if sigType == opts.EidNym || sigType == opts.EidNymRhNym {
 		index = appendBytesG1(proofData, index, Nym_eid)
-		index = appendBytesG1(proofData, index, t4)
+		index = appendBytesG1(proofData, index, t4_eid)
+	}
+	if sigType == opts.EidNymRhNym {
+		index = appendBytesG1(proofData, index, Nym_rh)
+		index = appendBytesG1(proofData, index, t4_rh)
 	}
 	index = appendBytes(proofData, index, nonRevokedProofHashData)
 	copy(proofData[index:], ipk.Hash)
@@ -548,26 +624,106 @@ func finalise(
 		NonRevocationProof: nonRevokedProof,
 	}
 
-	if sigType == opts.EidNym {
+	if sigType == opts.EidNym || sigType == opts.EidNymRhNym {
 		ProofSEid := curve.ModAdd(r_r_eid, curve.ModMul(ProofC, r_eid, curve.GroupOrder), curve.GroupOrder) // s_{r{eid}} = r_r_eid + C \cdot r_eid
 		sig.EidNym = &EIDNym{
 			Nym:       tr.G1ToProto(Nym_eid),
 			ProofSEid: ProofSEid.Bytes(),
 		}
 	}
+	if sigType == opts.EidNymRhNym {
+		ProofSRh := curve.ModAdd(r_r_rh, curve.ModMul(ProofC, r_rh, curve.GroupOrder), curve.GroupOrder)
+		sig.RhNym = &RHNym{
+			Nym:      tr.G1ToProto(Nym_rh),
+			ProofSRh: ProofSRh.Bytes(),
+		}
+	}
 
 	var m *opts.IdemixSignerMetadata
 	if sigType == opts.EidNym {
 		m = &opts.IdemixSignerMetadata{
-			NymEIDAuditData: &opts.NymEIDAuditData{
-				Nym:     Nym_eid,
-				RNymEid: r_eid,
-				EID:     EID,
+			EidNymAuditData: &opts.AttrNymAuditData{
+				Nym:  Nym_eid,
+				Rand: r_eid,
+				Attr: EID,
+			},
+		}
+	}
+	if sigType == opts.EidNymRhNym {
+		m = &opts.IdemixSignerMetadata{
+			EidNymAuditData: &opts.AttrNymAuditData{
+				Nym:  Nym_eid,
+				Rand: r_eid,
+				Attr: EID,
+			},
+			RhNymAuditData: &opts.AttrNymAuditData{
+				Nym:  Nym_rh,
+				Rand: r_rh,
+				Attr: RH,
 			},
 		}
 	}
 
 	return sig, m, nil
+}
+
+func generateAttrNym(
+	cred *Credential,
+	ipk *IssuerPublicKey,
+	attr, r_r_attr, r_attr *math.Zr,
+	attrIndex int,
+	attrNym, t4 *math.G1,
+	rng io.Reader,
+	curve *math.Curve,
+	tr Translator,
+	rAttrs []*math.Zr,
+	HiddenIndices []int,
+	metadata *opts.IdemixSignerMetadata,
+	auditData *opts.AttrNymAuditData,
+) error {
+
+	attr = curve.NewZrFromBytes(cred.Attrs[attrIndex])
+	if metadata != nil {
+		if auditData == nil {
+			return errors.Errorf("invalid argument, expected metadata")
+		}
+
+		if !auditData.Attr.Equals(attr) {
+			return errors.Errorf("invalid argument, metadata does not match (1)")
+		}
+		r_attr = auditData.Rand
+	} else {
+		r_attr = curve.NewRandomZr(rng)
+	}
+
+	r_a_attr := rAttrs[sort.SearchInts(HiddenIndices, attrIndex)]
+	H_a_attr, err := tr.G1FromProto(ipk.HAttrs[attrIndex])
+	if err != nil {
+		return err
+	}
+
+	a_attr := attr
+	HRand, err := tr.G1FromProto(ipk.HRand)
+	if err != nil {
+		return err
+	}
+
+	// Generate new required randomness r_r_attr
+	r_r_attr = curve.NewRandomZr(rng)
+
+	// attrNym is a hiding and binding commitment to the attribute
+	attrNym = H_a_attr.Mul2(a_attr, HRand, r_attr) // H_{a_{attr}}^{a_{attr}} \cdot H_{r}^{r_{attr}}
+
+	if metadata != nil {
+		if !auditData.Nym.Equals(attrNym) {
+			return errors.Errorf("invalid argument, metadata does not match (2)")
+		}
+	}
+
+	// t4 is the new t-value for the attr nym computed above
+	t4 = H_a_attr.Mul2(r_a_attr, HRand, r_r_attr) // H_{a_{attr}}^{r_{a_{2}}} \cdot H_{r}^{r_{r_{attr}}}
+
+	return nil
 }
 
 func (sig *Signature) AuditNymEid(
@@ -609,6 +765,51 @@ func (sig *Signature) AuditNymEid(
 	Nym_eid := H_a_eid.Mul2(eidAttr, HRand, RNymEid)
 
 	if !Nym_eid.Equals(EidNym) {
+		return errors.New("eid nym does not match")
+	}
+
+	return nil
+}
+
+func (sig *Signature) AuditNymRh(
+	ipk *IssuerPublicKey,
+	rhAttr *math.Zr,
+	rhIndex int,
+	RNymRh *math.Zr,
+	curve *math.Curve,
+	t Translator,
+) error {
+	// Validate inputs
+	if ipk == nil {
+		return errors.Errorf("cannot verify idemix signature: received nil input")
+	}
+
+	if sig.RhNym == nil || sig.RhNym.Nym == nil {
+		return errors.Errorf("no RhNym provided")
+	}
+
+	if len(ipk.HAttrs) <= rhIndex {
+		return errors.Errorf("could not access H_a_rh in array")
+	}
+
+	H_a_rh, err := t.G1FromProto(ipk.HAttrs[rhIndex])
+	if err != nil {
+		return errors.Wrap(err, "could not deserialize H_a_rh")
+	}
+
+	HRand, err := t.G1FromProto(ipk.HRand)
+	if err != nil {
+		return errors.Wrap(err, "could not deserialize HRand")
+	}
+
+	RhNym, err := t.G1FromProto(sig.RhNym.Nym)
+	if err != nil {
+		return errors.Wrap(err, "could not deserialize RhNym")
+	}
+
+	Nym_rh := H_a_rh.Mul2(rhAttr, HRand, RNymRh)
+
+	if !Nym_rh.Equals(RhNym) {
 		return errors.New("eid nym does not match")
 	}
 
@@ -859,24 +1060,24 @@ func (sig *Signature) Ver(
 			return err
 		}
 
-		if meta.NymEIDAuditData != nil {
+		if meta.EidNymAuditData != nil {
 			H_a_eid, err := t.G1FromProto(ipk.HAttrs[eidIndex])
 			if err != nil {
 				return err
 			}
 
-			Nym_eid := H_a_eid.Mul2(meta.NymEIDAuditData.EID, HRand, meta.NymEIDAuditData.RNymEid)
+			Nym_eid := H_a_eid.Mul2(meta.EidNymAuditData.Attr, HRand, meta.EidNymAuditData.Rand)
 			if !Nym_eid.Equals(EidNym) {
 				return errors.Errorf("signature invalid: nym eid validation failed, does not match regenerated nym eid")
 			}
 
-			if meta.NymEIDAuditData.Nym != nil && !EidNym.Equals(meta.NymEIDAuditData.Nym) {
+			if meta.EidNymAuditData.Nym != nil && !EidNym.Equals(meta.EidNymAuditData.Nym) {
 				return errors.Errorf("signature invalid: nym eid validation failed, does not match metadata")
 			}
 		}
 
-		if len(meta.NymEID) != 0 {
-			NymEID, err := curve.NewG1FromBytes(meta.NymEID)
+		if len(meta.EidNym) != 0 {
+			NymEID, err := curve.NewG1FromBytes(meta.EidNym)
 			if err != nil {
 				return errors.Errorf("signature invalid: nym eid validation failed, failed to unmarshal meta nym ied")
 			}
