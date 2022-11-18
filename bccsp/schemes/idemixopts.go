@@ -236,37 +236,25 @@ func (o *IdemixCredentialSignerOpts) IssuerPublicKey() Key {
 	return o.IssuerPK
 }
 
-// NymEIDAuditData contains the data that is used to audit the nym EID.
+// AttrNymAuditData contains the data that is used to audit a commitment to an auditable attribute.
+// Nym is a commitment to the Attr. Attr can be an Enrollment ID or a Revocation Handle.
 // Notice that this data should be used only after validating the corresponding signature.
-type NymEIDAuditData struct {
-	// Nym is the EID Nym
+type AttrNymAuditData struct {
+	// Nym is the commitment to an attribute
 	Nym *math.G1
 
-	// RNymEid is the randomness used to generate the EID Nym
-	RNymEid *math.Zr
+	// RAttrNym is the randomness used to generate the Attr Nym
+	Rand *math.Zr
 
-	// EID is the enrollment id
-	EID *math.Zr
-}
-
-// RHAuditData contains the data that is used to audit the RH.
-// Notice that this data should be used only after validating the corresponding signature.
-type RHAuditData struct {
-	// CommRH is the commitment to randomness
-	CommRH *math.G1
-
-	// RCommRH is the randomness used to generate the committment
-	RCommRH *math.Zr
-
-	// RH is the revocation handle
-	RH *math.Zr
+	// Attr is the attribute (enrollment id or revocation handle)
+	Attr *math.Zr
 }
 
 type IdemixSignerMetadata struct {
-	NymEID          []byte
-	NymEIDAuditData *NymEIDAuditData
-	RH              []byte
-	RHAuditData     *RHAuditData
+	EidNym          []byte
+	EidNymAuditData *AttrNymAuditData
+	RhNym           []byte
+	RhNymAuditData  *AttrNymAuditData
 }
 
 // IdemixSignerOpts contains the options to generate an Idemix signature
@@ -285,7 +273,7 @@ type IdemixSignerOpts struct {
 	// then Attributes[i].Value must be set accordingly.
 	Attributes []IdemixAttribute
 	// RhIndex is the index of attribute containing the revocation handler.
-	// Notice that this attributed cannot be discloused
+	// Notice that this attributed cannot be disclosed
 	RhIndex int
 	// EidIndex contains the index of the EID attrbiute
 	EidIndex int
@@ -320,14 +308,14 @@ func (o *EidNymAuditOpts) HashFunc() crypto.Hash {
 	return 0
 }
 
-type RhAuditOpts struct {
+type RhNymAuditOpts struct {
 	AuditVerificationType AuditVerificationType
 	RhIndex               int
 	RevocationHandle      string
-	RRh                   *math.Zr
+	RNymRh                *math.Zr
 }
 
-func (o *RhAuditOpts) HashFunc() crypto.Hash {
+func (o *RhNymAuditOpts) HashFunc() crypto.Hash {
 	return 0
 }
 
@@ -420,8 +408,8 @@ const (
 	Standard SignatureType = iota
 	// EidNym adds a hiding and binding commitment to the enrollment id and proves its correctness
 	EidNym
-	// EidNymAndRh adds a hiding and binding commitment to both the enrollment id and the revocation handle and proves their correctness
-	EidNymAndRh
+	// EidNymRhNym adds a hiding and binding commitment to both the enrollment id and the revocation handle and proves each of their correctness
+	EidNymRhNym
 )
 
 // VerificationType describes the type of verification that is required
@@ -436,8 +424,8 @@ const (
 	ExpectStandard
 	// ExpectEidNym expects a SignatureType of type EidNym
 	ExpectEidNym
-	// ExpectEidNymAndRh expects a SignatureType of EidNymAndRh
-	ExpectEidNymAndRh
+	// ExpectEidNymRhNym expects a SignatureType of EidNymRhNym
+	ExpectEidNymRhNym
 )
 
 // AuditVerificationType describes the type of audit verification that is required
@@ -446,8 +434,8 @@ type AuditVerificationType int
 const (
 	// AuditExpectSignature performs the audit verification against a signature
 	AuditExpectSignature AuditVerificationType = iota
-	// AuditExpectEidNym performs the audit verification against a Nym EID
+	// AuditExpectEidNym performs the audit verification against an EID pseudonym
 	AuditExpectEidNym
-	// AuditExpectEidNymAndRh performs the audit verification against a Nym EID and a revocation handle
-	AuditExpectEidNymAndRh
+	// AuditExpectEidNymRhNym performs the audit verification against an EID pseudonym and a Revocation Handle pseudonym
+	AuditExpectEidNymRhNym
 )

@@ -910,7 +910,7 @@ var _ = Describe("Idemix Bridge", func() {
 			It("generates a proper signature", func() {
 				valid, err := Verifier.AuditNymEid(IssuerPublicKey, signature, digest, &bccsp.EidNymAuditOpts{
 					EidIndex:     3,
-					RNymEid:      SignerOpts.Metadata.NymEIDAuditData.RNymEid,
+					RNymEid:      SignerOpts.Metadata.EidNymAuditData.Rand,
 					EnrollmentID: string([]byte{0, 1, 2}),
 				})
 				Expect(err).NotTo(HaveOccurred())
@@ -920,7 +920,7 @@ var _ = Describe("Idemix Bridge", func() {
 			It("fails because it gets the wrong type of signature", func() {
 				valid, err := Verifier.AuditNymEid(IssuerPublicKey, []byte("To ride the storm, to an empire of the clouds"), digest, &bccsp.EidNymAuditOpts{
 					EidIndex:     3,
-					RNymEid:      SignerOpts.Metadata.NymEIDAuditData.RNymEid,
+					RNymEid:      SignerOpts.Metadata.EidNymAuditData.Rand,
 					EnrollmentID: string([]byte{0, 1, 2}),
 				})
 				Expect(err.Error()).To(ContainSubstring("cannot parse invalid wire-format data"))

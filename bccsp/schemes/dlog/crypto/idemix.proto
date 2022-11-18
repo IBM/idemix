@@ -71,6 +71,11 @@ message EIDNym {
 	bytes proof_s_eid = 2;
 }
 
+message RHNym {
+	amcl.ECP nym = 1;
+	bytes proof_s_rh = 2;
+}
+
 // Signature specifies a signature object that consists of
 // a_prime, a_bar, b_prime, proof_* - randomized credential signature values
 // and a zero-knowledge proof of knowledge of a credential
@@ -96,6 +101,7 @@ message Signature {
 	int64 epoch = 16;
 	NonRevocationProof non_revocation_proof = 17;
 	EIDNym eid_nym = 18;
+	RHNym rh_nym = 19;
 }
 
 // NonRevocationProof contains proof that the credential is not revoked
