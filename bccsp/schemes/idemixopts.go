@@ -416,7 +416,7 @@ const (
 type VerificationType int
 
 const (
-	// Basic performs the verification without any of the extensions (e.g. it ignores the nym eid)
+	// Basic performs the verification without any of the extensions (e.g. it ignores the eid nym and rh nym)
 	Basic VerificationType = iota
 	// BestEffort performs all verifications possible given the available information in the signature/opts
 	BestEffort

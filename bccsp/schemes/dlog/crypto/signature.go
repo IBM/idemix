@@ -16,6 +16,7 @@ import (
 	"github.com/pkg/errors"
 
 	opts "github.com/IBM/idemix/bccsp/schemes"
+	amcl "github.com/IBM/idemix/bccsp/schemes/dlog/crypto/translator/amcl"
 )
 
 // signLabel is the label used in zero-knowledge proof (ZKP) to identify that this ZKP is a signature of knowledge
@@ -851,11 +852,26 @@ func (sig *Signature) Ver(
 		return errors.Errorf("no EidNym provided but ExpectEidNym required")
 	}
 
-	if verType == opts.ExpectStandard && sig.EidNym != nil {
-		return errors.Errorf("EidNym available but ExpectStandard required")
+	if verType == opts.ExpectEidNymRhNym {
+		if sig.EidNym == nil || sig.EidNym.Nym == nil || sig.EidNym.ProofSEid == nil {
+			return errors.Errorf("no EidNym provided but ExpectEidNymRhNym required")
+		}
+		if sig.RhNym == nil || sig.RhNym.Nym == nil || sig.RhNym.ProofSRh == nil {
+			return errors.Errorf("no RhNym provided but ExpectEidNymRhNym required")
+		}
+	}
+
+	if verType == opts.ExpectStandard {
+		if sig.EidNym != nil {
+			return errors.Errorf("EidNym available but ExpectStandard required")
+		}
+		if sig.RhNym != nil {
+			return errors.Errorf("RhNym available but ExpectStandard required")
+		}
 	}
 
 	verifyEIDNym := (verType == opts.BestEffort && sig.EidNym != nil) || verType == opts.ExpectEidNym
+	verifyRHNym := (verType == opts.BestEffort && sig.RhNym != nil) || verType == opts.ExpectEidNymRhNym
 
 	HiddenIndices := hiddenIndices(Disclosure)
 
@@ -973,19 +989,37 @@ func (sig *Signature) Ver(
 	t3 := HSk.Mul2(ProofSSk, HRand, ProofSRNym)
 	t3.Sub(Nym.Mul(ProofC))
 
-	var t4 *math.G1
-	if verifyEIDNym {
-		H_a_eid, err := t.G1FromProto(ipk.HAttrs[eidIndex])
+	// Attribute pseudonym extension signature verification
+	computeExtensionCommitment := func(attrIndex int, t4 *math.G1, proofSAttr []byte, attrNym *amcl.ECP) error {
+		H_a_attr, err := t.G1FromProto(ipk.HAttrs[attrIndex])
 		if err != nil {
 			return err
 		}
 
-		t4 = H_a_eid.Mul2(ProofSAttrs[sort.SearchInts(HiddenIndices, eidIndex)], HRand, curve.NewZrFromBytes(sig.EidNym.ProofSEid))
-		EidNym, err := t.G1FromProto(sig.EidNym.Nym)
+		t4 = H_a_attr.Mul2(ProofSAttrs[sort.SearchInts(HiddenIndices, attrIndex)], HRand, curve.NewZrFromBytes(proofSAttr))
+		AttrNym, err := t.G1FromProto(attrNym)
 		if err != nil {
 			return err
 		}
-		t4.Sub(EidNym.Mul(ProofC))
+		t4.Sub(AttrNym.Mul(ProofC))
+		return nil
+	}
+
+	// Enrollment ID pseudonym
+	var t4_eid *math.G1
+	if verifyEIDNym {
+		err = computeExtensionCommitment(eidIndex, t4_eid, sig.EidNym.ProofSEid, sig.EidNym.Nym)
+		if err != nil {
+			return err
+		}
+	}
+	// Revocation Handle pseudonym
+	var t4_rh *math.G1
+	if verifyRHNym {
+		err = computeExtensionCommitment(rhIndex, t4_rh, sig.RhNym.ProofSRh, sig.RhNym.Nym)
+		if err != nil {
+			return err
+		}
 	}
 
 	// add contribution from the non-revocation proof
@@ -1013,13 +1047,20 @@ func (sig *Signature) Ver(
 	// one bigint (hash of the issuer public key) of length math.FieldBytes
 	// disclosed attributes
 	// message that was signed
-	pdl := len([]byte(signLabel)) + 7*(2*curve.FieldBytes+1) + curve.FieldBytes + len(Disclosure) + len(msg) + ProofBytes[RevocationAlgorithm(sig.NonRevocationProof.RevocationAlg)]
-	if verifyEIDNym {
-		pdl = len([]byte(signWithEidNymLabel)) + 9*(2*curve.FieldBytes+1) + curve.FieldBytes + len(Disclosure) + len(msg) + ProofBytes[RevocationAlgorithm(sig.NonRevocationProof.RevocationAlg)]
+	pdl := curve.FieldBytes + len(Disclosure) + len(msg) + ProofBytes[RevocationAlgorithm(sig.NonRevocationProof.RevocationAlg)]
+	if verifyRHNym {
+		pdl += len([]byte(signWithEidNymRhNymLabel)) + 11*(2*curve.FieldBytes+1)
+	} else if verifyEIDNym {
+		pdl += len([]byte(signWithEidNymLabel)) + 9*(2*curve.FieldBytes+1)
+	} else {
+		pdl += len([]byte(signLabel)) + 7*(2*curve.FieldBytes+1)
 	}
+
 	proofData := make([]byte, pdl)
 	index := 0
-	if verifyEIDNym {
+	if verifyRHNym {
+		index = appendBytesString(proofData, index, signWithEidNymRhNymLabel)
+	} else if verifyEIDNym {
 		index = appendBytesString(proofData, index, signWithEidNymLabel)
 	} else {
 		index = appendBytesString(proofData, index, signLabel)
@@ -1031,15 +1072,23 @@ func (sig *Signature) Ver(
 	index = appendBytesG1(proofData, index, ABar)
 	index = appendBytesG1(proofData, index, BPrime)
 	index = appendBytesG1(proofData, index, Nym)
-	if verifyEIDNym {
-		Nym, err := t.G1FromProto(sig.EidNym.Nym)
+	if verifyEIDNym || verifyRHNym {
+		EidNym, err := t.G1FromProto(sig.EidNym.Nym)
 		if err != nil {
 			return err
 		}
-
-		index = appendBytesG1(proofData, index, Nym)
-		index = appendBytesG1(proofData, index, t4)
+		index = appendBytesG1(proofData, index, EidNym)
+		index = appendBytesG1(proofData, index, t4_eid)
 	}
+	if verifyRHNym {
+		RhNym, err := t.G1FromProto(sig.RhNym.Nym)
+		if err != nil {
+			return err
+		}
+		index = appendBytesG1(proofData, index, RhNym)
+		index = appendBytesG1(proofData, index, t4_rh)
+	}
+
 	index = appendBytes(proofData, index, nonRevokedProofBytes)
 	copy(proofData[index:], ipk.Hash)
 	index = index + curve.FieldBytes
@@ -1054,7 +1103,7 @@ func (sig *Signature) Ver(
 	appendBytesBig(proofData, index, Nonce)
 
 	// audit eid nym if data provided and verification requested
-	if verifyEIDNym && meta != nil {
+	if (verifyEIDNym || verifyRHNym) && meta != nil {
 		EidNym, err := t.G1FromProto(sig.EidNym.Nym)
 		if err != nil {
 			return err
@@ -1083,6 +1132,40 @@ func (sig *Signature) Ver(
 			}
 			if !NymEID.Equals(EidNym) {
 				return errors.Errorf("signature invalid: nym eid validation failed, signature nym eid does not match metadata")
+			}
+		}
+	}
+
+	// audit rh nym if data provided and verification requested
+	if verifyRHNym && meta != nil {
+		RhNym, err := t.G1FromProto(sig.RhNym.Nym)
+		if err != nil {
+			return err
+		}
+
+		if meta.RhNymAuditData != nil {
+			H_a_rh, err := t.G1FromProto(ipk.HAttrs[rhIndex])
+			if err != nil {
+				return err
+			}
+
+			Nym_rh := H_a_rh.Mul2(meta.RhNymAuditData.Attr, HRand, meta.RhNymAuditData.Rand)
+			if !Nym_rh.Equals(RhNym) {
+				return errors.Errorf("signature invalid: nym rh validation failed, does not match regenerated nym rh")
+			}
+
+			if meta.RhNymAuditData.Nym != nil && !RhNym.Equals(meta.RhNymAuditData.Nym) {
+				return errors.Errorf("signature invalid: nym rh validation failed, does not match metadata")
+			}
+		}
+
+		if len(meta.RhNym) != 0 {
+			NymRH, err := curve.NewG1FromBytes(meta.RhNym)
+			if err != nil {
+				return errors.Errorf("signature invalid: nym rh validation failed, failed to unmarshal meta nym ied")
+			}
+			if !NymRH.Equals(RhNym) {
+				return errors.Errorf("signature invalid: nym rh validation failed, signature nym rh does not match metadata")
 			}
 		}
 	}
