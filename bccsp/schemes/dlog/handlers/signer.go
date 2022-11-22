@@ -101,6 +101,36 @@ func (v *Verifier) AuditNymEid(k bccsp.Key, signature, digest []byte, opts bccsp
 	return true, nil
 }
 
+func (v *Verifier) AuditNymRh(k bccsp.Key, signature, digest []byte, opts bccsp.SignerOpts) (bool, error) {
+	issuerPublicKey, ok := k.(*issuerPublicKey)
+	if !ok {
+		return false, errors.New("invalid key, expected *issuerPublicKey")
+	}
+
+	signerOpts, ok := opts.(*bccsp.RhNymAuditOpts)
+	if !ok {
+		return false, errors.New("invalid options, expected *RhNymAuditOpts")
+	}
+
+	if len(signature) == 0 {
+		return false, errors.New("invalid signature, it must not be empty")
+	}
+
+	err := v.SignatureScheme.AuditNymRh(
+		issuerPublicKey.pk,
+		signerOpts.RhIndex,
+		signature,
+		signerOpts.RevocationHandle,
+		signerOpts.RNymRh,
+		signerOpts.AuditVerificationType,
+	)
+	if err != nil {
+		return false, err
+	}
+
+	return true, nil
+}
+
 func (v *Verifier) Verify(k bccsp.Key, signature, digest []byte, opts bccsp.SignerOpts) (bool, error) {
 	issuerPublicKey, ok := k.(*issuerPublicKey)
 	if !ok {
