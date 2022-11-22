@@ -180,6 +180,8 @@ func (v *issuerPublicKeyVerifierMultiplexer) Verify(k bccsp.Key, signature, dige
 	switch opts.(type) {
 	case *bccsp.EidNymAuditOpts:
 		return v.verifier.AuditNymEid(k, signature, digest, opts)
+	case *bccsp.RhNymAuditOpts:
+		return v.verifier.AuditNymRh(k, signature, digest, opts)
 	case *bccsp.IdemixSignerOpts:
 		return v.verifier.Verify(k, signature, digest, opts)
 	case *bccsp.IdemixCredentialRequestSignerOpts:
