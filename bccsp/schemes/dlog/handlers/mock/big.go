@@ -27,16 +27,15 @@ func (fake *Big) Bytes() []byte {
 	ret, specificReturn := fake.bytesReturnsOnCall[len(fake.bytesArgsForCall)]
 	fake.bytesArgsForCall = append(fake.bytesArgsForCall, struct {
 	}{})
-	stub := fake.BytesStub
-	fakeReturns := fake.bytesReturns
 	fake.recordInvocation("Bytes", []interface{}{})
 	fake.bytesMutex.Unlock()
-	if stub != nil {
-		return stub()
+	if fake.BytesStub != nil {
+		return fake.BytesStub()
 	}
 	if specificReturn {
 		return ret.result1
 	}
+	fakeReturns := fake.bytesReturns
 	return fakeReturns.result1
 }
 

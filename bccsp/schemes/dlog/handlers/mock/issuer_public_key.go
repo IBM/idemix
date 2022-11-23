@@ -39,16 +39,15 @@ func (fake *IssuerPublicKey) Bytes() ([]byte, error) {
 	ret, specificReturn := fake.bytesReturnsOnCall[len(fake.bytesArgsForCall)]
 	fake.bytesArgsForCall = append(fake.bytesArgsForCall, struct {
 	}{})
-	stub := fake.BytesStub
-	fakeReturns := fake.bytesReturns
 	fake.recordInvocation("Bytes", []interface{}{})
 	fake.bytesMutex.Unlock()
-	if stub != nil {
-		return stub()
+	if fake.BytesStub != nil {
+		return fake.BytesStub()
 	}
 	if specificReturn {
 		return ret.result1, ret.result2
 	}
+	fakeReturns := fake.bytesReturns
 	return fakeReturns.result1, fakeReturns.result2
 }
 
@@ -95,16 +94,15 @@ func (fake *IssuerPublicKey) Hash() []byte {
 	ret, specificReturn := fake.hashReturnsOnCall[len(fake.hashArgsForCall)]
 	fake.hashArgsForCall = append(fake.hashArgsForCall, struct {
 	}{})
-	stub := fake.HashStub
-	fakeReturns := fake.hashReturns
 	fake.recordInvocation("Hash", []interface{}{})
 	fake.hashMutex.Unlock()
-	if stub != nil {
-		return stub()
+	if fake.HashStub != nil {
+		return fake.HashStub()
 	}
 	if specificReturn {
 		return ret.result1
 	}
+	fakeReturns := fake.hashReturns
 	return fakeReturns.result1
 }
 
