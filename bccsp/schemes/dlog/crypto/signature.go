@@ -16,7 +16,6 @@ import (
 	"github.com/pkg/errors"
 
 	opts "github.com/IBM/idemix/bccsp/schemes"
-	amcl "github.com/IBM/idemix/bccsp/schemes/dlog/crypto/translator/amcl"
 )
 
 // signLabel is the label used in zero-knowledge proof (ZKP) to identify that this ZKP is a signature of knowledge
@@ -439,49 +438,89 @@ func finalise(
 	var err error
 
 	if sigType == opts.EidNym || sigType == opts.EidNymRhNym {
-		err = generateAttrNym(
-			cred,
-			ipk,
-			EID,
-			r_r_eid,
-			r_eid,
-			eidIndex,
-			Nym_eid,
-			t4_eid,
-			rng,
-			curve,
-			tr,
-			rAttrs,
-			HiddenIndices,
-			metadata,
-			metadata.EidNymAuditData,
-		)
+		EID = curve.NewZrFromBytes(cred.Attrs[eidIndex])
+		if metadata != nil {
+			if metadata.EidNymAuditData == nil {
+				return nil, nil, errors.Errorf("invalid argument, expected metadata")
+			}
+
+			if !metadata.EidNymAuditData.Attr.Equals(EID) {
+				return nil, nil, errors.Errorf("invalid argument, metadata does not match (1)")
+			}
+			r_eid = metadata.EidNymAuditData.Rand
+		} else {
+			r_eid = curve.NewRandomZr(rng)
+		}
+
+		r_a_eid := rAttrs[sort.SearchInts(HiddenIndices, eidIndex)]
+		H_a_eid, err := tr.G1FromProto(ipk.HAttrs[eidIndex])
 		if err != nil {
 			return nil, nil, err
 		}
+
+		a_eid := EID
+		HRand, err := tr.G1FromProto(ipk.HRand)
+		if err != nil {
+			return nil, nil, err
+		}
+
+		// Generate new required randomness r_r_eid
+		r_r_eid = curve.NewRandomZr(rng)
+
+		// Nym_eid is a hiding and binding commitment to the enrollment id
+		Nym_eid = H_a_eid.Mul2(a_eid, HRand, r_eid) // H_{a_{eid}}^{a_{eid}} \cdot H_{r}^{r_{eid}}
+
+		if metadata != nil {
+			if !metadata.EidNymAuditData.Nym.Equals(Nym_eid) {
+				return nil, nil, errors.Errorf("invalid argument, metadata does not match (2)")
+			}
+		}
+
+		// t4 is the new t-value for the eid nym computed above
+		t4_eid = H_a_eid.Mul2(r_a_eid, HRand, r_r_eid) // H_{a_{eid}}^{r_{a_{2}}} \cdot H_{r}^{r_{r_{eid}}}
 	}
 
 	if sigType == opts.EidNymRhNym {
-		err = generateAttrNym(
-			cred,
-			ipk,
-			RH,
-			r_r_rh,
-			r_rh,
-			rhIndex,
-			Nym_rh,
-			t4_rh,
-			rng,
-			curve,
-			tr,
-			rAttrs,
-			HiddenIndices,
-			metadata,
-			metadata.RhNymAuditData,
-		)
+		RH = curve.NewZrFromBytes(cred.Attrs[rhIndex])
+		if metadata != nil {
+			if metadata.RhNymAuditData == nil {
+				return nil, nil, errors.Errorf("invalid argument, expected metadata")
+			}
+
+			if !metadata.RhNymAuditData.Attr.Equals(RH) {
+				return nil, nil, errors.Errorf("invalid argument, metadata does not match (1)")
+			}
+			r_rh = metadata.RhNymAuditData.Rand
+		} else {
+			r_rh = curve.NewRandomZr(rng)
+		}
+
+		r_a_rh := rAttrs[sort.SearchInts(HiddenIndices, rhIndex)]
+		H_a_rh, err := tr.G1FromProto(ipk.HAttrs[rhIndex])
 		if err != nil {
 			return nil, nil, err
 		}
+
+		a_rh := RH
+		HRand, err := tr.G1FromProto(ipk.HRand)
+		if err != nil {
+			return nil, nil, err
+		}
+
+		// Generate new required randomness r_r_rh
+		r_r_rh = curve.NewRandomZr(rng)
+
+		// Nym_rh is a hiding and binding commitment to the enrollment id
+		Nym_rh = H_a_rh.Mul2(a_rh, HRand, r_rh) // H_{a_{rh}}^{a_{rh}} \cdot H_{r}^{r_{rh}}
+
+		if metadata != nil {
+			if !metadata.RhNymAuditData.Nym.Equals(Nym_rh) {
+				return nil, nil, errors.Errorf("invalid argument, metadata does not match (2)")
+			}
+		}
+
+		// t4 is the new t-value for the rh nym computed above
+		t4_rh = H_a_rh.Mul2(r_a_rh, HRand, r_r_rh) // H_{a_{rh}}^{r_{a_{2}}} \cdot H_{r}^{r_{r_{rh}}}
 	}
 
 	// Step 2: Compute the Fiat-Shamir hash, forming the challenge of the ZKP.
@@ -632,6 +671,7 @@ func finalise(
 			ProofSEid: ProofSEid.Bytes(),
 		}
 	}
+
 	if sigType == opts.EidNymRhNym {
 		ProofSRh := curve.ModAdd(r_r_rh, curve.ModMul(ProofC, r_rh, curve.GroupOrder), curve.GroupOrder)
 		sig.RhNym = &RHNym{
@@ -650,6 +690,7 @@ func finalise(
 			},
 		}
 	}
+
 	if sigType == opts.EidNymRhNym {
 		m = &opts.IdemixSignerMetadata{
 			EidNymAuditData: &opts.AttrNymAuditData{
@@ -666,65 +707,6 @@ func finalise(
 	}
 
 	return sig, m, nil
-}
-
-func generateAttrNym(
-	cred *Credential,
-	ipk *IssuerPublicKey,
-	attr, r_r_attr, r_attr *math.Zr,
-	attrIndex int,
-	attrNym, t4 *math.G1,
-	rng io.Reader,
-	curve *math.Curve,
-	tr Translator,
-	rAttrs []*math.Zr,
-	HiddenIndices []int,
-	metadata *opts.IdemixSignerMetadata,
-	auditData *opts.AttrNymAuditData,
-) error {
-
-	attr = curve.NewZrFromBytes(cred.Attrs[attrIndex])
-	if metadata != nil {
-		if auditData == nil {
-			return errors.Errorf("invalid argument, expected metadata")
-		}
-
-		if !auditData.Attr.Equals(attr) {
-			return errors.Errorf("invalid argument, metadata does not match (1)")
-		}
-		r_attr = auditData.Rand
-	} else {
-		r_attr = curve.NewRandomZr(rng)
-	}
-
-	r_a_attr := rAttrs[sort.SearchInts(HiddenIndices, attrIndex)]
-	H_a_attr, err := tr.G1FromProto(ipk.HAttrs[attrIndex])
-	if err != nil {
-		return err
-	}
-
-	a_attr := attr
-	HRand, err := tr.G1FromProto(ipk.HRand)
-	if err != nil {
-		return err
-	}
-
-	// Generate new required randomness r_r_attr
-	r_r_attr = curve.NewRandomZr(rng)
-
-	// attrNym is a hiding and binding commitment to the attribute
-	attrNym = H_a_attr.Mul2(a_attr, HRand, r_attr) // H_{a_{attr}}^{a_{attr}} \cdot H_{r}^{r_{attr}}
-
-	if metadata != nil {
-		if !auditData.Nym.Equals(attrNym) {
-			return errors.Errorf("invalid argument, metadata does not match (2)")
-		}
-	}
-
-	// t4 is the new t-value for the attr nym computed above
-	t4 = H_a_attr.Mul2(r_a_attr, HRand, r_r_attr) // H_{a_{attr}}^{r_{a_{2}}} \cdot H_{r}^{r_{r_{attr}}}
-
-	return nil
 }
 
 func (sig *Signature) AuditNymEid(
@@ -990,36 +972,33 @@ func (sig *Signature) Ver(
 	t3.Sub(Nym.Mul(ProofC))
 
 	// Attribute pseudonym extension signature verification
-	computeExtensionCommitment := func(attrIndex int, t4 *math.G1, proofSAttr []byte, attrNym *amcl.ECP) error {
-		H_a_attr, err := t.G1FromProto(ipk.HAttrs[attrIndex])
-		if err != nil {
-			return err
-		}
-
-		t4 = H_a_attr.Mul2(ProofSAttrs[sort.SearchInts(HiddenIndices, attrIndex)], HRand, curve.NewZrFromBytes(proofSAttr))
-		AttrNym, err := t.G1FromProto(attrNym)
-		if err != nil {
-			return err
-		}
-		t4.Sub(AttrNym.Mul(ProofC))
-		return nil
-	}
-
-	// Enrollment ID pseudonym
 	var t4_eid *math.G1
 	if verifyEIDNym {
-		err = computeExtensionCommitment(eidIndex, t4_eid, sig.EidNym.ProofSEid, sig.EidNym.Nym)
+		H_a_eid, err := t.G1FromProto(ipk.HAttrs[eidIndex])
 		if err != nil {
 			return err
 		}
+
+		t4_eid = H_a_eid.Mul2(ProofSAttrs[sort.SearchInts(HiddenIndices, eidIndex)], HRand, curve.NewZrFromBytes(sig.EidNym.ProofSEid))
+		EidNym, err := t.G1FromProto(sig.EidNym.Nym)
+		if err != nil {
+			return err
+		}
+		t4_eid.Sub(EidNym.Mul(ProofC))
 	}
-	// Revocation Handle pseudonym
 	var t4_rh *math.G1
 	if verifyRHNym {
-		err = computeExtensionCommitment(rhIndex, t4_rh, sig.RhNym.ProofSRh, sig.RhNym.Nym)
+		H_a_rh, err := t.G1FromProto(ipk.HAttrs[rhIndex])
 		if err != nil {
 			return err
 		}
+
+		t4_rh = H_a_rh.Mul2(ProofSAttrs[sort.SearchInts(HiddenIndices, rhIndex)], HRand, curve.NewZrFromBytes(sig.RhNym.ProofSRh))
+		RhNym, err := t.G1FromProto(sig.RhNym.Nym)
+		if err != nil {
+			return err
+		}
+		t4_rh.Sub(RhNym.Mul(ProofC))
 	}
 
 	// add contribution from the non-revocation proof
@@ -1055,7 +1034,6 @@ func (sig *Signature) Ver(
 	} else {
 		pdl += len([]byte(signLabel)) + 7*(2*curve.FieldBytes+1)
 	}
-
 	proofData := make([]byte, pdl)
 	index := 0
 	if verifyRHNym {
@@ -1088,7 +1066,6 @@ func (sig *Signature) Ver(
 		index = appendBytesG1(proofData, index, RhNym)
 		index = appendBytesG1(proofData, index, t4_rh)
 	}
-
 	index = appendBytes(proofData, index, nonRevokedProofBytes)
 	copy(proofData[index:], ipk.Hash)
 	index = index + curve.FieldBytes
