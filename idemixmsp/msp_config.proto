@@ -27,7 +27,7 @@ message IdemixMSPConfig {
     // epoch represents the current epoch (time interval) used for revocation
     int64 epoch = 5;
     
-    // Which Elliptic Curve should be used
+    // curve_id indicates which Elliptic Curve should be used
     string curve_id = 6;
  }
     

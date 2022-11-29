@@ -31,7 +31,7 @@ type IdemixMSPConfig struct {
 	RevocationPk []byte `protobuf:"bytes,4,opt,name=revocation_pk,json=revocationPk,proto3" json:"revocation_pk,omitempty"`
 	// epoch represents the current epoch (time interval) used for revocation
 	Epoch int64 `protobuf:"varint,5,opt,name=epoch,proto3" json:"epoch,omitempty"`
-	// Which Elliptic Curve should be used
+	// curve_id indicates which Elliptic Curve should be used
 	CurveId              string   `protobuf:"bytes,6,opt,name=curve_id,json=curveId,proto3" json:"curve_id,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
