@@ -615,7 +615,7 @@ type NymSignature struct {
 	ProofC []byte `protobuf:"bytes,1,opt,name=proof_c,json=proofC,proto3" json:"proof_c,omitempty"`
 	// proof_s_sk is the s-value proving knowledge of the user secret key
 	ProofSSk []byte `protobuf:"bytes,2,opt,name=proof_s_sk,json=proofSSk,proto3" json:"proof_s_sk,omitempty"`
-	//proof_s_r_nym is the s-value proving knowledge of the pseudonym secret
+	// proof_s_r_nym is the s-value proving knowledge of the pseudonym secret
 	ProofSRNym []byte `protobuf:"bytes,3,opt,name=proof_s_r_nym,json=proofSRNym,proto3" json:"proof_s_r_nym,omitempty"`
 	// nonce is a fresh nonce used for the signature
 	Nonce                []byte   `protobuf:"bytes,4,opt,name=nonce,proto3" json:"nonce,omitempty"`
