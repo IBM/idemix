@@ -839,6 +839,428 @@ func testWithCurve(id math.CurveID, translator idemix1.Translator) {
 
 		})
 
+		Describe("producing an idemix signature with an eid nym and rh nym", func() {
+			var (
+				digest    []byte
+				signature []byte
+				signOpts  *bccsp.IdemixSignerOpts
+			)
+
+			BeforeEach(func() {
+				var err error
+
+				digest = []byte("a digest")
+
+				signOpts = &bccsp.IdemixSignerOpts{
+					Credential: credential,
+					Nym:        NymKey,
+					IssuerPK:   IssuerPublicKey,
+					Attributes: []bccsp.IdemixAttribute{
+						{Type: bccsp.IdemixHiddenAttribute},
+						{Type: bccsp.IdemixHiddenAttribute},
+						{Type: bccsp.IdemixHiddenAttribute},
+						{Type: bccsp.IdemixHiddenAttribute},
+						{Type: bccsp.IdemixHiddenAttribute},
+					},
+					RhIndex:  4,
+					EidIndex: 3,
+					Epoch:    0,
+					CRI:      cri,
+					SigType:  bccsp.EidNymRhNym,
+				}
+
+				signature, err = CSP.Sign(
+					UserKey,
+					digest,
+					signOpts,
+				)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(signOpts.Metadata).NotTo(BeNil())
+			})
+
+			It("the signature is not valid if we use basic verification", func() {
+				valid, err := CSP.Verify(
+					IssuerPublicKey,
+					signature,
+					digest,
+					&bccsp.IdemixSignerOpts{
+						RevocationPublicKey: RevocationPublicKey,
+						Attributes: []bccsp.IdemixAttribute{
+							{Type: bccsp.IdemixHiddenAttribute},
+							{Type: bccsp.IdemixHiddenAttribute},
+							{Type: bccsp.IdemixHiddenAttribute},
+							{Type: bccsp.IdemixHiddenAttribute},
+							{Type: bccsp.IdemixHiddenAttribute},
+						},
+						RhIndex:  4,
+						EidIndex: 3,
+						Epoch:    0,
+						// VerificationType: bccsp.Basic,
+					},
+				)
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(ContainSubstring("zero-knowledge proof is invalid"))
+				Expect(valid).To(BeFalse())
+			})
+
+			It("the signature is valid", func() {
+				valid, err := CSP.Verify(
+					IssuerPublicKey,
+					signature,
+					digest,
+					&bccsp.IdemixSignerOpts{
+						RevocationPublicKey: RevocationPublicKey,
+						Attributes: []bccsp.IdemixAttribute{
+							{Type: bccsp.IdemixHiddenAttribute},
+							{Type: bccsp.IdemixHiddenAttribute},
+							{Type: bccsp.IdemixHiddenAttribute},
+							{Type: bccsp.IdemixHiddenAttribute},
+							{Type: bccsp.IdemixHiddenAttribute},
+						},
+						RhIndex:          4,
+						EidIndex:         3,
+						Epoch:            0,
+						VerificationType: bccsp.BestEffort,
+					},
+				)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(valid).To(BeTrue())
+			})
+
+			It("the signature is not valid when we expect only an eid nym", func() {
+				valid, err := CSP.Verify(
+					IssuerPublicKey,
+					signature,
+					digest,
+					&bccsp.IdemixSignerOpts{
+						RevocationPublicKey: RevocationPublicKey,
+						Attributes: []bccsp.IdemixAttribute{
+							{Type: bccsp.IdemixHiddenAttribute},
+							{Type: bccsp.IdemixHiddenAttribute},
+							{Type: bccsp.IdemixHiddenAttribute},
+							{Type: bccsp.IdemixHiddenAttribute},
+							{Type: bccsp.IdemixHiddenAttribute},
+						},
+						RhIndex:          4,
+						EidIndex:         3,
+						Epoch:            0,
+						VerificationType: bccsp.ExpectEidNym,
+					},
+				)
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(ContainSubstring("zero-knowledge proof is invalid"))
+				Expect(valid).To(BeFalse())
+			})
+
+			It("the signature is valid when we expect both an eid nym and rh nym and request auditing of the eid nym and the rh nym", func() {
+				fmt.Println("Here 3")
+				fmt.Println(CSP)
+				valid, err := CSP.Verify(
+					IssuerPublicKey,
+					signature,
+					digest,
+					&bccsp.IdemixSignerOpts{
+						RevocationPublicKey: RevocationPublicKey,
+						Attributes: []bccsp.IdemixAttribute{
+							{Type: bccsp.IdemixHiddenAttribute},
+							{Type: bccsp.IdemixHiddenAttribute},
+							{Type: bccsp.IdemixHiddenAttribute},
+							{Type: bccsp.IdemixHiddenAttribute},
+							{Type: bccsp.IdemixHiddenAttribute},
+						},
+						RhIndex:          4,
+						EidIndex:         3,
+						Epoch:            0,
+						VerificationType: bccsp.ExpectEidNymRhNym,
+						Metadata:         signOpts.Metadata,
+					},
+				)
+				fmt.Println(err)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(valid).To(BeTrue())
+			})
+
+			It("the signature is not valid when we expect both an eid nym and rh nym and request auditing of the eid nym with a wrong randomness", func() {
+				signOpts.Metadata.EidNymAuditData.Rand = signOpts.Metadata.EidNymAuditData.Attr
+
+				valid, err := CSP.Verify(
+					IssuerPublicKey,
+					signature,
+					digest,
+					&bccsp.IdemixSignerOpts{
+						RevocationPublicKey: RevocationPublicKey,
+						Attributes: []bccsp.IdemixAttribute{
+							{Type: bccsp.IdemixHiddenAttribute},
+							{Type: bccsp.IdemixHiddenAttribute},
+							{Type: bccsp.IdemixHiddenAttribute},
+							{Type: bccsp.IdemixHiddenAttribute},
+							{Type: bccsp.IdemixHiddenAttribute},
+						},
+						RhIndex:          4,
+						EidIndex:         3,
+						Epoch:            0,
+						VerificationType: bccsp.ExpectEidNymRhNym,
+						Metadata:         signOpts.Metadata,
+					},
+				)
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(ContainSubstring("signature invalid: nym eid validation failed"))
+				Expect(valid).To(BeFalse())
+			})
+
+			It("the signature is not valid when we expect both an eid nym and rh nym and request auditing of the rh nym with a wrong randomness", func() {
+				signOpts.Metadata.RhNymAuditData.Rand = signOpts.Metadata.RhNymAuditData.Attr
+
+				valid, err := CSP.Verify(
+					IssuerPublicKey,
+					signature,
+					digest,
+					&bccsp.IdemixSignerOpts{
+						RevocationPublicKey: RevocationPublicKey,
+						Attributes: []bccsp.IdemixAttribute{
+							{Type: bccsp.IdemixHiddenAttribute},
+							{Type: bccsp.IdemixHiddenAttribute},
+							{Type: bccsp.IdemixHiddenAttribute},
+							{Type: bccsp.IdemixHiddenAttribute},
+							{Type: bccsp.IdemixHiddenAttribute},
+						},
+						RhIndex:          4,
+						EidIndex:         3,
+						Epoch:            0,
+						VerificationType: bccsp.ExpectEidNymRhNym,
+						Metadata:         signOpts.Metadata,
+					},
+				)
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(ContainSubstring("signature invalid: nym rh validation failed"))
+				Expect(valid).To(BeFalse())
+			})
+
+			It("the signature is not valid when we expect a standard signature", func() {
+				valid, err := CSP.Verify(
+					IssuerPublicKey,
+					signature,
+					digest,
+					&bccsp.IdemixSignerOpts{
+						RevocationPublicKey: RevocationPublicKey,
+						Attributes: []bccsp.IdemixAttribute{
+							{Type: bccsp.IdemixHiddenAttribute},
+							{Type: bccsp.IdemixHiddenAttribute},
+							{Type: bccsp.IdemixHiddenAttribute},
+							{Type: bccsp.IdemixHiddenAttribute},
+							{Type: bccsp.IdemixHiddenAttribute},
+						},
+						RhIndex:          4,
+						EidIndex:         3,
+						Epoch:            0,
+						VerificationType: bccsp.ExpectStandard,
+					},
+				)
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(ContainSubstring("RhNym available but ExpectStandard required"))
+				Expect(valid).To(BeFalse())
+			})
+
+			It("nym eid auditing with the right enrollment ID succeeds", func() {
+				valid, err := CSP.Verify(
+					IssuerPublicKey,
+					signature,
+					digest,
+					&bccsp.EidNymAuditOpts{
+						EidIndex:     3,
+						EnrollmentID: string([]byte{0, 1, 2}),
+						RNymEid:      signOpts.Metadata.EidNymAuditData.Rand,
+					},
+				)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(valid).To(BeTrue())
+
+				valid, err = CSP.Verify(
+					IssuerPublicKey,
+					signOpts.Metadata.EidNymAuditData.Nym.Bytes(),
+					digest,
+					&bccsp.EidNymAuditOpts{
+						AuditVerificationType: bccsp.AuditExpectEidNym,
+						EidIndex:              3,
+						EnrollmentID:          string([]byte{0, 1, 2}),
+						RNymEid:               signOpts.Metadata.EidNymAuditData.Rand,
+					},
+				)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(valid).To(BeTrue())
+			})
+
+			It("nym eid auditing with the wrong enrollment ID fails", func() {
+				valid, err := CSP.Verify(
+					IssuerPublicKey,
+					signature,
+					digest,
+					&bccsp.EidNymAuditOpts{
+						EidIndex:     3,
+						EnrollmentID: "Have you seen the writing on the wall?",
+						RNymEid:      signOpts.Metadata.EidNymAuditData.Rand,
+					},
+				)
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(ContainSubstring("eid nym does not match"))
+				Expect(valid).To(BeFalse())
+
+				valid, err = CSP.Verify(
+					IssuerPublicKey,
+					signOpts.Metadata.EidNymAuditData.Nym.Bytes(),
+					digest,
+					&bccsp.EidNymAuditOpts{
+						AuditVerificationType: bccsp.AuditExpectEidNym,
+						EidIndex:              3,
+						EnrollmentID:          "Have you seen the writing on the wall?",
+						RNymEid:               signOpts.Metadata.EidNymAuditData.Rand,
+					},
+				)
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(ContainSubstring("eid nym does not match"))
+				Expect(valid).To(BeFalse())
+			})
+
+			// It("nym rh auditing with the right revocation handle succeeds", func() {
+			// 	valid, err := CSP.Verify(
+			// 		IssuerPublicKey,
+			// 		signature,
+			// 		digest,
+			// 		&bccsp.RhNymAuditOpts{
+			// 			RhIndex:          4,
+			// 			RevocationHandle: string([]byte{2, 1, 0}),
+			// 			RNymRh:           signOpts.Metadata.RhNymAuditData.Rand,
+			// 		},
+			// 	)
+			// 	Expect(err).NotTo(HaveOccurred())
+			// 	Expect(valid).To(BeTrue())
+
+			// 	valid, err = CSP.Verify(
+			// 		IssuerPublicKey,
+			// 		signOpts.Metadata.RhNymAuditData.Nym.Bytes(),
+			// 		digest,
+			// 		&bccsp.RhNymAuditOpts{
+			// 			AuditVerificationType: bccsp.AuditExpectEidNymRhNym,
+			// 			RhIndex:               4,
+			// 			RevocationHandle:      string([]byte{2, 1, 0}),
+			// 			RNymRh:                signOpts.Metadata.RhNymAuditData.Rand,
+			// 		},
+			// 	)
+			// 	Expect(err).NotTo(HaveOccurred())
+			// 	Expect(valid).To(BeTrue())
+			// })
+
+			// It("nym eid auditing with the wrong enrollment ID fails", func() {
+			// 	valid, err := CSP.Verify(
+			// 		IssuerPublicKey,
+			// 		signature,
+			// 		digest,
+			// 		&bccsp.EidNymAuditOpts{
+			// 			EidIndex:     3,
+			// 			EnrollmentID: "Have you seen the writing on the wall?",
+			// 			RNymEid:      signOpts.Metadata.EidNymAuditData.Rand,
+			// 		},
+			// 	)
+			// 	Expect(err).To(HaveOccurred())
+			// 	Expect(err.Error()).To(ContainSubstring("eid nym does not match"))
+			// 	Expect(valid).To(BeFalse())
+
+			// 	valid, err = CSP.Verify(
+			// 		IssuerPublicKey,
+			// 		signOpts.Metadata.EidNymAuditData.Nym.Bytes(),
+			// 		digest,
+			// 		&bccsp.EidNymAuditOpts{
+			// 			AuditVerificationType: bccsp.AuditExpectEidNym,
+			// 			EidIndex:              3,
+			// 			EnrollmentID:          "Have you seen the writing on the wall?",
+			// 			RNymEid:               signOpts.Metadata.EidNymAuditData.Rand,
+			// 		},
+			// 	)
+			// 	Expect(err).To(HaveOccurred())
+			// 	Expect(err.Error()).To(ContainSubstring("eid nym does not match"))
+			// 	Expect(valid).To(BeFalse())
+			// })
+
+			// It("valid signature against meta", func() {
+			// 	signOpts2 := &bccsp.IdemixSignerOpts{
+			// 		Credential: credential,
+			// 		Nym:        NymKey,
+			// 		IssuerPK:   IssuerPublicKey,
+			// 		Attributes: []bccsp.IdemixAttribute{
+			// 			{Type: bccsp.IdemixHiddenAttribute},
+			// 			{Type: bccsp.IdemixHiddenAttribute},
+			// 			{Type: bccsp.IdemixHiddenAttribute},
+			// 			{Type: bccsp.IdemixHiddenAttribute},
+			// 			{Type: bccsp.IdemixHiddenAttribute},
+			// 		},
+			// 		RhIndex:  4,
+			// 		EidIndex: 3,
+			// 		Epoch:    0,
+			// 		CRI:      cri,
+			// 		SigType:  bccsp.EidNymRhNym,
+			// 		Metadata: signOpts.Metadata,
+			// 	}
+			// 	signature2, err := CSP.Sign(
+			// 		UserKey,
+			// 		digest,
+			// 		signOpts2,
+			// 	)
+			// 	Expect(err).NotTo(HaveOccurred())
+			// 	Expect(signOpts2.Metadata).NotTo(BeNil())
+
+			// 	Expect(signOpts2.Metadata.EidNymAuditData.Nym.Equals(signOpts.Metadata.EidNymAuditData.Nym)).To(BeTrue())
+			// 	Expect(signOpts2.Metadata.EidNymAuditData.Attr.Equals(signOpts2.Metadata.EidNymAuditData.Attr)).To(BeTrue())
+			// 	Expect(signOpts2.Metadata.EidNymAuditData.Rand.Equals(signOpts.Metadata.EidNymAuditData.Rand)).To(BeTrue())
+
+			// 	valid, err := CSP.Verify(
+			// 		IssuerPublicKey,
+			// 		signature2,
+			// 		digest,
+			// 		&bccsp.IdemixSignerOpts{
+			// 			RevocationPublicKey: RevocationPublicKey,
+			// 			Attributes: []bccsp.IdemixAttribute{
+			// 				{Type: bccsp.IdemixHiddenAttribute},
+			// 				{Type: bccsp.IdemixHiddenAttribute},
+			// 				{Type: bccsp.IdemixHiddenAttribute},
+			// 				{Type: bccsp.IdemixHiddenAttribute},
+			// 				{Type: bccsp.IdemixHiddenAttribute},
+			// 			},
+			// 			RhIndex:          4,
+			// 			EidIndex:         3,
+			// 			Epoch:            0,
+			// 			VerificationType: bccsp.ExpectEidNymRhNym,
+			// 			Metadata:         signOpts.Metadata,
+			// 		},
+			// 	)
+			// 	Expect(err).NotTo(HaveOccurred())
+			// 	Expect(valid).To(BeTrue())
+
+			// 	valid, err = CSP.Verify(
+			// 		IssuerPublicKey,
+			// 		signature2,
+			// 		digest,
+			// 		&bccsp.IdemixSignerOpts{
+			// 			RevocationPublicKey: RevocationPublicKey,
+			// 			Attributes: []bccsp.IdemixAttribute{
+			// 				{Type: bccsp.IdemixHiddenAttribute},
+			// 				{Type: bccsp.IdemixHiddenAttribute},
+			// 				{Type: bccsp.IdemixHiddenAttribute},
+			// 				{Type: bccsp.IdemixHiddenAttribute},
+			// 				{Type: bccsp.IdemixHiddenAttribute},
+			// 			},
+			// 			RhIndex:          4,
+			// 			EidIndex:         3,
+			// 			Epoch:            0,
+			// 			VerificationType: bccsp.ExpectEidNym,
+			// 			Metadata:         signOpts2.Metadata,
+			// 		},
+			// 	)
+			// 	Expect(err).NotTo(HaveOccurred())
+			// 	Expect(valid).To(BeTrue())
+			// })
+
+		})
+
 		Describe("producing an idemix signature with disclosed attributes", func() {
 			var (
 				digest    []byte

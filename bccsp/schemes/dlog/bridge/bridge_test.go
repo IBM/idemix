@@ -596,7 +596,7 @@ var _ = Describe("Idemix Bridge", func() {
 					Attributes: []bccsp.IdemixAttribute{
 						{Type: bccsp.IdemixBytesAttribute, Value: []byte{0}},
 						{Type: bccsp.IdemixBytesAttribute, Value: []byte{0, 1}},
-						{Type: bccsp.IdemixIntAttribute, Value: 1},
+						{Type: bccsp.IdemixBytesAttribute, Value: []byte{2, 1, 0}},
 						{Type: bccsp.IdemixBytesAttribute, Value: []byte{0, 1, 2}},
 						{Type: bccsp.IdemixBytesAttribute, Value: []byte{0, 1, 2, 3}},
 					},
@@ -644,7 +644,7 @@ var _ = Describe("Idemix Bridge", func() {
 					Attributes: []bccsp.IdemixAttribute{
 						{Type: bccsp.IdemixBytesAttribute, Value: []byte{0}},
 						{Type: bccsp.IdemixBytesAttribute, Value: []byte{0, 1}},
-						{Type: bccsp.IdemixIntAttribute, Value: 1},
+						{Type: bccsp.IdemixBytesAttribute, Value: []byte{2, 1, 0}},
 						{Type: bccsp.IdemixBytesAttribute, Value: []byte{0, 1, 2}},
 						{Type: bccsp.IdemixHiddenAttribute},
 					},
@@ -717,7 +717,7 @@ var _ = Describe("Idemix Bridge", func() {
 						Attributes: []bccsp.IdemixAttribute{
 							{Type: bccsp.IdemixBytesAttribute, Value: []byte{0}},
 							{Type: bccsp.IdemixBytesAttribute, Value: []byte{0, 1}},
-							{Type: bccsp.IdemixIntAttribute, Value: 1},
+							{Type: bccsp.IdemixBytesAttribute, Value: []byte{2, 1, 0}},
 							{Type: bccsp.IdemixBytesAttribute, Value: []byte{0, 1, 2}},
 							{Type: bccsp.IdemixBytesAttribute, Value: []byte{0, 1, 2, 3}},
 						},
@@ -738,7 +738,7 @@ var _ = Describe("Idemix Bridge", func() {
 						Attributes: []bccsp.IdemixAttribute{
 							{Type: bccsp.IdemixBytesAttribute, Value: []byte{1}},
 							{Type: bccsp.IdemixBytesAttribute, Value: []byte{0, 1}},
-							{Type: bccsp.IdemixIntAttribute, Value: 1},
+							{Type: bccsp.IdemixBytesAttribute, Value: []byte{2, 1, 0}},
 							{Type: bccsp.IdemixBytesAttribute, Value: []byte{0, 1, 2}},
 							{Type: bccsp.IdemixHiddenAttribute},
 						},
@@ -759,7 +759,7 @@ var _ = Describe("Idemix Bridge", func() {
 						Attributes: []bccsp.IdemixAttribute{
 							{Type: bccsp.IdemixBytesAttribute, Value: []byte{1}},
 							{Type: bccsp.IdemixBytesAttribute, Value: []byte{0, 1}},
-							{Type: bccsp.IdemixIntAttribute, Value: 1},
+							{Type: bccsp.IdemixBytesAttribute, Value: []byte{2, 1, 0}},
 							{Type: bccsp.IdemixBytesAttribute, Value: []byte{0, 1, 2}},
 							{Type: bccsp.IdemixHiddenAttribute},
 						},
@@ -787,7 +787,7 @@ var _ = Describe("Idemix Bridge", func() {
 						Attributes: []bccsp.IdemixAttribute{
 							{Type: bccsp.IdemixBytesAttribute, Value: []byte{0}},
 							{Type: bccsp.IdemixBytesAttribute, Value: []byte{0, 1}},
-							{Type: bccsp.IdemixIntAttribute, Value: 1},
+							{Type: bccsp.IdemixBytesAttribute, Value: []byte{2, 1, 0}},
 							{Type: bccsp.IdemixBytesAttribute, Value: []byte{0, 1, 2}},
 							{Type: bccsp.IdemixHiddenAttribute},
 						},
@@ -928,6 +928,81 @@ var _ = Describe("Idemix Bridge", func() {
 			})
 		})
 
+		Describe("producing a signature with a nym eid and a nym rh", func() {
+			var (
+				SignatureScheme handlers.SignatureScheme
+				Signer          *handlers.Signer
+				Verifier        *handlers.Verifier
+
+				digest     []byte
+				SignerOpts *bccsp.IdemixSignerOpts
+				signature  []byte
+			)
+
+			BeforeEach(func() {
+				SignatureScheme = &bridge.SignatureScheme{Idemix: &idemix.Idemix{Curve: math.Curves[math.FP256BN_AMCL]}, Translator: &amcl.Fp256bn{C: math.Curves[math.FP256BN_AMCL]}}
+				Signer = &handlers.Signer{SignatureScheme: SignatureScheme}
+				Verifier = &handlers.Verifier{SignatureScheme: SignatureScheme}
+
+				digest = []byte("a digest")
+				SignerOpts = &bccsp.IdemixSignerOpts{
+					Credential: credential,
+					Nym:        NymKey,
+					IssuerPK:   IssuerPublicKey,
+					Attributes: []bccsp.IdemixAttribute{
+						{Type: bccsp.IdemixHiddenAttribute},
+						{Type: bccsp.IdemixHiddenAttribute},
+						{Type: bccsp.IdemixHiddenAttribute},
+						{Type: bccsp.IdemixHiddenAttribute},
+						{Type: bccsp.IdemixHiddenAttribute},
+					},
+					RhIndex:  2,
+					EidIndex: 3,
+					SigType:  bccsp.EidNymRhNym,
+				}
+
+				var err error
+				signature, err = Signer.Sign(UserKey, digest, SignerOpts)
+				Expect(err).NotTo(HaveOccurred())
+			})
+
+			It("generates a proper signature", func() {
+				validNymEid, err := Verifier.AuditNymEid(IssuerPublicKey, signature, digest, &bccsp.EidNymAuditOpts{
+					EidIndex:     3,
+					RNymEid:      SignerOpts.Metadata.EidNymAuditData.Rand,
+					EnrollmentID: string([]byte{0, 1, 2}),
+				})
+				Expect(err).NotTo(HaveOccurred())
+				Expect(validNymEid).To(BeTrue())
+
+				validNymRh, err := Verifier.AuditNymRh(IssuerPublicKey, signature, digest, &bccsp.RhNymAuditOpts{
+					RhIndex:          2,
+					RNymRh:           SignerOpts.Metadata.RhNymAuditData.Rand,
+					RevocationHandle: string([]byte{2, 1, 0}),
+				})
+				Expect(err).NotTo(HaveOccurred())
+				Expect(validNymRh).To(BeTrue())
+			})
+
+			It("fails because it gets the wrong type of signature", func() {
+				validNymEid, err := Verifier.AuditNymEid(IssuerPublicKey, []byte("To ride the storm, to an empire of the clouds"), digest, &bccsp.EidNymAuditOpts{
+					EidIndex:     3,
+					RNymEid:      SignerOpts.Metadata.EidNymAuditData.Rand,
+					EnrollmentID: string([]byte{0, 1, 2}),
+				})
+				Expect(err.Error()).To(ContainSubstring("cannot parse invalid wire-format data"))
+				Expect(validNymEid).To(BeFalse())
+
+				validNymRh, err := Verifier.AuditNymRh(IssuerPublicKey, []byte("To ride the storm, to an empire of the clouds"), digest, &bccsp.RhNymAuditOpts{
+					RhIndex:          2,
+					RNymRh:           SignerOpts.Metadata.RhNymAuditData.Rand,
+					RevocationHandle: string([]byte{2, 1, 0}),
+				})
+				Expect(err.Error()).To(ContainSubstring("cannot parse invalid wire-format data"))
+				Expect(validNymRh).To(BeFalse())
+			})
+		})
+
 		Describe("producing and verifying idemix signature with different sets of attributes", func() {
 			var (
 				SignatureScheme handlers.SignatureScheme
@@ -972,7 +1047,7 @@ var _ = Describe("Idemix Bridge", func() {
 				SignAttributes = []bccsp.IdemixAttribute{
 					{Type: bccsp.IdemixBytesAttribute, Value: []byte{0}},
 					{Type: bccsp.IdemixHiddenAttribute},
-					{Type: bccsp.IdemixIntAttribute, Value: 1},
+					{Type: bccsp.IdemixHiddenAttribute},
 					{Type: bccsp.IdemixHiddenAttribute},
 					{Type: bccsp.IdemixHiddenAttribute},
 				}

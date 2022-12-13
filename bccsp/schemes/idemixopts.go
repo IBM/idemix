@@ -297,22 +297,24 @@ func (o *IdemixSignerOpts) HashFunc() crypto.Hash {
 	return o.H
 }
 
+// EidNymAuditOpts contains audit options for pseudonymous enrollment id
 type EidNymAuditOpts struct {
 	AuditVerificationType AuditVerificationType
-	EidIndex              int
-	EnrollmentID          string
-	RNymEid               *math.Zr
+	EidIndex              int      // Index of enrollment ID attribute in signature
+	EnrollmentID          string   // Enrollment ID of identity
+	RNymEid               *math.Zr // Field element of randomness
 }
 
 func (o *EidNymAuditOpts) HashFunc() crypto.Hash {
 	return 0
 }
 
+// RhNymAuditOpts contains audit options for pseudonymous revocation handle
 type RhNymAuditOpts struct {
 	AuditVerificationType AuditVerificationType
-	RhIndex               int
-	RevocationHandle      string
-	RNymRh                *math.Zr
+	RhIndex               int      // Index of revocation handle attribute in signature
+	RevocationHandle      string   // Revocation handle of identity
+	RNymRh                *math.Zr // Field element of randomness
 }
 
 func (o *RhNymAuditOpts) HashFunc() crypto.Hash {
