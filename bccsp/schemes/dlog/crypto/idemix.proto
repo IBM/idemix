@@ -66,11 +66,17 @@ message CredRequest {
 	bytes proof_s = 4;
 }
 
+// EIDNym specifies a pseudonymous enrollment id object that consists of
+// nym - pseudonymous enrollment id
+// s_eid - field element
 message EIDNym {
 	amcl.ECP nym = 1;
 	bytes proof_s_eid = 2;
 }
 
+// RHNym specifies a pseudonymous revocation handle object that consists of
+// nym - pseudonymous revocation handle
+// s_rh - field element
 message RHNym {
 	amcl.ECP nym = 1;
 	bytes proof_s_rh = 2;

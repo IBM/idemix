@@ -67,7 +67,7 @@ func newNymSignature(sk *math.Zr, Nym *math.G1, RNym *math.Zr, ipk *IssuerPublic
 	index = 0
 	proofData = proofData[:2*curve.FieldBytes]
 	index = appendBytesBig(proofData, index, c)
-	index = appendBytesBig(proofData, index, Nonce)
+	appendBytesBig(proofData, index, Nonce)
 	ProofC := curve.HashToZr(proofData)
 
 	// Step 3: reply to the challenge message (s-values)
@@ -118,7 +118,7 @@ func (sig *NymSignature) Ver(nym *math.G1, ipk *IssuerPublicKey, msg []byte, cur
 	index = 0
 	proofData = proofData[:2*curve.FieldBytes]
 	index = appendBytesBig(proofData, index, c)
-	index = appendBytesBig(proofData, index, Nonce)
+	appendBytesBig(proofData, index, Nonce)
 
 	if !ProofC.Equals(curve.HashToZr(proofData)) {
 		return errors.Errorf("pseudonym signature invalid: zero-knowledge proof is invalid")

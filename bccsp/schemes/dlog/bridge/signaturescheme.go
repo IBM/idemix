@@ -7,6 +7,7 @@ package bridge
 
 import (
 	"crypto/ecdsa"
+	"fmt"
 
 	math "github.com/IBM/mathlib"
 	"github.com/golang/protobuf/proto"
@@ -89,6 +90,7 @@ func (s *SignatureScheme) Sign(cred []byte, sk *math.Zr, Nym *math.G1, RNym *mat
 	return sigBytes, meta, nil
 }
 
+// AuditNymEid Audits the pseudonymous enrollment id of a signature
 func (s *SignatureScheme) AuditNymEid(
 	ipk handlers.IssuerPublicKey,
 	eidIndex int,
@@ -142,6 +144,7 @@ func (s *SignatureScheme) AuditNymEid(
 	}
 }
 
+// AuditNymRh Audits the pseudonymous revocation handle of a signature
 func (s *SignatureScheme) AuditNymRh(
 	ipk handlers.IssuerPublicKey,
 	rhIndex int,
@@ -207,6 +210,7 @@ func (s *SignatureScheme) Verify(
 	verType bccsp.VerificationType,
 	meta *bccsp.IdemixSignerMetadata,
 ) (err error) {
+	fmt.Println("This is probably where the")
 	defer func() {
 		if r := recover(); r != nil {
 			err = errors.Errorf("failure [%s]", r)
@@ -223,7 +227,7 @@ func (s *SignatureScheme) Verify(
 	if err != nil {
 		return err
 	}
-
+	fmt.Println("Did we make it here?")
 	disclosure := make([]byte, len(attributes))
 	attrValues := make([]*math.Zr, len(attributes))
 	for i := 0; i < len(attributes); i++ {
@@ -251,8 +255,10 @@ func (s *SignatureScheme) Verify(
 		}
 	}
 	if err != nil {
+		fmt.Println("This def shouldn't")
 		return
 	}
+	fmt.Println("This shouldn't show up")
 
 	return sig.Ver(
 		disclosure,

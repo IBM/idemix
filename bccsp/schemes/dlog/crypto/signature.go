@@ -21,7 +21,7 @@ import (
 // signLabel is the label used in zero-knowledge proof (ZKP) to identify that this ZKP is a signature of knowledge
 const signLabel = "sign"
 const signWithEidNymLabel = "signWithEidNym"
-const signWithEidNymRhNymLabel = "signWithEidNymRhNym"
+const signWithEidNymRhNymLabel = "signWithEidNymRhNym" // When the revocation handle is present the enrollment id must also be present
 
 // A signature that is produced using an Identity Mixer credential is a so-called signature of knowledge
 // (for details see C.P.Schnorr "Efficient Identification and Signatures for Smart Cards")
@@ -445,7 +445,7 @@ func finalise(
 			}
 
 			if !metadata.EidNymAuditData.Attr.Equals(EID) {
-				return nil, nil, errors.Errorf("invalid argument, metadata does not match (1)")
+				return nil, nil, errors.Errorf("invalid argument, eid nym audit metadata does not match (1)")
 			}
 			r_eid = metadata.EidNymAuditData.Rand
 		} else {
@@ -472,7 +472,7 @@ func finalise(
 
 		if metadata != nil {
 			if !metadata.EidNymAuditData.Nym.Equals(Nym_eid) {
-				return nil, nil, errors.Errorf("invalid argument, metadata does not match (2)")
+				return nil, nil, errors.Errorf("invalid argument, eid nym audit metadata does not match (2)")
 			}
 		}
 
@@ -488,7 +488,7 @@ func finalise(
 			}
 
 			if !metadata.RhNymAuditData.Attr.Equals(RH) {
-				return nil, nil, errors.Errorf("invalid argument, metadata does not match (1)")
+				return nil, nil, errors.Errorf("invalid argument, rh nym audit metadata does not match (1)")
 			}
 			r_rh = metadata.RhNymAuditData.Rand
 		} else {
@@ -510,12 +510,12 @@ func finalise(
 		// Generate new required randomness r_r_rh
 		r_r_rh = curve.NewRandomZr(rng)
 
-		// Nym_rh is a hiding and binding commitment to the enrollment id
+		// Nym_rh is a hiding and binding commitment to the revocation handle
 		Nym_rh = H_a_rh.Mul2(a_rh, HRand, r_rh) // H_{a_{rh}}^{a_{rh}} \cdot H_{r}^{r_{rh}}
 
 		if metadata != nil {
 			if !metadata.RhNymAuditData.Nym.Equals(Nym_rh) {
-				return nil, nil, errors.Errorf("invalid argument, metadata does not match (2)")
+				return nil, nil, errors.Errorf("invalid argument, rh nym audit metadata does not match (2)")
 			}
 		}
 
@@ -532,14 +532,14 @@ func finalise(
 	// one bigint (hash of the issuer public key) of length math.FieldBytes
 	// disclosed attributes
 	// message being signed
-	// the amount of bytes needed for the nonrevocation proof
+	// the minimum amount of bytes needed for the nonrevocation proof
 	pdl := curve.FieldBytes + len(Disclosure) + len(msg) + ProofBytes[RevocationAlgorithm(cri.RevocationAlg)]
 	switch sigType {
-	case opts.Standard:
+	case opts.Standard: // additional bytes for a standard sign label
 		pdl += len([]byte(signLabel)) + 7*(2*curve.FieldBytes+1)
-	case opts.EidNym:
+	case opts.EidNym: // additional bytes for a sign label including an enrollment id attribute
 		pdl += len([]byte(signWithEidNymLabel)) + 9*(2*curve.FieldBytes+1)
-	case opts.EidNymRhNym:
+	case opts.EidNymRhNym: // additional bytes for a sign label including both an enrollment id and a revocation handle attribute
 		pdl += len([]byte(signWithEidNymRhNymLabel)) + 11*(2*curve.FieldBytes+1)
 	default:
 		panic("programming error")
@@ -793,7 +793,7 @@ func (sig *Signature) AuditNymRh(
 	Nym_rh := H_a_rh.Mul2(rhAttr, HRand, RNymRh)
 
 	if !Nym_rh.Equals(RhNym) {
-		return errors.New("eid nym does not match")
+		return errors.New("rh nym does not match")
 	}
 
 	return nil
@@ -816,6 +816,7 @@ func (sig *Signature) Ver(
 	verType opts.VerificationType,
 	meta *opts.IdemixSignerMetadata,
 ) error {
+	fmt.Println("It's gotta be here")
 	// Validate inputs
 	if ipk == nil || revPk == nil {
 		return errors.Errorf("cannot verify idemix signature: received nil input")
@@ -828,7 +829,7 @@ func (sig *Signature) Ver(
 	if sig.NonRevocationProof.RevocationAlg != int32(ALG_NO_REVOCATION) && Disclosure[rhIndex] == 1 {
 		return errors.Errorf("Attribute %d is disclosed but is also used as revocation handle, which should remain hidden.", rhIndex)
 	}
-
+	fmt.Println("Where are you")
 	if verType == opts.ExpectEidNym &&
 		(sig.EidNym == nil || sig.EidNym.Nym == nil || sig.EidNym.ProofSEid == nil) {
 		return errors.Errorf("no EidNym provided but ExpectEidNym required")
@@ -844,16 +845,16 @@ func (sig *Signature) Ver(
 	}
 
 	if verType == opts.ExpectStandard {
-		if sig.EidNym != nil {
-			return errors.Errorf("EidNym available but ExpectStandard required")
-		}
 		if sig.RhNym != nil {
 			return errors.Errorf("RhNym available but ExpectStandard required")
 		}
+		if sig.EidNym != nil {
+			return errors.Errorf("EidNym available but ExpectStandard required")
+		}
 	}
 
-	verifyEIDNym := (verType == opts.BestEffort && sig.EidNym != nil) || verType == opts.ExpectEidNym
 	verifyRHNym := (verType == opts.BestEffort && sig.RhNym != nil) || verType == opts.ExpectEidNymRhNym
+	verifyEIDNym := (verType == opts.BestEffort && sig.EidNym != nil) || verType == opts.ExpectEidNym || verifyRHNym
 
 	HiddenIndices := hiddenIndices(Disclosure)
 
@@ -890,7 +891,7 @@ func (sig *Signature) Ver(
 	ProofSSPrime := curve.NewZrFromBytes(sig.GetProofSSPrime())
 	ProofSRNym := curve.NewZrFromBytes(sig.GetProofSRNym())
 	ProofSAttrs := make([]*math.Zr, len(sig.GetProofSAttrs()))
-
+	fmt.Println("Getting closer")
 	if len(sig.ProofSAttrs) != len(HiddenIndices) {
 		return errors.Errorf("signature invalid: incorrect amount of s-values for AttributeProofSpec")
 	}
@@ -941,7 +942,7 @@ func (sig *Signature) Ver(
 			return err
 		}
 	}
-
+	fmt.Println("Cmon")
 	// Recompute t1
 	t1 := APrime.Mul2(ProofSE, HRand, ProofSR2)
 	temp := curve.NewG1()
@@ -1000,7 +1001,7 @@ func (sig *Signature) Ver(
 		}
 		t4_rh.Sub(RhNym.Mul(ProofC))
 	}
-
+	fmt.Println("Let's see")
 	// add contribution from the non-revocation proof
 	nonRevokedVer, err := getNonRevocationVerifier(RevocationAlgorithm(sig.NonRevocationProof.RevocationAlg))
 	if err != nil {
@@ -1018,7 +1019,7 @@ func (sig *Signature) Ver(
 	if err != nil {
 		return err
 	}
-
+	fmt.Println("Let's see again")
 	// Recompute challenge
 	// proofData is the data being hashed, it consists of:
 	// the signature label
@@ -1026,12 +1027,13 @@ func (sig *Signature) Ver(
 	// one bigint (hash of the issuer public key) of length math.FieldBytes
 	// disclosed attributes
 	// message that was signed
+	// pdl is minimum length of proof data
 	pdl := curve.FieldBytes + len(Disclosure) + len(msg) + ProofBytes[RevocationAlgorithm(sig.NonRevocationProof.RevocationAlg)]
-	if verifyRHNym {
+	if verifyRHNym { // additional length for both an enrollment id and revocation handle attribute
 		pdl += len([]byte(signWithEidNymRhNymLabel)) + 11*(2*curve.FieldBytes+1)
-	} else if verifyEIDNym {
+	} else if verifyEIDNym { // additional length for an enrollment id attribute
 		pdl += len([]byte(signWithEidNymLabel)) + 9*(2*curve.FieldBytes+1)
-	} else {
+	} else { // additional length for a standard sign label
 		pdl += len([]byte(signLabel)) + 7*(2*curve.FieldBytes+1)
 	}
 	proofData := make([]byte, pdl)
@@ -1043,6 +1045,7 @@ func (sig *Signature) Ver(
 	} else {
 		index = appendBytesString(proofData, index, signLabel)
 	}
+	fmt.Println("Warmer")
 	index = appendBytesG1(proofData, index, t1)
 	index = appendBytesG1(proofData, index, t2)
 	index = appendBytesG1(proofData, index, t3)
@@ -1050,15 +1053,27 @@ func (sig *Signature) Ver(
 	index = appendBytesG1(proofData, index, ABar)
 	index = appendBytesG1(proofData, index, BPrime)
 	index = appendBytesG1(proofData, index, Nym)
-	if verifyEIDNym || verifyRHNym {
+	fmt.Println("nvm")
+	fmt.Println(verifyEIDNym)
+	fmt.Println(verifyRHNym)
+	if verifyEIDNym {
+		fmt.Println("Ok 1")
 		EidNym, err := t.G1FromProto(sig.EidNym.Nym)
+		fmt.Println("Ok 2")
+		fmt.Println(EidNym)
 		if err != nil {
+			fmt.Println("Think I found you")
 			return err
 		}
+		fmt.Println("123")
 		index = appendBytesG1(proofData, index, EidNym)
+		fmt.Println("abc")
 		index = appendBytesG1(proofData, index, t4_eid)
+		fmt.Println("xyz")
 	}
+	fmt.Println("Hmmm...")
 	if verifyRHNym {
+		fmt.Println("yup")
 		RhNym, err := t.G1FromProto(sig.RhNym.Nym)
 		if err != nil {
 			return err
@@ -1112,7 +1127,7 @@ func (sig *Signature) Ver(
 			}
 		}
 	}
-
+	fmt.Println("You're here I can feel it")
 	// audit rh nym if data provided and verification requested
 	if verifyRHNym && meta != nil {
 		RhNym, err := t.G1FromProto(sig.RhNym.Nym)
