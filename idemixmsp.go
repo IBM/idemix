@@ -11,12 +11,14 @@ import (
 	"encoding/hex"
 	"fmt"
 	"io/ioutil"
+	"os"
 	"path/filepath"
 	"time"
 
 	idemix "github.com/IBM/idemix/bccsp"
 	"github.com/IBM/idemix/bccsp/keystore"
 	bccsp "github.com/IBM/idemix/bccsp/schemes"
+	translator "github.com/IBM/idemix/bccsp/schemes/dlog/crypto"
 	"github.com/IBM/idemix/bccsp/schemes/dlog/crypto/translator/amcl"
 	"github.com/IBM/idemix/common/flogging"
 	im "github.com/IBM/idemix/idemixmsp"
@@ -25,6 +27,7 @@ import (
 	m "github.com/hyperledger/fabric-protos-go/msp"
 	"github.com/pkg/errors"
 	"go.uber.org/zap/zapcore"
+	"gopkg.in/yaml.v2"
 )
 
 const (
@@ -85,19 +88,17 @@ var mspIdentityLogger = flogging.MustGetLogger("idemix.identity")
 func NewIdemixMsp(version MSPVersion) (MSP, error) {
 	mspLogger.Debugf("Creating Idemix-based MSP instance")
 
-	curve := math.Curves[math.FP256BN_AMCL]
-	csp, err := idemix.New(&keystore.Dummy{}, curve, &amcl.Fp256bn{C: curve}, true)
-	if err != nil {
-		panic(fmt.Sprintf("unexpected condition, error received [%s]", err))
-	}
+	// Re-ordered the construction here a little, so this is done in the seutp method
+	// that is required to be called most construction
+	// The curve is now taken from the mspconfig structure, that is passed on the next call.
 
-	msp := Idemixmsp{csp: csp}
+	msp := Idemixmsp{}
 	msp.version = version
 	return &msp, nil
 }
 
 func (msp *Idemixmsp) Setup(conf1 *m.MSPConfig) error {
-	mspLogger.Debugf("Setting up Idemix-based MSP instance")
+	mspLogger.Infof("Setting up Idemix-based MSP instance")
 
 	if conf1 == nil {
 		return errors.Errorf("setup error: nil conf reference")
@@ -111,6 +112,34 @@ func (msp *Idemixmsp) Setup(conf1 *m.MSPConfig) error {
 	err := proto.Unmarshal(conf1.Config, &conf)
 	if err != nil {
 		return errors.Wrap(err, "failed unmarshalling idemix msp config")
+	}
+	mspLogger.Infof("Setting up CurveID")
+	// use the curveid in the MSPConfig structure to determine
+	// which curve to use. this will have come from the idemixconfig.yaml
+	// file it exists, otherwise maintain the default as per previous versions
+	// at FP256BN_AMCL
+	var curve *math.Curve
+	var tr translator.Translator
+
+	mspLogger.Infof("Curve is %s", conf.CurveId)
+	switch conf.CurveId {
+	case "BN254":
+		curve = math.Curves[math.BN254]
+		tr = &amcl.Gurvy{C: curve}
+	case "FP256BN_AMCL_MIRACL":
+		curve = math.Curves[math.FP256BN_AMCL_MIRACL]
+		tr = &amcl.Fp256bnMiracl{C: curve}
+	case "FP256BN_AMCL":
+		curve := math.Curves[math.FP256BN_AMCL]
+		tr = &amcl.Fp256bn{C: curve}
+	default:
+		curve := math.Curves[math.FP256BN_AMCL]
+		tr = &amcl.Fp256bn{C: curve}
+	}
+
+	msp.csp, err = idemix.New(&keystore.Dummy{}, curve, tr, true)
+	if err != nil {
+		panic(fmt.Sprintf("unexpected condition, error received [%s]", err))
 	}
 
 	msp.name = conf.Name
@@ -128,7 +157,9 @@ func (msp *Idemixmsp) Setup(conf1 *m.MSPConfig) error {
 				AttributeNameRevocationHandle,
 			},
 		})
+
 	if err != nil {
+		mspLogger.Infof("%s", err)
 		importErr, ok := errors.Cause(err).(*bccsp.IdemixIssuerPublicKeyImporterError)
 		if !ok {
 			panic("unexpected condition, BCCSP did not return the expected *bccsp.IdemixIssuerPublicKeyImporterError")
@@ -703,10 +734,39 @@ const (
 	IdemixConfigFileIssuerPublicKey     = "IssuerPublicKey"
 	IdemixConfigFileRevocationPublicKey = "RevocationPublicKey"
 	IdemixConfigFileSigner              = "SignerConfig"
+	IdemixConfigFile                    = "idemixconfig.yaml"
 )
+
+type Configuration struct {
+	CurveId string
+}
 
 // GetIdemixMspConfig returns the configuration for the Idemix MSP
 func GetIdemixMspConfig(dir string, ID string) (*m.MSPConfig, error) {
+
+	configuration := Configuration{}
+
+	configFile := filepath.Join(dir, IdemixConfigFile)
+	if _, err := os.Stat(configFile); err == nil {
+		mspLogger.Infof("loading config file at [%s]", configFile)
+		// load the file, if there is a failure in loading it then
+		// return an error
+		raw, err := ioutil.ReadFile(configFile)
+		if err != nil {
+			return nil, errors.Wrapf(err, "failed loading configuration file at [%s]", configFile)
+		}
+
+		configuration = Configuration{}
+		err = yaml.Unmarshal(raw, &configuration)
+		if err != nil {
+			return nil, errors.Wrapf(err, "failed unmarshalling configuration file at [%s]", configFile)
+		}
+
+	} else {
+		mspLogger.Infof("config file at %s not loctated; assuming defaults", configFile)
+		configuration.CurveId = "FP256BN_AMCL"
+	}
+
 	ipkBytes, err := readFile(filepath.Join(dir, IdemixConfigDirMsp, IdemixConfigFileIssuerPublicKey))
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to read issuer public key file")
@@ -721,6 +781,7 @@ func GetIdemixMspConfig(dir string, ID string) (*m.MSPConfig, error) {
 		Name:         ID,
 		Ipk:          ipkBytes,
 		RevocationPk: revocationPkBytes,
+		CurveId:      configuration.CurveId,
 	}
 
 	signerBytes, err := readFile(filepath.Join(dir, IdemixConfigDirUser, IdemixConfigFileSigner))

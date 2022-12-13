@@ -20,6 +20,7 @@ require (
 	google.golang.org/grpc v1.31.0
 	google.golang.org/protobuf v1.28.1 // indirect
 	gopkg.in/alecthomas/kingpin.v2 v2.2.6
+	gopkg.in/yaml.v2 v2.2.4 // indirect
 )
 
 replace github.com/onsi/gomega => github.com/onsi/gomega v1.9.0
