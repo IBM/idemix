@@ -8,8 +8,6 @@ package bridge
 
 import (
 	"crypto/ecdsa"
-	"fmt"
-
 	bccsp "github.com/IBM/idemix/bccsp/schemes"
 	idemix "github.com/IBM/idemix/bccsp/schemes/dlog/crypto"
 	"github.com/IBM/idemix/bccsp/schemes/dlog/handlers"
@@ -212,7 +210,6 @@ func (s *SignatureScheme) Verify(
 	verType bccsp.VerificationType,
 	meta *bccsp.IdemixSignerMetadata,
 ) (err error) {
-	fmt.Println("This is probably where the")
 	defer func() {
 		if r := recover(); r != nil {
 			err = errors.Errorf("failure [%s]", r)
@@ -229,7 +226,6 @@ func (s *SignatureScheme) Verify(
 	if err != nil {
 		return err
 	}
-	fmt.Println("Did we make it here?")
 	disclosure := make([]byte, len(attributes))
 	attrValues := make([]*math.Zr, len(attributes))
 	for i := 0; i < len(attributes); i++ {
@@ -257,10 +253,8 @@ func (s *SignatureScheme) Verify(
 		}
 	}
 	if err != nil {
-		fmt.Println("This def shouldn't")
 		return
 	}
-	fmt.Println("This shouldn't show up")
 
 	return sig.Ver(
 		disclosure,
