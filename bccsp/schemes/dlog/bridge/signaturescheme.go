@@ -3,19 +3,19 @@ Copyright IBM Corp. All Rights Reserved.
 
 SPDX-License-Identifier: Apache-2.0
 */
+
 package bridge
 
 import (
 	"crypto/ecdsa"
 	"fmt"
 
-	math "github.com/IBM/mathlib"
-	"github.com/golang/protobuf/proto"
-	"github.com/pkg/errors"
-
 	bccsp "github.com/IBM/idemix/bccsp/schemes"
 	idemix "github.com/IBM/idemix/bccsp/schemes/dlog/crypto"
 	"github.com/IBM/idemix/bccsp/schemes/dlog/handlers"
+	math "github.com/IBM/mathlib"
+	"github.com/golang/protobuf/proto"
+	"github.com/pkg/errors"
 )
 
 // SignatureScheme encapsulates the idemix algorithms to sign and verify using an idemix credential.
@@ -127,6 +127,8 @@ func (s *SignatureScheme) AuditNymEid(
 			s.Idemix.Curve,
 			s.Translator,
 		)
+	case bccsp.AuditExpectEidNymRhNym:
+		fallthrough
 	case bccsp.AuditExpectEidNym:
 		// 1. cast signature to NymEID
 		nymEID := idemix.NymEID(signature)

@@ -12,10 +12,9 @@ import (
 	"io"
 	"sort"
 
+	opts "github.com/IBM/idemix/bccsp/schemes"
 	math "github.com/IBM/mathlib"
 	"github.com/pkg/errors"
-
-	opts "github.com/IBM/idemix/bccsp/schemes"
 )
 
 // signLabel is the label used in zero-knowledge proof (ZKP) to identify that this ZKP is a signature of knowledge
@@ -854,7 +853,7 @@ func (sig *Signature) Ver(
 	}
 
 	verifyRHNym := (verType == opts.BestEffort && sig.RhNym != nil) || verType == opts.ExpectEidNymRhNym
-	verifyEIDNym := (verType == opts.BestEffort && sig.EidNym != nil) || verType == opts.ExpectEidNym || verifyRHNym
+	verifyEIDNym := (verType == opts.BestEffort && sig.EidNym != nil) || verType == opts.ExpectEidNym || verType == opts.ExpectEidNymRhNym || verifyRHNym
 
 	HiddenIndices := hiddenIndices(Disclosure)
 
