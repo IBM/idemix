@@ -815,7 +815,6 @@ func (sig *Signature) Ver(
 	verType opts.VerificationType,
 	meta *opts.IdemixSignerMetadata,
 ) error {
-	fmt.Println("It's gotta be here")
 	// Validate inputs
 	if ipk == nil || revPk == nil {
 		return errors.Errorf("cannot verify idemix signature: received nil input")
@@ -828,7 +827,6 @@ func (sig *Signature) Ver(
 	if sig.NonRevocationProof.RevocationAlg != int32(ALG_NO_REVOCATION) && Disclosure[rhIndex] == 1 {
 		return errors.Errorf("Attribute %d is disclosed but is also used as revocation handle, which should remain hidden.", rhIndex)
 	}
-	fmt.Println("Where are you")
 	if verType == opts.ExpectEidNym &&
 		(sig.EidNym == nil || sig.EidNym.Nym == nil || sig.EidNym.ProofSEid == nil) {
 		return errors.Errorf("no EidNym provided but ExpectEidNym required")
@@ -890,7 +888,6 @@ func (sig *Signature) Ver(
 	ProofSSPrime := curve.NewZrFromBytes(sig.GetProofSSPrime())
 	ProofSRNym := curve.NewZrFromBytes(sig.GetProofSRNym())
 	ProofSAttrs := make([]*math.Zr, len(sig.GetProofSAttrs()))
-	fmt.Println("Getting closer")
 	if len(sig.ProofSAttrs) != len(HiddenIndices) {
 		return errors.Errorf("signature invalid: incorrect amount of s-values for AttributeProofSpec")
 	}
@@ -941,7 +938,6 @@ func (sig *Signature) Ver(
 			return err
 		}
 	}
-	fmt.Println("Cmon")
 	// Recompute t1
 	t1 := APrime.Mul2(ProofSE, HRand, ProofSR2)
 	temp := curve.NewG1()
@@ -1000,7 +996,6 @@ func (sig *Signature) Ver(
 		}
 		t4_rh.Sub(RhNym.Mul(ProofC))
 	}
-	fmt.Println("Let's see")
 	// add contribution from the non-revocation proof
 	nonRevokedVer, err := getNonRevocationVerifier(RevocationAlgorithm(sig.NonRevocationProof.RevocationAlg))
 	if err != nil {
@@ -1018,7 +1013,6 @@ func (sig *Signature) Ver(
 	if err != nil {
 		return err
 	}
-	fmt.Println("Let's see again")
 	// Recompute challenge
 	// proofData is the data being hashed, it consists of:
 	// the signature label
@@ -1044,7 +1038,6 @@ func (sig *Signature) Ver(
 	} else {
 		index = appendBytesString(proofData, index, signLabel)
 	}
-	fmt.Println("Warmer")
 	index = appendBytesG1(proofData, index, t1)
 	index = appendBytesG1(proofData, index, t2)
 	index = appendBytesG1(proofData, index, t3)
@@ -1052,27 +1045,15 @@ func (sig *Signature) Ver(
 	index = appendBytesG1(proofData, index, ABar)
 	index = appendBytesG1(proofData, index, BPrime)
 	index = appendBytesG1(proofData, index, Nym)
-	fmt.Println("nvm")
-	fmt.Println(verifyEIDNym)
-	fmt.Println(verifyRHNym)
 	if verifyEIDNym {
-		fmt.Println("Ok 1")
 		EidNym, err := t.G1FromProto(sig.EidNym.Nym)
-		fmt.Println("Ok 2")
-		fmt.Println(EidNym)
 		if err != nil {
-			fmt.Println("Think I found you")
 			return err
 		}
-		fmt.Println("123")
 		index = appendBytesG1(proofData, index, EidNym)
-		fmt.Println("abc")
 		index = appendBytesG1(proofData, index, t4_eid)
-		fmt.Println("xyz")
 	}
-	fmt.Println("Hmmm...")
 	if verifyRHNym {
-		fmt.Println("yup")
 		RhNym, err := t.G1FromProto(sig.RhNym.Nym)
 		if err != nil {
 			return err
@@ -1126,7 +1107,6 @@ func (sig *Signature) Ver(
 			}
 		}
 	}
-	fmt.Println("You're here I can feel it")
 	// audit rh nym if data provided and verification requested
 	if verifyRHNym && meta != nil {
 		RhNym, err := t.G1FromProto(sig.RhNym.Nym)

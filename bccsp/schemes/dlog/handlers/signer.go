@@ -6,8 +6,6 @@ SPDX-License-Identifier: Apache-2.0
 package handlers
 
 import (
-	"fmt"
-
 	"github.com/pkg/errors"
 
 	bccsp "github.com/IBM/idemix/bccsp/schemes"
@@ -134,7 +132,6 @@ func (v *Verifier) AuditNymRh(k bccsp.Key, signature, digest []byte, opts bccsp.
 }
 
 func (v *Verifier) Verify(k bccsp.Key, signature, digest []byte, opts bccsp.SignerOpts) (bool, error) {
-	fmt.Println("Hello there")
 	issuerPublicKey, ok := k.(*issuerPublicKey)
 	if !ok {
 		return false, errors.New("invalid key, expected *issuerPublicKey")
@@ -153,7 +150,6 @@ func (v *Verifier) Verify(k bccsp.Key, signature, digest []byte, opts bccsp.Sign
 	if len(signature) == 0 {
 		return false, errors.New("invalid signature, it must not be empty")
 	}
-	fmt.Println("I got to here")
 	err := v.SignatureScheme.Verify(
 		issuerPublicKey.pk,
 		signature,
@@ -167,9 +163,7 @@ func (v *Verifier) Verify(k bccsp.Key, signature, digest []byte, opts bccsp.Sign
 		signerOpts.Metadata,
 	)
 	if err != nil {
-		fmt.Println("Bad error")
 		return false, err
 	}
-	fmt.Println("shouldn't show up")
 	return true, nil
 }

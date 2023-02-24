@@ -574,6 +574,93 @@ func testSigParallel(t *testing.T, curve *math.Curve, tr Translator) {
 			defer waitGroup.Done()
 			rng, _ := curve.Rand()
 
+			disclosure := []byte{0, 0, 0, 0, 0}
+			msg := []byte{1, 2, 3, 4, 5}
+			rhindex := 4
+
+			eidIndex := 2
+			sig, meta, err := idmx.NewSignature(cred, sk, Nym, RandNym, key.Ipk, disclosure, msg, rhindex, eidIndex, cri, rng, tr, opts.EidNymRhNym, nil)
+			require.NoError(t, err)
+
+			// assert that the returned randomness is the right one
+			H_a_eid, err := tr.G1FromProto(key.Ipk.HAttrs[eidIndex])
+			require.NoError(t, err)
+			HRand, err := tr.G1FromProto(key.Ipk.HRand)
+			require.NoError(t, err)
+			Nym_eid := H_a_eid.Mul2(attrs[eidIndex], HRand, meta.EidNymAuditData.Rand)
+			EidNym, err := tr.G1FromProto(sig.EidNym.Nym)
+			require.NoError(t, err)
+			require.True(t, Nym_eid.Equals(EidNym))
+
+			// and now do it with the function
+			err = sig.AuditNymEid(key.Ipk, attrs[eidIndex], eidIndex, meta.EidNymAuditData.Rand, idmx.Curve, tr)
+			require.NoError(t, err)
+
+			err = NymEID(meta.EidNymAuditData.Nym.Bytes()).AuditNymEid(key.Ipk, attrs[eidIndex], eidIndex, meta.EidNymAuditData.Rand, idmx.Curve, tr)
+			require.NoError(t, err)
+
+			err = sig.AuditNymRh(key.Ipk, attrs[rhindex], rhindex, meta.RhNymAuditData.Rand, idmx.Curve, tr)
+			require.NoError(t, err)
+
+			err = NymRH(meta.RhNymAuditData.Nym.Bytes()).AuditNymRh(key.Ipk, attrs[rhindex], rhindex, meta.RhNymAuditData.Rand, idmx.Curve, tr)
+			require.NoError(t, err)
+
+			err = sig.Ver(disclosure, key.Ipk, msg, nil, rhindex, 2, &revocationKey.PublicKey, epoch, idmx.Curve, tr, opts.BestEffort, nil)
+			if err != nil {
+				t.Logf("Signature should be valid but verification returned error: %s", err)
+				t.Fail()
+				return
+			}
+			err = sig.Ver(disclosure, key.Ipk, msg, attrs, rhindex, eidIndex, &revocationKey.PublicKey, epoch, idmx.Curve, tr, opts.ExpectEidNymRhNym, nil)
+			require.NoError(t, err)
+			err = sig.Ver(disclosure, key.Ipk, msg, attrs, rhindex, eidIndex, &revocationKey.PublicKey, epoch, idmx.Curve, tr, opts.ExpectEidNym, nil)
+			require.Error(t, err)
+			err = sig.Ver(disclosure, key.Ipk, msg, attrs, rhindex, eidIndex, &revocationKey.PublicKey, epoch, idmx.Curve, tr, opts.ExpectStandard, nil)
+			require.Error(t, err)
+			require.Equal(t, "RhNym available but ExpectStandard required", err.Error())
+
+			// supply the meta to audit the nym eid and rh
+			err = sig.Ver(disclosure, key.Ipk, msg, attrs, rhindex, eidIndex, &revocationKey.PublicKey, epoch, idmx.Curve, tr, opts.BestEffort, meta)
+			require.NoError(t, err)
+			err = sig.Ver(disclosure, key.Ipk, msg, attrs, rhindex, eidIndex, &revocationKey.PublicKey, epoch, idmx.Curve, tr, opts.ExpectEidNym, meta)
+			require.Error(t, err)
+			err = sig.Ver(disclosure, key.Ipk, msg, attrs, rhindex, eidIndex, &revocationKey.PublicKey, epoch, idmx.Curve, tr, opts.ExpectEidNymRhNym, meta)
+			require.NoError(t, err)
+
+			// tamper with the randomness of the nym eid to expect a failed verification
+			tmp := meta.EidNymAuditData.Attr
+			meta.EidNymAuditData.Attr = curve.NewZrFromInt(35)
+			err = sig.Ver(disclosure, key.Ipk, msg, attrs, rhindex, eidIndex, &revocationKey.PublicKey, epoch, idmx.Curve, tr, opts.BestEffort, meta)
+			require.Error(t, err)
+			require.Equal(t, "signature invalid: nym eid validation failed, does not match regenerated nym eid", err.Error())
+			err = sig.Ver(disclosure, key.Ipk, msg, attrs, rhindex, eidIndex, &revocationKey.PublicKey, epoch, idmx.Curve, tr, opts.ExpectEidNym, meta)
+			require.Error(t, err)
+			require.Equal(t, "signature invalid: nym eid validation failed, does not match regenerated nym eid", err.Error())
+			err = sig.Ver(disclosure, key.Ipk, msg, attrs, rhindex, eidIndex, &revocationKey.PublicKey, epoch, idmx.Curve, tr, opts.ExpectEidNymRhNym, meta)
+			require.Error(t, err)
+			require.Equal(t, "signature invalid: nym eid validation failed, does not match regenerated nym eid", err.Error())
+			meta.EidNymAuditData.Attr = tmp
+
+			// tamper with the randomness of the nym rh to expect a failed verification
+			meta.RhNymAuditData.Attr = curve.NewZrFromInt(35)
+			err = sig.Ver(disclosure, key.Ipk, msg, attrs, rhindex, eidIndex, &revocationKey.PublicKey, epoch, idmx.Curve, tr, opts.BestEffort, meta)
+			require.Error(t, err)
+			require.Equal(t, "signature invalid: nym rh validation failed, does not match regenerated nym rh", err.Error())
+			err = sig.Ver(disclosure, key.Ipk, msg, attrs, rhindex, eidIndex, &revocationKey.PublicKey, epoch, idmx.Curve, tr, opts.ExpectEidNymRhNym, meta)
+			require.Error(t, err)
+			require.Equal(t, "signature invalid: nym rh validation failed, does not match regenerated nym rh", err.Error())
+			err = sig.Ver(disclosure, key.Ipk, msg, attrs, rhindex, eidIndex, &revocationKey.PublicKey, epoch, idmx.Curve, tr, opts.ExpectEidNym, meta)
+			require.Error(t, err)
+			require.Equal(t, "signature invalid: zero-knowledge proof is invalid", err.Error())
+		}()
+	}
+
+	waitGroup.Add(n)
+	for i := 0; i < n; i++ {
+		go func() {
+			defer waitGroup.Done()
+			rng, _ := curve.Rand()
+
 			msg := []byte{1, 2, 3, 4, 5}
 			rhindex := 4
 
