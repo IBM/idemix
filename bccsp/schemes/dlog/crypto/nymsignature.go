@@ -54,18 +54,18 @@ func newNymSignature(sk *math.Zr, Nym *math.G1, RNym *math.Zr, ipk *IssuerPublic
 	// - one bigint (hash of the issuer public key) of length math.FieldBytes
 	// - disclosed attributes
 	// - message being signed
-	proofData := make([]byte, len([]byte(signLabel))+2*(2*curve.FieldBytes+1)+curve.FieldBytes+len(msg))
+	proofData := make([]byte, len([]byte(signLabel))+2*curve.G1ByteSize+curve.ScalarByteSize+len(msg))
 	index := 0
 	index = appendBytesString(proofData, index, signLabel)
 	index = appendBytesG1(proofData, index, t)
 	index = appendBytesG1(proofData, index, Nym)
 	copy(proofData[index:], ipk.Hash)
-	index = index + curve.FieldBytes
+	index = index + curve.ScalarByteSize
 	copy(proofData[index:], msg)
 	c := curve.HashToZr(proofData)
 	// combine the previous hash and the nonce and hash again to compute the final Fiat-Shamir value 'ProofC'
 	index = 0
-	proofData = proofData[:2*curve.FieldBytes]
+	proofData = proofData[:2*curve.ScalarByteSize]
 	index = appendBytesBig(proofData, index, c)
 	appendBytesBig(proofData, index, Nonce)
 	ProofC := curve.HashToZr(proofData)
@@ -106,17 +106,17 @@ func (sig *NymSignature) Ver(nym *math.G1, ipk *IssuerPublicKey, msg []byte, cur
 	t.Sub(nym.Mul(ProofC)) // t = h_{sk}^{s_{sk} \ cdot h_r^{s_{RNym}
 
 	// Recompute challenge
-	proofData := make([]byte, len([]byte(signLabel))+2*(2*curve.FieldBytes+1)+curve.FieldBytes+len(msg))
+	proofData := make([]byte, len([]byte(signLabel))+2*curve.G1ByteSize+curve.ScalarByteSize+len(msg))
 	index := 0
 	index = appendBytesString(proofData, index, signLabel)
 	index = appendBytesG1(proofData, index, t)
 	index = appendBytesG1(proofData, index, nym)
 	copy(proofData[index:], ipk.Hash)
-	index = index + curve.FieldBytes
+	index = index + curve.ScalarByteSize
 	copy(proofData[index:], msg)
 	c := curve.HashToZr(proofData)
 	index = 0
-	proofData = proofData[:2*curve.FieldBytes]
+	proofData = proofData[:2*curve.ScalarByteSize]
 	index = appendBytesBig(proofData, index, c)
 	appendBytesBig(proofData, index, Nonce)
 

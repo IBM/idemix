@@ -18,29 +18,54 @@ import (
 	"github.com/IBM/idemix/bccsp/schemes/dlog/crypto/translator/amcl"
 )
 
-func TestIdemixAMCL(t *testing.T) {
-	curve := math.Curves[math.FP256BN_AMCL]
-	tr := &amcl.Fp256bn{
-		C: curve,
-	}
-
-	testIdemix(t, curve, tr)
+type testEnv struct {
+	curve *math.Curve
+	tr    Translator
 }
 
-func TestIdemixAMCLMiracl(t *testing.T) {
-	curve := math.Curves[math.FP256BN_AMCL_MIRACL]
-	tr := &amcl.Fp256bnMiracl{
-		C: curve,
-	}
-
-	testIdemix(t, curve, tr)
+var envs = []testEnv{
+	{
+		curve: math.Curves[math.FP256BN_AMCL],
+		tr: &amcl.Fp256bn{
+			C: math.Curves[math.FP256BN_AMCL],
+		},
+	},
+	{
+		curve: math.Curves[math.FP256BN_AMCL_MIRACL],
+		tr: &amcl.Fp256bnMiracl{
+			C: math.Curves[math.FP256BN_AMCL_MIRACL],
+		},
+	},
+	{
+		curve: math.Curves[math.BN254],
+		tr: &amcl.Gurvy{
+			C: math.Curves[math.BN254],
+		},
+	},
+	{
+		curve: math.Curves[math.BLS12_381],
+		tr: &amcl.Gurvy{
+			C: math.Curves[math.BLS12_381],
+		},
+	},
+	{
+		curve: math.Curves[math.BLS12_381_GURVY],
+		tr: &amcl.Gurvy{
+			C: math.Curves[math.BLS12_381_GURVY],
+		},
+	},
+	{
+		curve: math.Curves[math.BLS12_377_GURVY],
+		tr: &amcl.Gurvy{
+			C: math.Curves[math.BLS12_377_GURVY],
+		},
+	},
 }
 
-func TestIdemixGurvy254(t *testing.T) {
-	curve := math.Curves[math.BN254]
-	tr := &amcl.Gurvy{C: curve}
-
-	testIdemix(t, curve, tr)
+func TestIdemixAllCurves(t *testing.T) {
+	for _, e := range envs {
+		testIdemix(t, e.curve, e.tr)
+	}
 }
 
 func testIdemix(t *testing.T, curve *math.Curve, tr Translator) {

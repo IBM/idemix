@@ -532,14 +532,14 @@ func finalise(
 	// disclosed attributes
 	// message being signed
 	// the minimum amount of bytes needed for the nonrevocation proof
-	pdl := curve.FieldBytes + len(Disclosure) + len(msg) + ProofBytes[RevocationAlgorithm(cri.RevocationAlg)]
+	pdl := curve.ScalarByteSize + len(Disclosure) + len(msg) + ProofBytes[RevocationAlgorithm(cri.RevocationAlg)]
 	switch sigType {
 	case opts.Standard: // additional bytes for a standard sign label
-		pdl += len([]byte(signLabel)) + 7*(2*curve.FieldBytes+1)
+		pdl += len([]byte(signLabel)) + 7*curve.G1ByteSize
 	case opts.EidNym: // additional bytes for a sign label including an enrollment id attribute
-		pdl += len([]byte(signWithEidNymLabel)) + 9*(2*curve.FieldBytes+1)
+		pdl += len([]byte(signWithEidNymLabel)) + 9*curve.G1ByteSize
 	case opts.EidNymRhNym: // additional bytes for a sign label including both an enrollment id and a revocation handle attribute
-		pdl += len([]byte(signWithEidNymRhNymLabel)) + 11*(2*curve.FieldBytes+1)
+		pdl += len([]byte(signWithEidNymRhNymLabel)) + 11*curve.G1ByteSize
 	default:
 		panic("programming error")
 	}
@@ -572,7 +572,7 @@ func finalise(
 	}
 	index = appendBytes(proofData, index, nonRevokedProofHashData)
 	copy(proofData[index:], ipk.Hash)
-	index = index + curve.FieldBytes
+	index = index + curve.ScalarByteSize
 	copy(proofData[index:], Disclosure)
 	index = index + len(Disclosure)
 	copy(proofData[index:], msg)
@@ -580,7 +580,7 @@ func finalise(
 
 	// add the previous hash and the nonce and hash again to compute a second hash (C value)
 	index = 0
-	proofData = proofData[:2*curve.FieldBytes]
+	proofData = proofData[:2*curve.ScalarByteSize]
 	index = appendBytesBig(proofData, index, c)
 	appendBytesBig(proofData, index, Nonce)
 	ProofC := curve.HashToZr(proofData)
@@ -1021,13 +1021,13 @@ func (sig *Signature) Ver(
 	// disclosed attributes
 	// message that was signed
 	// pdl is minimum length of proof data
-	pdl := curve.FieldBytes + len(Disclosure) + len(msg) + ProofBytes[RevocationAlgorithm(sig.NonRevocationProof.RevocationAlg)]
+	pdl := curve.ScalarByteSize + len(Disclosure) + len(msg) + ProofBytes[RevocationAlgorithm(sig.NonRevocationProof.RevocationAlg)]
 	if verifyRHNym { // additional length for both an enrollment id and revocation handle attribute
-		pdl += len([]byte(signWithEidNymRhNymLabel)) + 11*(2*curve.FieldBytes+1)
+		pdl += len([]byte(signWithEidNymRhNymLabel)) + 11*curve.G1ByteSize
 	} else if verifyEIDNym { // additional length for an enrollment id attribute
-		pdl += len([]byte(signWithEidNymLabel)) + 9*(2*curve.FieldBytes+1)
+		pdl += len([]byte(signWithEidNymLabel)) + 9*curve.G1ByteSize
 	} else { // additional length for a standard sign label
-		pdl += len([]byte(signLabel)) + 7*(2*curve.FieldBytes+1)
+		pdl += len([]byte(signLabel)) + 7*curve.G1ByteSize
 	}
 	proofData := make([]byte, pdl)
 	index := 0
@@ -1063,14 +1063,14 @@ func (sig *Signature) Ver(
 	}
 	index = appendBytes(proofData, index, nonRevokedProofBytes)
 	copy(proofData[index:], ipk.Hash)
-	index = index + curve.FieldBytes
+	index = index + curve.ScalarByteSize
 	copy(proofData[index:], Disclosure)
 	index = index + len(Disclosure)
 	copy(proofData[index:], msg)
 
 	c := curve.HashToZr(proofData)
 	index = 0
-	proofData = proofData[:2*curve.FieldBytes]
+	proofData = proofData[:2*curve.ScalarByteSize]
 	index = appendBytesBig(proofData, index, c)
 	appendBytesBig(proofData, index, Nonce)
 

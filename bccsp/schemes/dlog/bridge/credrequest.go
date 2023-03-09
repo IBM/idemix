@@ -37,8 +37,8 @@ func (cr *CredRequest) Sign(sk *math.Zr, ipk handlers.IssuerPublicKey, nonce []b
 	if !ok {
 		return nil, errors.Errorf("invalid issuer public key, expected *IssuerPublicKey, got [%T]", ipk)
 	}
-	if len(nonce) != cr.Idemix.Curve.FieldBytes {
-		return nil, errors.Errorf("invalid issuer nonce, expected length %d, got %d", cr.Idemix.Curve.FieldBytes, len(nonce))
+	if len(nonce) != cr.Idemix.Curve.ScalarByteSize {
+		return nil, errors.Errorf("invalid issuer nonce, expected length %d, got %d", cr.Idemix.Curve.ScalarByteSize, len(nonce))
 	}
 
 	credRequest, err := cr.Idemix.NewCredRequest(
@@ -81,8 +81,8 @@ func (cr *CredRequest) Verify(credentialRequest []byte, ipk handlers.IssuerPubli
 	}
 
 	// Nonce checks
-	if len(nonce) != cr.Idemix.Curve.FieldBytes {
-		return errors.Errorf("invalid issuer nonce, expected length %d, got %d", cr.Idemix.Curve.FieldBytes, len(nonce))
+	if len(nonce) != cr.Idemix.Curve.ScalarByteSize {
+		return errors.Errorf("invalid issuer nonce, expected length %d, got %d", cr.Idemix.Curve.ScalarByteSize, len(nonce))
 	}
 	if !bytes.Equal(nonce, credRequest.IssuerNonce) {
 		return errors.Errorf("invalid nonce, expected [%v], got [%v]", nonce, credRequest.IssuerNonce)
