@@ -33,8 +33,8 @@ func (u *User) NewKey() (res *math.Zr, err error) {
 }
 
 func (u *User) NewKeyFromBytes(raw []byte) (res *math.Zr, err error) {
-	if len(raw) != u.Idemix.Curve.FieldBytes {
-		return nil, errors.Errorf("invalid length, expected [%d], got [%d]", u.Idemix.Curve.FieldBytes, len(raw))
+	if len(raw) != u.Idemix.Curve.ScalarByteSize {
+		return nil, errors.Errorf("invalid length, expected [%d], got [%d]", u.Idemix.Curve.ScalarByteSize, len(raw))
 	}
 
 	res = u.Idemix.Curve.NewZrFromBytes(raw)

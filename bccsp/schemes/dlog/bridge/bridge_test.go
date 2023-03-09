@@ -412,7 +412,7 @@ var _ = Describe("Idemix Bridge", func() {
 
 			It("fail on invalid handlers", func() {
 				raw, err := Revocation.Sign(nil, [][]byte{{0, 2, 3, 4}}, 0, 0)
-				Expect(err).To(MatchError(ContainSubstring("failure [runtime error: index out of range")))
+				Expect(err).To(MatchError(ContainSubstring("CreateCRI received nil input")))
 				Expect(raw).To(BeNil())
 			})
 		})
@@ -494,7 +494,7 @@ var _ = Describe("Idemix Bridge", func() {
 
 			It("panic on nil signature", func() {
 				err := NymSignatureScheme.Verify(issuerPublicKey, nymPublicKey, nil, nil)
-				Expect(err).To(MatchError(ContainSubstring("failure [runtime error: index out of range")))
+				Expect(err).To(MatchError(ContainSubstring("failure [runtime error: invalid memory address or nil pointer dereference]")))
 			})
 
 			It("fail on invalid signature", func() {
@@ -1380,7 +1380,7 @@ var _ = Describe("Idemix Bridge", func() {
 						nymSignature.Nonce = []byte{0, 1, 2, 3, 4}
 						valid, err := marshalAndVerify(nymSignature)
 						Expect(valid).To(BeFalse())
-						Expect(err).To(MatchError(ContainSubstring("failure [runtime error: index out of range")))
+						Expect(err).To(MatchError(ContainSubstring("pseudonym signature invalid: zero-knowledge proof is invalid")))
 					})
 				})
 
@@ -1389,7 +1389,7 @@ var _ = Describe("Idemix Bridge", func() {
 						nymSignature.Nonce = nil
 						valid, err := marshalAndVerify(nymSignature)
 						Expect(valid).To(BeFalse())
-						Expect(err).To(MatchError(ContainSubstring("failure [runtime error: index out of range")))
+						Expect(err).To(MatchError(ContainSubstring("pseudonym signature invalid: zero-knowledge proof is invalid")))
 					})
 				})
 
@@ -1410,7 +1410,7 @@ var _ = Describe("Idemix Bridge", func() {
 
 						valid, err := marshalAndVerify(nymSignature)
 						Expect(valid).To(BeFalse())
-						Expect(err).To(MatchError(ContainSubstring("failure [runtime error: index out of range")))
+						Expect(err).To(MatchError(ContainSubstring("pseudonym signature invalid: zero-knowledge proof is invalid")))
 					})
 				})
 
@@ -1420,7 +1420,7 @@ var _ = Describe("Idemix Bridge", func() {
 
 						valid, err := marshalAndVerify(nymSignature)
 						Expect(valid).To(BeFalse())
-						Expect(err).To(MatchError(ContainSubstring("failure [runtime error: index out of range")))
+						Expect(err).To(MatchError(ContainSubstring("pseudonym signature invalid: zero-knowledge proof is invalid")))
 					})
 				})
 
@@ -1441,7 +1441,7 @@ var _ = Describe("Idemix Bridge", func() {
 
 						valid, err := marshalAndVerify(nymSignature)
 						Expect(valid).To(BeFalse())
-						Expect(err).To(MatchError(ContainSubstring("failure [runtime error: index out of range")))
+						Expect(err).To(MatchError(ContainSubstring("pseudonym signature invalid: zero-knowledge proof is invalid")))
 					})
 				})
 
@@ -1450,7 +1450,7 @@ var _ = Describe("Idemix Bridge", func() {
 						nymSignature.ProofSRNym = nil
 						valid, err := marshalAndVerify(nymSignature)
 						Expect(valid).To(BeFalse())
-						Expect(err).To(MatchError(ContainSubstring("failure [runtime error: index out of range")))
+						Expect(err).To(MatchError(ContainSubstring("pseudonym signature invalid: zero-knowledge proof is invalid")))
 					})
 				})
 
@@ -1471,7 +1471,7 @@ var _ = Describe("Idemix Bridge", func() {
 
 						valid, err := marshalAndVerify(nymSignature)
 						Expect(valid).To(BeFalse())
-						Expect(err).To(MatchError(ContainSubstring("failure [runtime error: index out of range")))
+						Expect(err).To(MatchError(ContainSubstring("pseudonym signature invalid: zero-knowledge proof is invalid")))
 					})
 				})
 
@@ -1481,7 +1481,7 @@ var _ = Describe("Idemix Bridge", func() {
 
 						valid, err := marshalAndVerify(nymSignature)
 						Expect(valid).To(BeFalse())
-						Expect(err).To(MatchError(ContainSubstring("failure [runtime error: index out of range")))
+						Expect(err).To(MatchError(ContainSubstring("pseudonym signature invalid: zero-knowledge proof is invalid")))
 					})
 				})
 

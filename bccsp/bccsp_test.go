@@ -55,6 +55,9 @@ var _ = Describe("Idemix Bridge", func() {
 	testWithCurve(math.FP256BN_AMCL, &amcl.Fp256bn{C: math.Curves[math.FP256BN_AMCL]})
 	testWithCurve(math.BN254, &amcl.Gurvy{C: math.Curves[math.BN254]})
 	testWithCurve(math.FP256BN_AMCL_MIRACL, &amcl.Fp256bnMiracl{C: math.Curves[math.FP256BN_AMCL_MIRACL]})
+	testWithCurve(math.BLS12_381, &amcl.Gurvy{C: math.Curves[math.BLS12_381]})
+	testWithCurve(math.BLS12_377_GURVY, &amcl.Gurvy{C: math.Curves[math.BLS12_377_GURVY]})
+	testWithCurve(math.BLS12_381_GURVY, &amcl.Gurvy{C: math.Curves[math.BLS12_381_GURVY]})
 })
 
 func curveName(id math.CurveID) string {
@@ -65,6 +68,12 @@ func curveName(id math.CurveID) string {
 		return "BN254"
 	case math.FP256BN_AMCL_MIRACL:
 		return "FP256BN_AMCL_MIRACL"
+	case math.BLS12_381:
+		return "BLS12_381"
+	case math.BLS12_377_GURVY:
+		return "BLS12_377_GURVY"
+	case math.BLS12_381_GURVY:
+		return "BLS12_381_GURVY"
 	default:
 		panic(fmt.Sprintf("unknown curve %d", id))
 	}
@@ -135,13 +144,13 @@ func testWithCurve(id math.CurveID, translator idemix1.Translator) {
 			Expect(err).NotTo(HaveOccurred())
 			Expect(ioutil.WriteFile(path.Join(rootDir, "nymkey.sk"), raw, 0666)).NotTo(HaveOccurred())
 			raw, err = NymPublicKey.Bytes()
-			Expect(len(raw)).To(Equal(64))
+			Expect(len(raw)).To(Equal(2 * math.Curves[id].CoordByteSize))
 			Expect(err).NotTo(HaveOccurred())
 			Expect(ioutil.WriteFile(path.Join(rootDir, "nymkey.pk"), raw, 0666)).NotTo(HaveOccurred())
 
-			IssuerNonce = make([]byte, 32)
+			IssuerNonce = make([]byte, math.Curves[id].ScalarByteSize)
 			n, err := rand.Read(IssuerNonce)
-			Expect(n).To(BeEquivalentTo(32))
+			Expect(n).To(BeEquivalentTo(math.Curves[id].ScalarByteSize))
 			Expect(err).NotTo(HaveOccurred())
 
 			// Credential Request for User
@@ -1406,16 +1415,16 @@ func testWithCurve(id math.CurveID, translator idemix1.Translator) {
 					Expect(err).NotTo(HaveOccurred())
 					rawNymKeyPk, err := ioutil.ReadFile(path.Join(rootDir, "nymkey.pk"))
 					Expect(err).NotTo(HaveOccurred())
-					Expect(len(rawNymKeyPk)).To(Equal(64))
+					Expect(len(rawNymKeyPk)).To(Equal(2 * math.Curves[id].CoordByteSize))
 
 					NymKey, err = CSP.KeyImport(append(rawNymKeySk, rawNymKeyPk...), &bccsp.IdemixNymKeyImportOpts{Temporary: true})
 					Expect(err).NotTo(HaveOccurred())
 					NymPublicKey, err = CSP.KeyImport(rawNymKeyPk, &bccsp.IdemixNymPublicKeyImportOpts{Temporary: true})
 					Expect(err).NotTo(HaveOccurred())
 
-					IssuerNonce = make([]byte, 32)
+					IssuerNonce = make([]byte, math.Curves[id].ScalarByteSize)
 					n, err := rand.Read(IssuerNonce)
-					Expect(n).To(BeEquivalentTo(32))
+					Expect(n).To(BeEquivalentTo(math.Curves[id].ScalarByteSize))
 					Expect(err).NotTo(HaveOccurred())
 
 					// Credential Request for User
