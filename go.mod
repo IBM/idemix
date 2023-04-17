@@ -6,9 +6,9 @@ require (
 	github.com/IBM/mathlib v0.0.0-20220112091634-0a7378db6912
 	github.com/alecthomas/template v0.0.0-20190718012654-fb15b899a751 // indirect
 	github.com/alecthomas/units v0.0.0-20210912230133-d1bdfacee922 // indirect
-	github.com/bmatcuk/doublestar/v4 v4.4.0 // indirect
+	github.com/bmatcuk/doublestar/v4 v4.6.0 // indirect
 	github.com/golang/protobuf v1.5.0
-	github.com/google/addlicense v1.0.0 // indirect
+	github.com/google/addlicense v1.1.1 // indirect
 	github.com/hyperledger/fabric-protos-go v0.0.0-20210911123859-041d13f0980c
 	github.com/onsi/ginkgo v1.14.0
 	github.com/onsi/gomega v1.10.1
