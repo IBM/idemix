@@ -731,6 +731,8 @@ func GetIdemixMspConfig(dir string, ID string) (*m.MSPConfig, error) {
 			return nil, err
 		}
 		idemixConfig.Signer = signerConfig
+	} else {
+		return nil, err
 	}
 
 	confBytes, err := proto.Marshal(idemixConfig)
