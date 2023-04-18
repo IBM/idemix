@@ -907,11 +907,30 @@ var _ = Describe("Idemix Bridge", func() {
 				Expect(err).NotTo(HaveOccurred())
 			})
 
-			It("generates a proper signature", func() {
+			It("nym eid audit succeed", func() {
 				valid, err := Verifier.AuditNymEid(IssuerPublicKey, signature, digest, &bccsp.EidNymAuditOpts{
-					EidIndex:     3,
-					RNymEid:      SignerOpts.Metadata.EidNymAuditData.Rand,
-					EnrollmentID: string([]byte{0, 1, 2}),
+					EidIndex:              3,
+					RNymEid:               SignerOpts.Metadata.EidNymAuditData.Rand,
+					EnrollmentID:          string([]byte{0, 1, 2}),
+					AuditVerificationType: bccsp.AuditExpectSignature,
+				})
+				Expect(err).NotTo(HaveOccurred())
+				Expect(valid).To(BeTrue())
+
+				valid, err = Verifier.AuditNymEid(IssuerPublicKey, SignerOpts.Metadata.EidNymAuditData.Nym.Bytes(), digest, &bccsp.EidNymAuditOpts{
+					EidIndex:              3,
+					RNymEid:               SignerOpts.Metadata.EidNymAuditData.Rand,
+					EnrollmentID:          string([]byte{0, 1, 2}),
+					AuditVerificationType: bccsp.AuditExpectEidNym,
+				})
+				Expect(err).NotTo(HaveOccurred())
+				Expect(valid).To(BeTrue())
+
+				valid, err = Verifier.AuditNymEid(IssuerPublicKey, SignerOpts.Metadata.EidNymAuditData.Nym.Bytes(), digest, &bccsp.EidNymAuditOpts{
+					EidIndex:              3,
+					RNymEid:               SignerOpts.Metadata.EidNymAuditData.Rand,
+					EnrollmentID:          string([]byte{0, 1, 2}),
+					AuditVerificationType: bccsp.AuditExpectEidNymRhNym,
 				})
 				Expect(err).NotTo(HaveOccurred())
 				Expect(valid).To(BeTrue())
@@ -966,7 +985,7 @@ var _ = Describe("Idemix Bridge", func() {
 				Expect(err).NotTo(HaveOccurred())
 			})
 
-			It("generates a proper signature", func() {
+			It("nym eid  and rh audit succeed", func() {
 				validNymEid, err := Verifier.AuditNymEid(IssuerPublicKey, signature, digest, &bccsp.EidNymAuditOpts{
 					EidIndex:     3,
 					RNymEid:      SignerOpts.Metadata.EidNymAuditData.Rand,
@@ -976,12 +995,31 @@ var _ = Describe("Idemix Bridge", func() {
 				Expect(validNymEid).To(BeTrue())
 
 				validNymRh, err := Verifier.AuditNymRh(IssuerPublicKey, signature, digest, &bccsp.RhNymAuditOpts{
-					RhIndex:          2,
-					RNymRh:           SignerOpts.Metadata.RhNymAuditData.Rand,
-					RevocationHandle: string([]byte{2, 1, 0}),
+					RhIndex:               2,
+					RNymRh:                SignerOpts.Metadata.RhNymAuditData.Rand,
+					RevocationHandle:      string([]byte{2, 1, 0}),
+					AuditVerificationType: bccsp.AuditExpectSignature,
 				})
 				Expect(err).NotTo(HaveOccurred())
 				Expect(validNymRh).To(BeTrue())
+
+				validNymRh, err = Verifier.AuditNymRh(IssuerPublicKey, SignerOpts.Metadata.RhNymAuditData.Nym.Bytes(), digest, &bccsp.RhNymAuditOpts{
+					RhIndex:               2,
+					RNymRh:                SignerOpts.Metadata.RhNymAuditData.Rand,
+					RevocationHandle:      string([]byte{2, 1, 0}),
+					AuditVerificationType: bccsp.AuditExpectEidNymRhNym,
+				})
+				Expect(err).NotTo(HaveOccurred())
+				Expect(validNymRh).To(BeTrue())
+
+				_, err = Verifier.AuditNymRh(IssuerPublicKey, SignerOpts.Metadata.RhNymAuditData.Nym.Bytes(), digest, &bccsp.RhNymAuditOpts{
+					RhIndex:               2,
+					RNymRh:                SignerOpts.Metadata.RhNymAuditData.Rand,
+					RevocationHandle:      string([]byte{2, 1, 0}),
+					AuditVerificationType: bccsp.AuditExpectEidNym,
+				})
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(ContainSubstring("invalid audit type [1]"))
 			})
 
 			It("fails because it gets the wrong type of signature", func() {
