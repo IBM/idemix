@@ -50,4 +50,7 @@ message IdemixMSPConfig {
 
     // credential_revocation_information contains a serialized CredentialRevocationInformation
     bytes credential_revocation_information = 6;
+
+    // RevocationHandle is the handle used to single out this credential and determine its revocation status
+    string revocation_handle = 7;
 }

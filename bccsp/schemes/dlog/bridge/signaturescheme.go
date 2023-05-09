@@ -8,6 +8,7 @@ package bridge
 
 import (
 	"crypto/ecdsa"
+
 	bccsp "github.com/IBM/idemix/bccsp/schemes"
 	idemix "github.com/IBM/idemix/bccsp/schemes/dlog/crypto"
 	"github.com/IBM/idemix/bccsp/schemes/dlog/handlers"
@@ -149,7 +150,7 @@ func (s *SignatureScheme) AuditNymRh(
 	ipk handlers.IssuerPublicKey,
 	rhIndex int,
 	signature []byte,
-	enrollmentID string,
+	revocationHandle string,
 	RNymRh *math.Zr,
 	verType bccsp.AuditVerificationType,
 ) (err error) {
@@ -164,7 +165,7 @@ func (s *SignatureScheme) AuditNymRh(
 		return errors.Errorf("invalid issuer public key, expected *IssuerPublicKey, got [%T]", ipk)
 	}
 
-	rhAttr := s.Idemix.Curve.HashToZr([]byte(enrollmentID))
+	rhAttr := s.Idemix.Curve.HashToZr([]byte(revocationHandle))
 
 	switch verType {
 	case bccsp.AuditExpectSignature:

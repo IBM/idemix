@@ -42,7 +42,7 @@ func GenerateIssuerKey(idmx *idemix.Idemix, tr idemix.Translator) ([]byte, []byt
 // GenerateSignerConfig creates a new signer config.
 // It generates a fresh user secret and issues a credential
 // with four attributes (described above) using the CA's key pair.
-func GenerateSignerConfig(roleMask int, ouString string, enrollmentId string, revocationHandle int, key *idemix.IssuerKey, revKey *ecdsa.PrivateKey, idmx *idemix.Idemix, tr idemix.Translator) ([]byte, error) {
+func GenerateSignerConfig(roleMask int, ouString string, enrollmentId, revocationHandle string, key *idemix.IssuerKey, revKey *ecdsa.PrivateKey, idmx *idemix.Idemix, tr idemix.Translator) ([]byte, error) {
 	attrs := make([]*math.Zr, 4)
 
 	if ouString == "" {
@@ -56,7 +56,7 @@ func GenerateSignerConfig(roleMask int, ouString string, enrollmentId string, re
 	attrs[imsp.AttributeIndexOU] = idmx.Curve.HashToZr([]byte(ouString))
 	attrs[imsp.AttributeIndexRole] = idmx.Curve.NewZrFromInt(int64(roleMask))
 	attrs[imsp.AttributeIndexEnrollmentId] = idmx.Curve.HashToZr([]byte(enrollmentId))
-	attrs[imsp.AttributeIndexRevocationHandle] = idmx.Curve.NewZrFromInt(int64(revocationHandle))
+	attrs[imsp.AttributeIndexRevocationHandle] = idmx.Curve.HashToZr([]byte(revocationHandle))
 
 	rng, err := idmx.Curve.Rand()
 	if err != nil {
@@ -79,7 +79,7 @@ func GenerateSignerConfig(roleMask int, ouString string, enrollmentId string, re
 	}
 
 	// NOTE currently, idemixca creates CRI's with "ALG_NO_REVOCATION"
-	cri, err := idmx.CreateCRI(revKey, []*math.Zr{idmx.Curve.NewZrFromInt(int64(revocationHandle))}, 0, idemix.ALG_NO_REVOCATION, rng, tr)
+	cri, err := idmx.CreateCRI(revKey, []*math.Zr{idmx.Curve.HashToZr([]byte(revocationHandle))}, 0, idemix.ALG_NO_REVOCATION, rng, tr)
 	if err != nil {
 		return nil, err
 	}
@@ -94,6 +94,7 @@ func GenerateSignerConfig(roleMask int, ouString string, enrollmentId string, re
 		OrganizationalUnitIdentifier:    ouString,
 		Role:                            int32(roleMask),
 		EnrollmentId:                    enrollmentId,
+		RevocationHandle:                revocationHandle,
 		CredentialRevocationInformation: criBytes,
 	}
 
