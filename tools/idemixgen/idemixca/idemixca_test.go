@@ -55,13 +55,13 @@ func TestIdemixCa(t *testing.T) {
 
 	key := &idemix.IssuerKey{Isk: isk, Ipk: ipk}
 
-	conf, err := GenerateSignerConfig(m.GetRoleMaskFromIdemixRole(m.MEMBER), "OU1", "enrollmentid1", 1, key, revocationkey, idmx, tr)
+	conf, err := GenerateSignerConfig(m.GetRoleMaskFromIdemixRole(m.MEMBER), "OU1", "enrollmentid1", "1", key, revocationkey, idmx, tr)
 	require.NoError(t, err)
 	cleanupSigner()
 	require.NoError(t, writeSignerToFile(conf))
 	require.NoError(t, setupMSP())
 
-	conf, err = GenerateSignerConfig(m.GetRoleMaskFromIdemixRole(m.ADMIN), "OU1", "enrollmentid2", 1234, key, revocationkey, idmx, tr)
+	conf, err = GenerateSignerConfig(m.GetRoleMaskFromIdemixRole(m.ADMIN), "OU1", "enrollmentid2", "1234", key, revocationkey, idmx, tr)
 	require.NoError(t, err)
 	cleanupSigner()
 	require.NoError(t, writeSignerToFile(conf))
@@ -71,10 +71,10 @@ func TestIdemixCa(t *testing.T) {
 	cleanupVerifier()
 	require.Error(t, setupMSP())
 
-	_, err = GenerateSignerConfig(m.GetRoleMaskFromIdemixRole(m.ADMIN), "", "enrollmentid", 1, key, revocationkey, idmx, tr)
+	_, err = GenerateSignerConfig(m.GetRoleMaskFromIdemixRole(m.ADMIN), "", "enrollmentid", "1", key, revocationkey, idmx, tr)
 	require.EqualError(t, err, "the OU attribute value is empty")
 
-	_, err = GenerateSignerConfig(m.GetRoleMaskFromIdemixRole(m.ADMIN), "OU1", "", 1, key, revocationkey, idmx, tr)
+	_, err = GenerateSignerConfig(m.GetRoleMaskFromIdemixRole(m.ADMIN), "OU1", "", "1", key, revocationkey, idmx, tr)
 	require.EqualError(t, err, "the enrollment id value is empty")
 }
 
