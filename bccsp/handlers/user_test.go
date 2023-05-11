@@ -8,10 +8,10 @@ package handlers_test
 import (
 	"crypto/sha256"
 
+	"github.com/IBM/idemix/bccsp/handlers"
+	"github.com/IBM/idemix/bccsp/handlers/mock"
 	bccsp "github.com/IBM/idemix/bccsp/schemes"
 	"github.com/IBM/idemix/bccsp/schemes/dlog/crypto/translator/amcl"
-	"github.com/IBM/idemix/bccsp/schemes/dlog/handlers"
-	"github.com/IBM/idemix/bccsp/schemes/dlog/handlers/mock"
 	math "github.com/IBM/mathlib"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"

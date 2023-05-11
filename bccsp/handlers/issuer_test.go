@@ -6,9 +6,9 @@ SPDX-License-Identifier: Apache-2.0
 package handlers_test
 
 import (
+	"github.com/IBM/idemix/bccsp/handlers"
+	"github.com/IBM/idemix/bccsp/handlers/mock"
 	bccsp "github.com/IBM/idemix/bccsp/schemes"
-	"github.com/IBM/idemix/bccsp/schemes/dlog/handlers"
-	"github.com/IBM/idemix/bccsp/schemes/dlog/handlers/mock"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/pkg/errors"

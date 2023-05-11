@@ -4,8 +4,8 @@ package mock
 import (
 	"sync"
 
+	"github.com/IBM/idemix/bccsp/handlers"
 	idemix "github.com/IBM/idemix/bccsp/schemes"
-	"github.com/IBM/idemix/bccsp/schemes/dlog/handlers"
 	math "github.com/IBM/mathlib"
 )
 

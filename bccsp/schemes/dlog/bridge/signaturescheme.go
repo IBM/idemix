@@ -9,9 +9,9 @@ package bridge
 import (
 	"crypto/ecdsa"
 
+	"github.com/IBM/idemix/bccsp/handlers"
 	bccsp "github.com/IBM/idemix/bccsp/schemes"
 	idemix "github.com/IBM/idemix/bccsp/schemes/dlog/crypto"
-	"github.com/IBM/idemix/bccsp/schemes/dlog/handlers"
 	math "github.com/IBM/mathlib"
 	"github.com/golang/protobuf/proto"
 	"github.com/pkg/errors"
