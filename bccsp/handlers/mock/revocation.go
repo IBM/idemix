@@ -5,8 +5,8 @@ import (
 	"crypto/ecdsa"
 	"sync"
 
+	"github.com/IBM/idemix/bccsp/handlers"
 	idemix "github.com/IBM/idemix/bccsp/schemes"
-	"github.com/IBM/idemix/bccsp/schemes/dlog/handlers"
 )
 
 type Revocation struct {

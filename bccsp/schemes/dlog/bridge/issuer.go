@@ -8,9 +8,9 @@ package bridge
 import (
 	"fmt"
 
+	"github.com/IBM/idemix/bccsp/handlers"
 	bccsp "github.com/IBM/idemix/bccsp/schemes"
 	idemix "github.com/IBM/idemix/bccsp/schemes/dlog/crypto"
-	"github.com/IBM/idemix/bccsp/schemes/dlog/handlers"
 	"github.com/golang/protobuf/proto"
 	"github.com/pkg/errors"
 )
