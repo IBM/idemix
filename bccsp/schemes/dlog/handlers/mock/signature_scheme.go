@@ -109,15 +109,16 @@ func (fake *SignatureScheme) AuditNymEid(arg1 handlers.IssuerPublicKey, arg2 int
 		arg5 *math.Zr
 		arg6 idemix.AuditVerificationType
 	}{arg1, arg2, arg3Copy, arg4, arg5, arg6})
+	stub := fake.AuditNymEidStub
+	fakeReturns := fake.auditNymEidReturns
 	fake.recordInvocation("AuditNymEid", []interface{}{arg1, arg2, arg3Copy, arg4, arg5, arg6})
 	fake.auditNymEidMutex.Unlock()
-	if fake.AuditNymEidStub != nil {
-		return fake.AuditNymEidStub(arg1, arg2, arg3, arg4, arg5, arg6)
+	if stub != nil {
+		return stub(arg1, arg2, arg3, arg4, arg5, arg6)
 	}
 	if specificReturn {
 		return ret.result1
 	}
-	fakeReturns := fake.auditNymEidReturns
 	return fakeReturns.result1
 }
 
@@ -179,15 +180,16 @@ func (fake *SignatureScheme) AuditNymRh(arg1 handlers.IssuerPublicKey, arg2 int,
 		arg5 *math.Zr
 		arg6 idemix.AuditVerificationType
 	}{arg1, arg2, arg3Copy, arg4, arg5, arg6})
+	stub := fake.AuditNymRhStub
+	fakeReturns := fake.auditNymRhReturns
 	fake.recordInvocation("AuditNymRh", []interface{}{arg1, arg2, arg3Copy, arg4, arg5, arg6})
 	fake.auditNymRhMutex.Unlock()
-	if fake.AuditNymRhStub != nil {
-		return fake.AuditNymRhStub(arg1, arg2, arg3, arg4, arg5, arg6)
+	if stub != nil {
+		return stub(arg1, arg2, arg3, arg4, arg5, arg6)
 	}
 	if specificReturn {
 		return ret.result1
 	}
-	fakeReturns := fake.auditNymRhReturns
 	return fakeReturns.result1
 }
 
@@ -270,15 +272,16 @@ func (fake *SignatureScheme) Sign(arg1 []byte, arg2 *math.Zr, arg3 *math.G1, arg
 		arg11 idemix.SignatureType
 		arg12 *idemix.IdemixSignerMetadata
 	}{arg1Copy, arg2, arg3, arg4, arg5, arg6Copy, arg7Copy, arg8, arg9, arg10Copy, arg11, arg12})
+	stub := fake.SignStub
+	fakeReturns := fake.signReturns
 	fake.recordInvocation("Sign", []interface{}{arg1Copy, arg2, arg3, arg4, arg5, arg6Copy, arg7Copy, arg8, arg9, arg10Copy, arg11, arg12})
 	fake.signMutex.Unlock()
-	if fake.SignStub != nil {
-		return fake.SignStub(arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10, arg11, arg12)
+	if stub != nil {
+		return stub(arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10, arg11, arg12)
 	}
 	if specificReturn {
 		return ret.result1, ret.result2, ret.result3
 	}
-	fakeReturns := fake.signReturns
 	return fakeReturns.result1, fakeReturns.result2, fakeReturns.result3
 }
 
@@ -360,15 +363,16 @@ func (fake *SignatureScheme) Verify(arg1 handlers.IssuerPublicKey, arg2 []byte, 
 		arg9  idemix.VerificationType
 		arg10 *idemix.IdemixSignerMetadata
 	}{arg1, arg2Copy, arg3Copy, arg4Copy, arg5, arg6, arg7, arg8, arg9, arg10})
+	stub := fake.VerifyStub
+	fakeReturns := fake.verifyReturns
 	fake.recordInvocation("Verify", []interface{}{arg1, arg2Copy, arg3Copy, arg4Copy, arg5, arg6, arg7, arg8, arg9, arg10})
 	fake.verifyMutex.Unlock()
-	if fake.VerifyStub != nil {
-		return fake.VerifyStub(arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10)
+	if stub != nil {
+		return stub(arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10)
 	}
 	if specificReturn {
 		return ret.result1
 	}
-	fakeReturns := fake.verifyReturns
 	return fakeReturns.result1
 }
 

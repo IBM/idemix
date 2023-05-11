@@ -54,15 +54,16 @@ func (fake *CredRequest) Sign(arg1 *math.Zr, arg2 handlers.IssuerPublicKey, arg3
 		arg2 handlers.IssuerPublicKey
 		arg3 []byte
 	}{arg1, arg2, arg3Copy})
+	stub := fake.SignStub
+	fakeReturns := fake.signReturns
 	fake.recordInvocation("Sign", []interface{}{arg1, arg2, arg3Copy})
 	fake.signMutex.Unlock()
-	if fake.SignStub != nil {
-		return fake.SignStub(arg1, arg2, arg3)
+	if stub != nil {
+		return stub(arg1, arg2, arg3)
 	}
 	if specificReturn {
 		return ret.result1, ret.result2
 	}
-	fakeReturns := fake.signReturns
 	return fakeReturns.result1, fakeReturns.result2
 }
 
@@ -129,15 +130,16 @@ func (fake *CredRequest) Verify(arg1 []byte, arg2 handlers.IssuerPublicKey, arg3
 		arg2 handlers.IssuerPublicKey
 		arg3 []byte
 	}{arg1Copy, arg2, arg3Copy})
+	stub := fake.VerifyStub
+	fakeReturns := fake.verifyReturns
 	fake.recordInvocation("Verify", []interface{}{arg1Copy, arg2, arg3Copy})
 	fake.verifyMutex.Unlock()
-	if fake.VerifyStub != nil {
-		return fake.VerifyStub(arg1, arg2, arg3)
+	if stub != nil {
+		return stub(arg1, arg2, arg3)
 	}
 	if specificReturn {
 		return ret.result1
 	}
-	fakeReturns := fake.verifyReturns
 	return fakeReturns.result1
 }
 
