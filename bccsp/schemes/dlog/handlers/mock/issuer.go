@@ -64,15 +64,16 @@ func (fake *Issuer) NewKey(arg1 []string) (handlers.IssuerSecretKey, error) {
 	fake.newKeyArgsForCall = append(fake.newKeyArgsForCall, struct {
 		arg1 []string
 	}{arg1Copy})
+	stub := fake.NewKeyStub
+	fakeReturns := fake.newKeyReturns
 	fake.recordInvocation("NewKey", []interface{}{arg1Copy})
 	fake.newKeyMutex.Unlock()
-	if fake.NewKeyStub != nil {
-		return fake.NewKeyStub(arg1)
+	if stub != nil {
+		return stub(arg1)
 	}
 	if specificReturn {
 		return ret.result1, ret.result2
 	}
-	fakeReturns := fake.newKeyReturns
 	return fakeReturns.result1, fakeReturns.result2
 }
 
@@ -138,15 +139,16 @@ func (fake *Issuer) NewKeyFromBytes(arg1 []byte, arg2 []string) (handlers.Issuer
 		arg1 []byte
 		arg2 []string
 	}{arg1Copy, arg2Copy})
+	stub := fake.NewKeyFromBytesStub
+	fakeReturns := fake.newKeyFromBytesReturns
 	fake.recordInvocation("NewKeyFromBytes", []interface{}{arg1Copy, arg2Copy})
 	fake.newKeyFromBytesMutex.Unlock()
-	if fake.NewKeyFromBytesStub != nil {
-		return fake.NewKeyFromBytesStub(arg1, arg2)
+	if stub != nil {
+		return stub(arg1, arg2)
 	}
 	if specificReturn {
 		return ret.result1, ret.result2
 	}
-	fakeReturns := fake.newKeyFromBytesReturns
 	return fakeReturns.result1, fakeReturns.result2
 }
 
@@ -212,15 +214,16 @@ func (fake *Issuer) NewPublicKeyFromBytes(arg1 []byte, arg2 []string) (handlers.
 		arg1 []byte
 		arg2 []string
 	}{arg1Copy, arg2Copy})
+	stub := fake.NewPublicKeyFromBytesStub
+	fakeReturns := fake.newPublicKeyFromBytesReturns
 	fake.recordInvocation("NewPublicKeyFromBytes", []interface{}{arg1Copy, arg2Copy})
 	fake.newPublicKeyFromBytesMutex.Unlock()
-	if fake.NewPublicKeyFromBytesStub != nil {
-		return fake.NewPublicKeyFromBytesStub(arg1, arg2)
+	if stub != nil {
+		return stub(arg1, arg2)
 	}
 	if specificReturn {
 		return ret.result1, ret.result2
 	}
-	fakeReturns := fake.newPublicKeyFromBytesReturns
 	return fakeReturns.result1, fakeReturns.result2
 }
 

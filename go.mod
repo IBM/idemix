@@ -16,6 +16,7 @@ require (
 	go.uber.org/zap v1.16.0
 	google.golang.org/grpc v1.31.0
 	gopkg.in/alecthomas/kingpin.v2 v2.2.6
+// github.com/hyperledger/aries-framework-go/component/kmscrypto v0.0.0 // indirect
 )
 
 require (
@@ -43,3 +44,5 @@ require (
 )
 
 replace github.com/onsi/gomega => github.com/onsi/gomega v1.9.0
+
+// replace github.com/hyperledger/aries-framework-go/component/kmscrypto => /home/aso/w/Projects/OBC/Workspace/src/github.com/hyperledger/aries-framework-go/component/kmscrypto

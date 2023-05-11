@@ -48,18 +48,6 @@ type Issuer interface {
 	NewPublicKeyFromBytes(raw []byte, attributes []string) (IssuerPublicKey, error)
 }
 
-// Big represent a big integer
-type Big interface {
-	// Bytes returns the byte representation of this key
-	Bytes() []byte
-}
-
-// Ecp represents an elliptic curve point
-type Ecp interface {
-	// Bytes returns the byte representation of this key
-	Bytes() []byte
-}
-
 // User is a local interface to decouple from the idemix implementation
 type User interface {
 	// NewKey generates a new User secret key

@@ -59,15 +59,16 @@ func (fake *NymSignatureScheme) Sign(arg1 *math.Zr, arg2 *math.G1, arg3 *math.Zr
 		arg4 handlers.IssuerPublicKey
 		arg5 []byte
 	}{arg1, arg2, arg3, arg4, arg5Copy})
+	stub := fake.SignStub
+	fakeReturns := fake.signReturns
 	fake.recordInvocation("Sign", []interface{}{arg1, arg2, arg3, arg4, arg5Copy})
 	fake.signMutex.Unlock()
-	if fake.SignStub != nil {
-		return fake.SignStub(arg1, arg2, arg3, arg4, arg5)
+	if stub != nil {
+		return stub(arg1, arg2, arg3, arg4, arg5)
 	}
 	if specificReturn {
 		return ret.result1, ret.result2
 	}
-	fakeReturns := fake.signReturns
 	return fakeReturns.result1, fakeReturns.result2
 }
 
@@ -135,15 +136,16 @@ func (fake *NymSignatureScheme) Verify(arg1 handlers.IssuerPublicKey, arg2 *math
 		arg3 []byte
 		arg4 []byte
 	}{arg1, arg2, arg3Copy, arg4Copy})
+	stub := fake.VerifyStub
+	fakeReturns := fake.verifyReturns
 	fake.recordInvocation("Verify", []interface{}{arg1, arg2, arg3Copy, arg4Copy})
 	fake.verifyMutex.Unlock()
-	if fake.VerifyStub != nil {
-		return fake.VerifyStub(arg1, arg2, arg3, arg4)
+	if stub != nil {
+		return stub(arg1, arg2, arg3, arg4)
 	}
 	if specificReturn {
 		return ret.result1
 	}
-	fakeReturns := fake.verifyReturns
 	return fakeReturns.result1
 }
 
