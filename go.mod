@@ -6,17 +6,17 @@ require (
 	github.com/IBM/mathlib v0.0.3-0.20230428120512-8afa4e643d4c
 	github.com/alecthomas/template v0.0.0-20190718012654-fb15b899a751 // indirect
 	github.com/alecthomas/units v0.0.0-20210912230133-d1bdfacee922 // indirect
-	github.com/golang/protobuf v1.5.0
+	github.com/golang/protobuf v1.5.2
+	github.com/hyperledger/aries-framework-go/component/kmscrypto v0.0.0
 	github.com/hyperledger/fabric-protos-go v0.0.0-20210911123859-041d13f0980c
 	github.com/onsi/ginkgo v1.14.0
 	github.com/onsi/gomega v1.10.1
 	github.com/pkg/errors v0.9.1
-	github.com/stretchr/testify v1.8.0 // includes ErrorContains
+	github.com/stretchr/testify v1.8.1 // includes ErrorContains
 	github.com/sykesm/zap-logfmt v0.0.2
 	go.uber.org/zap v1.16.0
 	google.golang.org/grpc v1.31.0
 	gopkg.in/alecthomas/kingpin.v2 v2.2.6
-// github.com/hyperledger/aries-framework-go/component/kmscrypto v0.0.0 // indirect
 )
 
 require (
@@ -45,4 +45,4 @@ require (
 
 replace github.com/onsi/gomega => github.com/onsi/gomega v1.9.0
 
-// replace github.com/hyperledger/aries-framework-go/component/kmscrypto => /home/aso/w/Projects/OBC/Workspace/src/github.com/hyperledger/aries-framework-go/component/kmscrypto
+replace github.com/hyperledger/aries-framework-go/component/kmscrypto => /home/aso/w/Projects/OBC/Workspace/src/github.com/hyperledger/aries-framework-go/component/kmscrypto
