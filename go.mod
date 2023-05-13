@@ -16,6 +16,7 @@ require (
 	go.uber.org/zap v1.16.0
 	google.golang.org/grpc v1.31.0
 	gopkg.in/alecthomas/kingpin.v2 v2.2.6
+	gopkg.in/yaml.v2 v2.2.4 // indirect
 )
 
 require (
