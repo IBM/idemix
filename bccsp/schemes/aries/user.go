@@ -47,7 +47,7 @@ func (u *User) MakeNym(sk *math.Zr, key handlers.IssuerPublicKey) (*math.G1, *ma
 
 	rnd := u.Curve.NewRandomZr(u.Rng)
 
-	nym := ipk.PKwG.H0.Mul2(rnd, ipk.PKwG.H[0], sk)
+	nym := ipk.PKwG.H0.Mul2(rnd, ipk.PKwG.H[UserSecretKeyIndex], sk)
 
 	return nym, rnd, nil
 }
