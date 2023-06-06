@@ -14,10 +14,18 @@ import (
 	"github.com/hyperledger/aries-framework-go/component/kmscrypto/crypto/primitive/bbs12381g2pub"
 )
 
+// TODO:
+// * expose blind sign with Zr so we can forge messages as we please
+// * expose curve from aries so we can use always that curve
+
+const UserSecretKeyIndex = 0
+
 // IssuerPublicKey is the issuer public key
 type IssuerPublicKey struct {
 	PK   *bbs12381g2pub.PublicKey
 	PKwG *bbs12381g2pub.PublicKeyWithGenerators
+	// N is the number of attributes; it *does not* include the user secret key
+	N int
 }
 
 // Bytes returns the byte representation of this key
@@ -33,9 +41,8 @@ func (i *IssuerPublicKey) Hash() []byte {
 
 // IssuerPublicKey is the issuer secret key
 type IssuerSecretKey struct {
-	SK   *bbs12381g2pub.PrivateKey
-	PK   *bbs12381g2pub.PublicKey
-	PKwG *bbs12381g2pub.PublicKeyWithGenerators
+	IssuerPublicKey
+	SK *bbs12381g2pub.PrivateKey
 }
 
 // Bytes returns the byte representation of this key
@@ -45,10 +52,7 @@ func (i *IssuerSecretKey) Bytes() ([]byte, error) {
 
 // Public returns the corresponding public key
 func (i *IssuerSecretKey) Public() handlers.IssuerPublicKey {
-	return &IssuerPublicKey{
-		PK:   i.PK,
-		PKwG: i.PKwG,
-	}
+	return &i.IssuerPublicKey
 }
 
 // Issuer is a local interface to decouple from the idemix implementation
@@ -69,15 +73,18 @@ func (i *Issuer) NewKey(AttributeNames []string) (handlers.IssuerSecretKey, erro
 		return nil, fmt.Errorf("GenerateKeyPair failed [%w]", err)
 	}
 
-	PKwG, err := PK.ToPublicKeyWithGenerators(len(AttributeNames))
+	PKwG, err := PK.ToPublicKeyWithGenerators(len(AttributeNames) + 1)
 	if err != nil {
 		return nil, fmt.Errorf("ToPublicKeyWithGenerators failed [%w]", err)
 	}
 
 	return &IssuerSecretKey{
-		SK:   SK,
-		PK:   PK,
-		PKwG: PKwG,
+		SK: SK,
+		IssuerPublicKey: IssuerPublicKey{
+			PK:   PK,
+			PKwG: PKwG,
+			N:    len(AttributeNames),
+		},
 	}, nil
 }
 
@@ -91,15 +98,18 @@ func (i *Issuer) NewKeyFromBytes(raw []byte, attributes []string) (handlers.Issu
 
 	PK := SK.PublicKey()
 
-	PKwG, err := PK.ToPublicKeyWithGenerators(len(attributes))
+	PKwG, err := PK.ToPublicKeyWithGenerators(len(attributes) + 1)
 	if err != nil {
 		return nil, fmt.Errorf("ToPublicKeyWithGenerators failed [%w]", err)
 	}
 
 	return &IssuerSecretKey{
-		SK:   SK,
-		PK:   PK,
-		PKwG: PKwG,
+		SK: SK,
+		IssuerPublicKey: IssuerPublicKey{
+			PK:   PK,
+			PKwG: PKwG,
+			N:    len(attributes),
+		},
 	}, nil
 }
 
@@ -111,7 +121,7 @@ func (i *Issuer) NewPublicKeyFromBytes(raw []byte, attributes []string) (handler
 		return nil, fmt.Errorf("UnmarshalPublicKey failed [%w]", err)
 	}
 
-	PKwG, err := PK.ToPublicKeyWithGenerators(len(attributes))
+	PKwG, err := PK.ToPublicKeyWithGenerators(len(attributes) + 1)
 	if err != nil {
 		return nil, fmt.Errorf("ToPublicKeyWithGenerators failed [%w]", err)
 	}
@@ -119,5 +129,6 @@ func (i *Issuer) NewPublicKeyFromBytes(raw []byte, attributes []string) (handler
 	return &IssuerPublicKey{
 		PK:   PK,
 		PKwG: PKwG,
+		N:    len(attributes),
 	}, nil
 }

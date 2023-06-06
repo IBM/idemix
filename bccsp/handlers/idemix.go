@@ -76,6 +76,20 @@ type CredRequest interface {
 	Verify(credRequest []byte, ipk IssuerPublicKey, nonce []byte) error
 }
 
+// BlindCredRequest is similar to CredRequest except it provides a hiding
+// commitment to the hidden attribute (the user secret key), and so it
+// requires an additional `Unblind` function to account for the randomness
+type BlindCredRequest interface {
+	// Blind creates a request to sign the value sk
+	Blind(sk *math.Zr, ipk IssuerPublicKey, nonce []byte) ([]byte, []byte, error)
+
+	// Verify verifies the credential request
+	BlindVerify(credRequest []byte, ipk IssuerPublicKey, nonce []byte) error
+
+	// Unblind takes a blinded signature and a blinding and produces a standard signature
+	Unblind(signature, blinding []byte) ([]byte, error)
+}
+
 // CredRequest is a local interface to decouple from the idemix implementation
 // of the issuance of credentials.
 type Credential interface {
