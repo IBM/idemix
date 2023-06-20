@@ -1,0 +1,17 @@
+/*
+Copyright IBM Corp. All Rights Reserved.
+
+SPDX-License-Identifier: Apache-2.0
+*/
+
+syntax = "proto3";
+
+option go_package = "github.com/IBM/idemix/bccsp/schemes/aries";
+
+package aries;
+
+// Credential specifies a credential object
+message Credential {
+	bytes cred = 1;
+	repeated bytes attrs = 2;
+}
