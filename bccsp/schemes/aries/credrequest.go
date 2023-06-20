@@ -10,6 +10,7 @@ import (
 
 	"github.com/IBM/idemix/bccsp/handlers"
 	math "github.com/IBM/mathlib"
+	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/aries-framework-go/component/kmscrypto/crypto/primitive/bbs12381g2pub"
 	"github.com/pkg/errors"
 )
@@ -61,5 +62,18 @@ func (c *CredRequest) Unblind(signature, blinding []byte) ([]byte, error) {
 
 	S := c.Curve.NewZrFromBytes(blinding)
 
-	return bls.UnblindSign(signature, S)
+	credential := &Credential{}
+	err := proto.Unmarshal(signature, credential)
+	if err != nil {
+		return nil, fmt.Errorf("proto.Unmarshal failed [%w]", err)
+	}
+
+	sig, err := bls.UnblindSign(credential.Cred, S)
+	if err != nil {
+		return nil, fmt.Errorf("bls.UnblindSign failed [%w]", err)
+	}
+
+	credential.Cred = sig
+
+	return proto.Marshal(credential)
 }

@@ -16,7 +16,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestCredRequest(t *testing.T) {
+func TestSigner(t *testing.T) {
 	credProto := &aries.Cred{
 		Bls:   bbs12381g2pub.New(),
 		Curve: math.Curves[math.BLS12_381_BBS],
@@ -63,12 +63,12 @@ func TestCredRequest(t *testing.T) {
 			Value: []byte("msg1"),
 		},
 		{
-			Type:  bccsp.IdemixIntAttribute,
-			Value: 3,
+			Type:  bccsp.IdemixBytesAttribute,
+			Value: []byte("msg2"),
 		},
 		{
-			Type:  bccsp.IdemixBytesAttribute,
-			Value: []byte("msg3"),
+			Type:  bccsp.IdemixIntAttribute,
+			Value: 35,
 		},
 		{
 			Type:  bccsp.IdemixBytesAttribute,
@@ -83,5 +83,32 @@ func TestCredRequest(t *testing.T) {
 	assert.NoError(t, err)
 
 	err = credProto.Verify(sk, ipk, cred, idemixAttrs)
+	assert.NoError(t, err)
+
+	signer := &aries.Signer{
+		Curve: math.Curves[math.BLS12_381_BBS],
+	}
+
+	idemixAttrs = []bccsp.IdemixAttribute{
+		{
+			Type: bccsp.IdemixHiddenAttribute,
+		},
+		{
+			Type:  bccsp.IdemixBytesAttribute,
+			Value: []byte("msg2"),
+		},
+		{
+			Type:  bccsp.IdemixIntAttribute,
+			Value: 35,
+		},
+		{
+			Type: bccsp.IdemixHiddenAttribute,
+		},
+	}
+
+	sig, _, err := signer.Sign(cred, sk, nil, nil, ipk, idemixAttrs, []byte("silliness"), 0, 0, nil, bccsp.Standard, nil)
+	assert.NoError(t, err)
+
+	err = signer.Verify(ipk, sig, []byte("silliness"), idemixAttrs, 0, 0, nil, 0, bccsp.Basic, nil)
 	assert.NoError(t, err)
 }
