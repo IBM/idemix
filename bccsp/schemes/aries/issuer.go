@@ -15,9 +15,9 @@ import (
 )
 
 // TODO:
-// * expose blind sign with Zr so we can forge messages as we please
 // * expose curve from aries so we can use always that curve
 
+// UserSecretKeyIndex is the index of `sk` among the attributes
 const UserSecretKeyIndex = 0
 
 // IssuerPublicKey is the issuer public key

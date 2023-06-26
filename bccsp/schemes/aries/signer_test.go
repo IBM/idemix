@@ -106,7 +106,21 @@ func TestSigner(t *testing.T) {
 		},
 	}
 
-	sig, _, err := signer.Sign(cred, sk, nil, nil, ipk, idemixAttrs, []byte("silliness"), 0, 0, nil, bccsp.Standard, nil)
+	Nym, RNmy, err := userProto.MakeNym(sk, ipk)
+	assert.NoError(t, err)
+
+	commit := bbs12381g2pub.NewProverCommittingG1()
+	commit.Commit(ipk.(*aries.IssuerPublicKey).PKwG.H0)
+	commit.Commit(ipk.(*aries.IssuerPublicKey).PKwG.H[0])
+	commitNym := commit.Finish()
+
+	chal := math.Curves[math.BLS12_381_BBS].NewRandomZr(rand)
+
+	proof := commitNym.GenerateProof(chal, []*math.Zr{RNmy, sk})
+	err = proof.Verify([]*math.G1{ipk.(*aries.IssuerPublicKey).PKwG.H0, ipk.(*aries.IssuerPublicKey).PKwG.H[0]}, Nym, chal)
+	assert.NoError(t, err)
+
+	sig, _, err := signer.Sign(cred, sk, Nym, RNmy, ipk, idemixAttrs, []byte("silliness"), 0, 0, nil, bccsp.Standard, nil)
 	assert.NoError(t, err)
 
 	err = signer.Verify(ipk, sig, []byte("silliness"), idemixAttrs, 0, 0, nil, 0, bccsp.Basic, nil)

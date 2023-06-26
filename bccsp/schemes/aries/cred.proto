@@ -15,3 +15,10 @@ message Credential {
 	bytes cred = 1;
 	repeated bytes attrs = 2;
 }
+
+// Signature is a PoK of a BBS+ signature (a credential)
+message Signature {
+	bytes main_signature = 1;
+	bytes nym_commit = 2;
+	bytes nym_proof = 3;
+}
