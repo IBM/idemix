@@ -11,6 +11,7 @@ import (
 
 	"github.com/IBM/idemix/bccsp/handlers"
 	math "github.com/IBM/mathlib"
+	"github.com/hyperledger/aries-framework-go/component/kmscrypto/crypto/primitive/bbs12381g2pub"
 	"github.com/pkg/errors"
 )
 
@@ -45,11 +46,14 @@ func (u *User) MakeNym(sk *math.Zr, key handlers.IssuerPublicKey) (*math.G1, *ma
 	// Construct a commitment to the sk
 	// Nym = h_0^r \cdot h_1^sk
 
-	rnd := u.Curve.NewRandomZr(u.Rng)
+	rNym := u.Curve.NewRandomZr(u.Rng)
 
-	nym := ipk.PKwG.H0.Mul2(rnd, ipk.PKwG.H[UserSecretKeyIndex], sk)
+	cb := bbs12381g2pub.NewCommitmentBuilder(2)
+	cb.Add(ipk.PKwG.H0, rNym)
+	cb.Add(ipk.PKwG.H[UserSecretKeyIndex], sk)
+	nym := cb.Build()
 
-	return nym, rnd, nil
+	return nym, rNym, nil
 }
 
 func (u *User) NewNymFromBytes(raw []byte) (*math.G1, *math.Zr, error) {
