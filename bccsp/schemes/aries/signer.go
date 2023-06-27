@@ -136,13 +136,12 @@ func (s *Signer) Sign(
 	//////////////////
 
 	// Nym is h_0^{RNym} \cdot h_1^{sk}
-	// I also have to prove that sk in Nym is the same as the first attribute
-	// handle Nym
 	commit := bbs12381g2pub.NewProverCommittingG1()
 	commit.Commit(ipk.PKwG.H0)
 	commit.Commit(ipk.PKwG.H[UserSecretKeyIndex])
 	// we force the same blinding factor used in PokVC2 to prove equality.
-	// 1) commit.BlindingFactors[1] is the blinding factor for the sk in the Nym above
+	// 1) commit.BlindingFactors[1] is the blinding factor for the sk in the Nym
+	//    h_0^{RNym} \cdot h_1^{sk}
 	// 2) pokSignature.PokVC2.BlindingFactors[2] is the blinding factor for the sk in
 	//    D * (-r3~) + Q_1 * s~ + H_j1 * m~_j1 + ... + H_jU * m~_jU
 	//    index 0 is for D, index 1 is for s~ and index 2 is for the first message (which is the sk)
