@@ -30,14 +30,14 @@ func (c *Cred) Sign(key handlers.IssuerSecretKey, credentialRequest []byte, attr
 		return nil, errors.Errorf("invalid issuer public key, expected *IssuerPublicKey, got [%T]", key)
 	}
 
-	blindedMsg, err := bbs12381g2pub.ParseBlindedMessages(credentialRequest)
+	blindedMsg, err := ParseBlindedMessages(credentialRequest, c.Curve)
 	if err != nil {
 		return nil, fmt.Errorf("ParseBlindedMessages failed [%w]", err)
 	}
 
 	msgsZr := attributesToSignatureMessage(nil, attributes, c.Curve)
 
-	sig, err := c.Bls.BlindSign(msgsZr, len(attributes)+1, blindedMsg.C, isk.SK.FR.Bytes())
+	sig, err := BlindSign(msgsZr, len(attributes)+1, blindedMsg.C, isk.SK.FR.Bytes())
 	if err != nil {
 		return nil, fmt.Errorf("ParseBlindedMessages failed [%w]", err)
 	}
