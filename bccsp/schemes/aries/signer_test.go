@@ -17,18 +17,22 @@ import (
 )
 
 func TestSigner(t *testing.T) {
+	curve := math.Curves[math.BLS12_381_BBS]
+
 	credProto := &aries.Cred{
 		Bls:   bbs12381g2pub.New(),
-		Curve: math.Curves[math.BLS12_381_BBS],
+		Curve: curve,
 	}
 	issuerProto := &aries.Issuer{}
 
 	attrs := []string{
 		"attr1",
 		"attr2",
-		"attr3",
-		"attr4",
+		"eid",
+		"rh",
 	}
+
+	rhIndex, eidIndex := 3, 2
 
 	isk, err := issuerProto.NewKey(attrs)
 	assert.NoError(t, err)
@@ -37,14 +41,14 @@ func TestSigner(t *testing.T) {
 	ipk := isk.Public()
 
 	cr := &aries.CredRequest{
-		Curve: math.Curves[math.BLS12_381_BBS],
+		Curve: curve,
 	}
 
-	rand, err := math.Curves[math.BLS12_381_BBS].Rand()
+	rand, err := curve.Rand()
 	assert.NoError(t, err)
 
 	userProto := &aries.User{
-		Curve: math.Curves[math.BLS12_381_BBS],
+		Curve: curve,
 		Rng:   rand,
 	}
 
@@ -63,16 +67,16 @@ func TestSigner(t *testing.T) {
 			Value: []byte("msg1"),
 		},
 		{
-			Type:  bccsp.IdemixBytesAttribute,
-			Value: []byte("msg2"),
+			Type:  bccsp.IdemixIntAttribute,
+			Value: 34,
 		},
 		{
 			Type:  bccsp.IdemixIntAttribute,
 			Value: 35,
 		},
 		{
-			Type:  bccsp.IdemixBytesAttribute,
-			Value: []byte("msg4"),
+			Type:  bccsp.IdemixIntAttribute,
+			Value: 36,
 		},
 	}
 
@@ -86,20 +90,21 @@ func TestSigner(t *testing.T) {
 	assert.NoError(t, err)
 
 	signer := &aries.Signer{
-		Curve: math.Curves[math.BLS12_381_BBS],
+		Curve: curve,
+		Rng:   rand,
 	}
 
 	idemixAttrs = []bccsp.IdemixAttribute{
 		{
-			Type: bccsp.IdemixHiddenAttribute,
-		},
-		{
 			Type:  bccsp.IdemixBytesAttribute,
-			Value: []byte("msg2"),
+			Value: []byte("msg1"),
 		},
 		{
 			Type:  bccsp.IdemixIntAttribute,
-			Value: 35,
+			Value: 34,
+		},
+		{
+			Type: bccsp.IdemixHiddenAttribute,
 		},
 		{
 			Type: bccsp.IdemixHiddenAttribute,
@@ -109,20 +114,60 @@ func TestSigner(t *testing.T) {
 	Nym, RNmy, err := userProto.MakeNym(sk, ipk)
 	assert.NoError(t, err)
 
-	commit := bbs12381g2pub.NewProverCommittingG1()
-	commit.Commit(ipk.(*aries.IssuerPublicKey).PKwG.H0)
-	commit.Commit(ipk.(*aries.IssuerPublicKey).PKwG.H[0])
-	commitNym := commit.Finish()
+	// commit := bbs12381g2pub.NewProverCommittingG1()
+	// commit.Commit(ipk.(*aries.IssuerPublicKey).PKwG.H0)
+	// commit.Commit(ipk.(*aries.IssuerPublicKey).PKwG.H[0])
+	// commitNym := commit.Finish()
 
-	chal := math.Curves[math.BLS12_381_BBS].NewRandomZr(rand)
+	// chal := curve.NewRandomZr(rand)
 
-	proof := commitNym.GenerateProof(chal, []*math.Zr{RNmy, sk})
-	err = proof.Verify([]*math.G1{ipk.(*aries.IssuerPublicKey).PKwG.H0, ipk.(*aries.IssuerPublicKey).PKwG.H[0]}, Nym, chal)
+	// proof := commitNym.GenerateProof(chal, []*math.Zr{RNmy, sk})
+	// err = proof.Verify([]*math.G1{ipk.(*aries.IssuerPublicKey).PKwG.H0, ipk.(*aries.IssuerPublicKey).PKwG.H[0]}, Nym, chal)
+	// assert.NoError(t, err)
+
+	////////////////////
+	// base signature //
+	////////////////////
+
+	sig, _, err := signer.Sign(cred, sk, Nym, RNmy, ipk, idemixAttrs, []byte("silliness"), rhIndex, eidIndex, nil, bccsp.Standard, nil)
 	assert.NoError(t, err)
 
-	sig, _, err := signer.Sign(cred, sk, Nym, RNmy, ipk, idemixAttrs, []byte("silliness"), 0, 0, nil, bccsp.Standard, nil)
+	err = signer.Verify(ipk, sig, []byte("silliness"), idemixAttrs, rhIndex, eidIndex, nil, 0, bccsp.Basic, nil)
 	assert.NoError(t, err)
 
-	err = signer.Verify(ipk, sig, []byte("silliness"), idemixAttrs, 0, 0, nil, 0, bccsp.Basic, nil)
+	//////////////////////
+	// eidNym signature //
+	//////////////////////
+
+	sig, _, err = signer.Sign(cred, sk, Nym, RNmy, ipk, idemixAttrs, []byte("silliness"), rhIndex, eidIndex, nil, bccsp.EidNym, nil)
+	assert.NoError(t, err)
+
+	err = signer.Verify(ipk, sig, []byte("silliness"), idemixAttrs, rhIndex, eidIndex, nil, 0, bccsp.ExpectEidNym, nil)
+	assert.NoError(t, err)
+
+	//////////////////////
+	// eidNym signature // (nym supplied)
+	//////////////////////
+
+	rNym := curve.NewRandomZr(rand)
+
+	cb := bbs12381g2pub.NewCommitmentBuilder(2)
+	cb.Add(ipk.(*aries.IssuerPublicKey).PKwG.H0, rNym)
+	cb.Add(ipk.(*aries.IssuerPublicKey).PKwG.H[eidIndex+1], curve.NewZrFromInt(35))
+	nym := cb.Build()
+
+	meta := &bccsp.IdemixSignerMetadata{
+		EidNym: nym.Bytes(),
+		EidNymAuditData: &bccsp.AttrNymAuditData{
+			Nym:  nym,
+			Rand: rNym,
+			Attr: curve.NewZrFromInt(35),
+		},
+	}
+
+	sig, _, err = signer.Sign(cred, sk, Nym, RNmy, ipk, idemixAttrs, []byte("silliness"), rhIndex, eidIndex, nil, bccsp.EidNym, meta)
+	assert.NoError(t, err)
+
+	err = signer.Verify(ipk, sig, []byte("silliness"), idemixAttrs, rhIndex, eidIndex, nil, 0, bccsp.ExpectEidNym, nil)
 	assert.NoError(t, err)
 }
