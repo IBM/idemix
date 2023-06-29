@@ -19,6 +19,10 @@ message Credential {
 // Signature is a PoK of a BBS+ signature (a credential)
 message Signature {
 	bytes main_signature = 1;
-	bytes nym_commit = 2;
+	bytes nym = 2;
 	bytes nym_proof = 3;
+	bytes nym_eid = 4;
+	bytes nym_eid_proof = 5;
+	bytes nym_rh = 6;
+	bytes nym_rh_proof = 7;
 }
