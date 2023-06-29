@@ -170,4 +170,52 @@ func TestSigner(t *testing.T) {
 
 	err = signer.Verify(ipk, sig, []byte("silliness"), idemixAttrs, rhIndex, eidIndex, nil, 0, bccsp.ExpectEidNym, nil)
 	assert.NoError(t, err)
+
+	//////////////////////
+	// eidNym signature // (wrong nym supplied)
+	//////////////////////
+
+	rNym = curve.NewRandomZr(rand)
+
+	cb = bbs12381g2pub.NewCommitmentBuilder(2)
+	cb.Add(ipk.(*aries.IssuerPublicKey).PKwG.H0, rNym)
+	cb.Add(ipk.(*aries.IssuerPublicKey).PKwG.H[eidIndex+1], curve.NewZrFromInt(36))
+	nym = cb.Build()
+
+	meta = &bccsp.IdemixSignerMetadata{
+		EidNym: nym.Bytes(),
+		EidNymAuditData: &bccsp.AttrNymAuditData{
+			Nym:  nym,
+			Rand: rNym,
+			Attr: curve.NewZrFromInt(35),
+		},
+	}
+
+	_, _, err = signer.Sign(cred, sk, Nym, RNmy, ipk, idemixAttrs, []byte("silliness"), rhIndex, eidIndex, nil, bccsp.EidNym, meta)
+	assert.EqualError(t, err, "NymEid supplied in metadata cannot be recomputed")
+
+	//////////////////////
+	// eidNym signature // (but eid disclosed)
+	//////////////////////
+
+	idemixAttrs = []bccsp.IdemixAttribute{
+		{
+			Type:  bccsp.IdemixBytesAttribute,
+			Value: []byte("msg1"),
+		},
+		{
+			Type:  bccsp.IdemixIntAttribute,
+			Value: 34,
+		},
+		{
+			Type:  bccsp.IdemixIntAttribute,
+			Value: 35,
+		},
+		{
+			Type: bccsp.IdemixHiddenAttribute,
+		},
+	}
+
+	_, _, err = signer.Sign(cred, sk, Nym, RNmy, ipk, idemixAttrs, []byte("silliness"), rhIndex, eidIndex, nil, bccsp.EidNym, nil)
+	assert.EqualError(t, err, "error determining index for NymEid: attribute not found")
 }

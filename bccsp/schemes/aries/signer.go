@@ -428,7 +428,14 @@ func (s *Signer) Verify(
 	// Verify responses //
 	//////////////////////
 
-	// TODO: verify the supplied Nyms (check what we have to do)
+	// audit eid nym if data provided and verification requested
+	if (verifyEIDNym || verifyRHNym) && meta != nil {
+		// TODO: verify the supplied Nyms (check what we have to do)
+	}
+	// audit rh nym if data provided and verification requested
+	if verifyRHNym && meta != nil {
+		// TODO: verify the supplied Nyms (check what we have to do)
+	}
 
 	// verify that `sk` in the Nym is the same as the one in the signature
 	if !nymProof.Responses[AttributeIndexInNym].Equals(signatureProof.ProofVC2.Responses[IndexOffsetVC2Attributes+UserSecretKeyIndex]) {
