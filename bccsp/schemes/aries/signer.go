@@ -63,6 +63,8 @@ func (s *Signer) getChallenge(
 	pokSignature *bbs12381g2pub.PoKOfSignature,
 	Nym *math.G1,
 	commitNym *math.G1,
+	NymEid *math.G1,
+	commitNymEid *bbs12381g2pub.ProverCommittedG1,
 	msg []byte,
 	sigType bccsp.SignatureType,
 ) *math.Zr {
@@ -83,9 +85,15 @@ func (s *Signer) getChallenge(
 	// hash the main proof
 	challengeBytes = append(challengeBytes, pokSignature.ToBytes()...)
 
-	// hash the Nym commitment
+	// hash the Nym and t-value
 	challengeBytes = append(challengeBytes, Nym.Bytes()...)
 	challengeBytes = append(challengeBytes, commitNym.Bytes()...)
+
+	// hash the NymEid and t-value
+	if sigType == bccsp.EidNym || sigType == bccsp.EidNymRhNym {
+		challengeBytes = append(challengeBytes, NymEid.Bytes()...)
+		challengeBytes = append(challengeBytes, commitNymEid.Commitment.Bytes()...)
+	}
 
 	// hash the nonce
 	proofNonce := bbs12381g2pub.ParseProofNonce(msg)
@@ -100,6 +108,8 @@ func (s *Signer) packageProof(
 	Nym *math.G1,
 	proof *bbs12381g2pub.PoKOfSignatureProof,
 	proofNym *bbs12381g2pub.ProofG1,
+	NymEid *math.G1,
+	proofNymEid *bbs12381g2pub.ProofG1,
 ) ([]byte, error) {
 	payload := bbs12381g2pub.NewPoKPayload(len(attributes)+1, revealedAttributesIndex(attributes))
 
@@ -114,6 +124,11 @@ func (s *Signer) packageProof(
 		MainSignature: signatureProofBytes,
 		Nym:           Nym.Bytes(),
 		NymProof:      proofNym.ToBytes(),
+	}
+
+	if NymEid != nil {
+		sig.NymEid = NymEid.Bytes()
+		sig.NymEidProof = proofNymEid.ToBytes()
 	}
 
 	return proto.Marshal(sig)
@@ -197,8 +212,8 @@ func (s *Signer) indexOfAttributeInCommitment(
 	indexInPk int,
 	ipk *bbs12381g2pub.PublicKeyWithGenerators,
 ) (int, error) {
-	// this is the base used in the public key for the attribute; +1 because of the `sk`
-	base := ipk.H[indexInPk+1]
+	// this is the base used in the public key for the attribute; no +1 since we assume that the caller has already catered for that
+	base := ipk.H[indexInPk]
 
 	for i, h_i := range c.Bases {
 		if base.Equals(h_i) {
@@ -233,8 +248,6 @@ func (s *Signer) Sign(
 	_ = cri
 	// 2) rhIndex
 	_ = rhIndex
-	// 3) sigType
-	_ = sigType
 	// 4) metadata
 	_ = metadata
 
@@ -265,15 +278,11 @@ func (s *Signer) Sign(
 		return nil, nil, err
 	}
 
-	_ = commitNymEid
-	_ = RNymEid
-	_ = NymEid
-
 	///////////////////////
 	// Get the challenge //
 	///////////////////////
 
-	proofChallenge := s.getChallenge(pokSignature, Nym, commitNym.Commitment, msg, sigType)
+	proofChallenge := s.getChallenge(pokSignature, Nym, commitNym.Commitment, NymEid, commitNymEid, msg, sigType)
 
 	////////////////////////
 	// Generate responses //
@@ -283,15 +292,22 @@ func (s *Signer) Sign(
 	proof := pokSignature.GenerateProof(proofChallenge)
 	// 2) Nym
 	proofNym := commitNym.GenerateProof(proofChallenge, []*math.Zr{RNym, sk})
+	// 3) NymEid
+	var proofNymEid *bbs12381g2pub.ProofG1
+	if commitNymEid != nil {
+		proofNymEid = commitNymEid.GenerateProof(proofChallenge, []*math.Zr{RNymEid, messagesFr[eidIndex].FR})
+	}
 
 	///////////////////
 	// Package proof //
 	///////////////////
 
-	sigBytes, err := s.packageProof(attributes, Nym, proof, proofNym)
+	sigBytes, err := s.packageProof(attributes, Nym, proof, proofNym, NymEid, proofNymEid)
 	if err != nil {
 		return nil, nil, err
 	}
+
+	// TODO: return metadata with various Nyms
 
 	return sigBytes, nil, nil
 }
@@ -331,6 +347,9 @@ func (s *Signer) Verify(
 		return fmt.Errorf("proto.Unmarshal error: %w", err)
 	}
 
+	verifyRHNym := (verType == bccsp.BestEffort && sig.NymRh != nil) || verType == bccsp.ExpectEidNymRhNym
+	verifyEIDNym := (verType == bccsp.BestEffort && sig.NymEid != nil) || verType == bccsp.ExpectEidNym || verType == bccsp.ExpectEidNymRhNym || verifyRHNym
+
 	messages := attributesToSignatureMessage(nil, attributes, s.Curve)
 
 	payload, err := bbs12381g2pub.ParsePoKPayload(sig.MainSignature)
@@ -362,12 +381,23 @@ func (s *Signer) Verify(
 		return fmt.Errorf("parse nym proof: %w", err)
 	}
 
+	var nymEidProof *bbs12381g2pub.ProofG1
+	var NymEid *math.G1
+	if verifyEIDNym {
+		nymEidProof, err = bbs12381g2pub.ParseProofG1(sig.NymEidProof)
+		if err != nil {
+			return fmt.Errorf("parse nym proof: %w", err)
+		}
+
+		NymEid, err = s.Curve.NewG1FromBytes(sig.NymEid)
+		if err != nil {
+			return fmt.Errorf("parse nym commit: %w", err)
+		}
+	}
+
 	////////////////////////
 	// Hash the challenge //
 	////////////////////////
-
-	verifyRHNym := (verType == bccsp.BestEffort && sig.NymRh != nil) || verType == bccsp.ExpectEidNymRhNym
-	verifyEIDNym := (verType == bccsp.BestEffort && sig.NymEid != nil) || verType == bccsp.ExpectEidNym || verType == bccsp.ExpectEidNymRhNym || verifyRHNym
 
 	// hash the signature type first
 	var challengeBytes []byte
@@ -380,8 +410,14 @@ func (s *Signer) Verify(
 	}
 
 	challengeBytes = append(challengeBytes, signatureProof.GetBytesForChallenge(revealedMessages, ipk.PKwG)...)
+
 	challengeBytes = append(challengeBytes, sig.Nym...)
 	challengeBytes = append(challengeBytes, nymProof.Commitment.Bytes()...)
+
+	if verifyEIDNym {
+		challengeBytes = append(challengeBytes, sig.NymEid...)
+		challengeBytes = append(challengeBytes, nymEidProof.Commitment.Bytes()...)
+	}
 
 	proofNonce := bbs12381g2pub.ParseProofNonce(msg)
 	proofNonceBytes := proofNonce.ToBytes()
@@ -392,6 +428,8 @@ func (s *Signer) Verify(
 	// Verify responses //
 	//////////////////////
 
+	// TODO: verify the supplied Nyms (check what we have to do)
+
 	// verify that `sk` in the Nym is the same as the one in the signature
 	if !nymProof.Responses[AttributeIndexInNym].Equals(signatureProof.ProofVC2.Responses[IndexOffsetVC2Attributes+UserSecretKeyIndex]) {
 		return fmt.Errorf("failed equality proof")
@@ -401,6 +439,17 @@ func (s *Signer) Verify(
 	err = nymProof.Verify([]*math.G1{ipk.PKwG.H0, ipk.PKwG.H[UserSecretKeyIndex]}, Nym, proofChallenge)
 	if err != nil {
 		return fmt.Errorf("verify nym proof: %w", err)
+	}
+
+	if verifyEIDNym {
+		// TODO: verify that eid in the NymEid is the same as the one in the signature
+		// TODO: I need to know the offset into signatureProof.ProofVC2.Responses
+
+		// verify the proof of knowledge of the Nym
+		err = nymEidProof.Verify([]*math.G1{ipk.PKwG.H0, ipk.PKwG.H[eidIndex+1]}, NymEid, proofChallenge)
+		if err != nil {
+			return fmt.Errorf("verify nym eid proof: %w", err)
+		}
 	}
 
 	// verify the proof of knowledge of the signature
