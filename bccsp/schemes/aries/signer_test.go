@@ -139,8 +139,13 @@ func TestSigner(t *testing.T) {
 	// eidNym signature //
 	//////////////////////
 
-	sig, _, err = signer.Sign(cred, sk, Nym, RNmy, ipk, idemixAttrs, []byte("silliness"), rhIndex, eidIndex, nil, bccsp.EidNym, nil)
+	sig, m, err := signer.Sign(cred, sk, Nym, RNmy, ipk, idemixAttrs, []byte("silliness"), rhIndex, eidIndex, nil, bccsp.EidNym, nil)
 	assert.NoError(t, err)
+
+	cb := bbs12381g2pub.NewCommitmentBuilder(2)
+	cb.Add(ipk.(*aries.IssuerPublicKey).PKwG.H0, m.EidNymAuditData.Rand)
+	cb.Add(ipk.(*aries.IssuerPublicKey).PKwG.H[eidIndex+1], m.EidNymAuditData.Attr)
+	assert.True(t, cb.Build().Equals(m.EidNymAuditData.Nym))
 
 	err = signer.Verify(ipk, sig, []byte("silliness"), idemixAttrs, rhIndex, eidIndex, nil, 0, bccsp.ExpectEidNym, nil)
 	assert.NoError(t, err)
@@ -151,7 +156,7 @@ func TestSigner(t *testing.T) {
 
 	rNym := curve.NewRandomZr(rand)
 
-	cb := bbs12381g2pub.NewCommitmentBuilder(2)
+	cb = bbs12381g2pub.NewCommitmentBuilder(2)
 	cb.Add(ipk.(*aries.IssuerPublicKey).PKwG.H0, rNym)
 	cb.Add(ipk.(*aries.IssuerPublicKey).PKwG.H[eidIndex+1], curve.NewZrFromInt(35))
 	nym := cb.Build()
@@ -198,8 +203,18 @@ func TestSigner(t *testing.T) {
 	// NymRh signature //
 	/////////////////////
 
-	sig, _, err = signer.Sign(cred, sk, Nym, RNmy, ipk, idemixAttrs, []byte("tome"), rhIndex, eidIndex, nil, bccsp.EidNymRhNym, nil)
+	sig, m, err = signer.Sign(cred, sk, Nym, RNmy, ipk, idemixAttrs, []byte("tome"), rhIndex, eidIndex, nil, bccsp.EidNymRhNym, nil)
 	assert.NoError(t, err)
+
+	cb = bbs12381g2pub.NewCommitmentBuilder(2)
+	cb.Add(ipk.(*aries.IssuerPublicKey).PKwG.H0, m.EidNymAuditData.Rand)
+	cb.Add(ipk.(*aries.IssuerPublicKey).PKwG.H[eidIndex+1], m.EidNymAuditData.Attr)
+	assert.True(t, cb.Build().Equals(m.EidNymAuditData.Nym))
+
+	cb = bbs12381g2pub.NewCommitmentBuilder(2)
+	cb.Add(ipk.(*aries.IssuerPublicKey).PKwG.H0, m.RhNymAuditData.Rand)
+	cb.Add(ipk.(*aries.IssuerPublicKey).PKwG.H[rhIndex+1], m.RhNymAuditData.Attr)
+	assert.True(t, cb.Build().Equals(m.RhNymAuditData.Nym))
 
 	err = signer.Verify(ipk, sig, []byte("tome"), idemixAttrs, rhIndex, eidIndex, nil, 0, bccsp.ExpectEidNymRhNym, nil)
 	assert.NoError(t, err)
