@@ -194,6 +194,85 @@ func TestSigner(t *testing.T) {
 	_, _, err = signer.Sign(cred, sk, Nym, RNmy, ipk, idemixAttrs, []byte("silliness"), rhIndex, eidIndex, nil, bccsp.EidNym, meta)
 	assert.EqualError(t, err, "nym supplied in metadata cannot be recomputed")
 
+	/////////////////////
+	// NymRh signature //
+	/////////////////////
+
+	sig, _, err = signer.Sign(cred, sk, Nym, RNmy, ipk, idemixAttrs, []byte("tome"), rhIndex, eidIndex, nil, bccsp.EidNymRhNym, nil)
+	assert.NoError(t, err)
+
+	err = signer.Verify(ipk, sig, []byte("tome"), idemixAttrs, rhIndex, eidIndex, nil, 0, bccsp.ExpectEidNymRhNym, nil)
+	assert.NoError(t, err)
+
+	/////////////////////
+	// NymRh signature // (nym supplied)
+	/////////////////////
+
+	rNym = curve.NewRandomZr(rand)
+
+	cb = bbs12381g2pub.NewCommitmentBuilder(2)
+	cb.Add(ipk.(*aries.IssuerPublicKey).PKwG.H0, rNym)
+	cb.Add(ipk.(*aries.IssuerPublicKey).PKwG.H[rhIndex+1], curve.NewZrFromInt(36))
+	nym = cb.Build()
+
+	meta = &bccsp.IdemixSignerMetadata{
+		RhNym: nym.Bytes(),
+		RhNymAuditData: &bccsp.AttrNymAuditData{
+			Nym:  nym,
+			Rand: rNym,
+			Attr: curve.NewZrFromInt(36),
+		},
+	}
+
+	sig, _, err = signer.Sign(cred, sk, Nym, RNmy, ipk, idemixAttrs, []byte("silliness"), rhIndex, eidIndex, nil, bccsp.EidNymRhNym, meta)
+	assert.NoError(t, err)
+
+	err = signer.Verify(ipk, sig, []byte("silliness"), idemixAttrs, rhIndex, eidIndex, nil, 0, bccsp.ExpectEidNymRhNym, nil)
+	assert.NoError(t, err)
+
+	/////////////////////
+	// NymRh signature // (wrong nym supplied)
+	/////////////////////
+
+	rNym = curve.NewRandomZr(rand)
+
+	cb = bbs12381g2pub.NewCommitmentBuilder(2)
+	cb.Add(ipk.(*aries.IssuerPublicKey).PKwG.H0, rNym)
+	cb.Add(ipk.(*aries.IssuerPublicKey).PKwG.H[rhIndex+1], curve.NewZrFromInt(37))
+	nym = cb.Build()
+
+	meta = &bccsp.IdemixSignerMetadata{
+		RhNym: nym.Bytes(),
+		RhNymAuditData: &bccsp.AttrNymAuditData{
+			Nym:  nym,
+			Rand: rNym,
+			Attr: curve.NewZrFromInt(36),
+		},
+	}
+
+	_, _, err = signer.Sign(cred, sk, Nym, RNmy, ipk, idemixAttrs, []byte("silliness"), rhIndex, eidIndex, nil, bccsp.EidNymRhNym, meta)
+	assert.EqualError(t, err, "nym supplied in metadata cannot be recomputed")
+
+	//////////////////////
+	// eidNym signature // (eidNym missing but expected)
+	//////////////////////
+
+	sig, _, err = signer.Sign(cred, sk, Nym, RNmy, ipk, idemixAttrs, []byte("silliness"), rhIndex, eidIndex, nil, bccsp.Standard, nil)
+	assert.NoError(t, err)
+
+	err = signer.Verify(ipk, sig, []byte("silliness"), idemixAttrs, rhIndex, eidIndex, nil, 0, bccsp.ExpectEidNym, nil)
+	assert.EqualError(t, err, "parse nym proof: invalid size of G1 signature proof")
+
+	/////////////////////
+	// rhNym signature // (rhNym missing but expected)
+	/////////////////////
+
+	sig, _, err = signer.Sign(cred, sk, Nym, RNmy, ipk, idemixAttrs, []byte("silliness"), rhIndex, eidIndex, nil, bccsp.EidNym, nil)
+	assert.NoError(t, err)
+
+	err = signer.Verify(ipk, sig, []byte("silliness"), idemixAttrs, rhIndex, eidIndex, nil, 0, bccsp.ExpectEidNymRhNym, nil)
+	assert.EqualError(t, err, "parse rh proof: invalid size of G1 signature proof")
+
 	//////////////////////
 	// eidNym signature // (but eid disclosed)
 	//////////////////////
@@ -217,5 +296,30 @@ func TestSigner(t *testing.T) {
 	}
 
 	_, _, err = signer.Sign(cred, sk, Nym, RNmy, ipk, idemixAttrs, []byte("silliness"), rhIndex, eidIndex, nil, bccsp.EidNym, nil)
+	assert.EqualError(t, err, "error determining index for attribute: attribute not found")
+
+	/////////////////////
+	// rhNym signature // (but rh disclosed)
+	/////////////////////
+
+	idemixAttrs = []bccsp.IdemixAttribute{
+		{
+			Type:  bccsp.IdemixBytesAttribute,
+			Value: []byte("msg1"),
+		},
+		{
+			Type:  bccsp.IdemixIntAttribute,
+			Value: 34,
+		},
+		{
+			Type: bccsp.IdemixHiddenAttribute,
+		},
+		{
+			Type:  bccsp.IdemixIntAttribute,
+			Value: 36,
+		},
+	}
+
+	_, _, err = signer.Sign(cred, sk, Nym, RNmy, ipk, idemixAttrs, []byte("silliness"), rhIndex, eidIndex, nil, bccsp.EidNymRhNym, nil)
 	assert.EqualError(t, err, "error determining index for attribute: attribute not found")
 }
