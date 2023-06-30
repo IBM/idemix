@@ -375,9 +375,33 @@ func (s *Signer) Sign(
 		return nil, nil, err
 	}
 
-	// TODO: return metadata with various Nyms
+	var m *bccsp.IdemixSignerMetadata
+	if sigType == bccsp.EidNym {
+		m = &bccsp.IdemixSignerMetadata{
+			EidNymAuditData: &bccsp.AttrNymAuditData{
+				Nym:  nymEid.comm,
+				Rand: nymEid.r,
+				Attr: messagesFr[eidIndex].FR,
+			},
+		}
+	}
 
-	return sigBytes, nil, nil
+	if sigType == bccsp.EidNymRhNym {
+		m = &bccsp.IdemixSignerMetadata{
+			EidNymAuditData: &bccsp.AttrNymAuditData{
+				Nym:  nymEid.comm,
+				Rand: nymEid.r,
+				Attr: messagesFr[eidIndex].FR,
+			},
+			RhNymAuditData: &bccsp.AttrNymAuditData{
+				Nym:  rhNym.comm,
+				Rand: rhNym.r,
+				Attr: messagesFr[rhIndex].FR,
+			},
+		}
+	}
+
+	return sigBytes, m, nil
 }
 
 // Verify verifies an idemix signature.
