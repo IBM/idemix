@@ -23,6 +23,8 @@ message Signature {
 	bytes nym_proof = 3;
 	bytes nym_eid = 4;
 	bytes nym_eid_proof = 5;
-	bytes nym_rh = 6;
-	bytes nym_rh_proof = 7;
+	int32 nym_eid_idx = 6;
+	bytes nym_rh = 7;
+	bytes nym_rh_proof = 8;
+	int32 nym_rh_idx = 9;
 }

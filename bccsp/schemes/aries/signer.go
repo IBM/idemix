@@ -63,8 +63,7 @@ func (s *Signer) getChallenge(
 	pokSignature *bbs12381g2pub.PoKOfSignature,
 	Nym *math.G1,
 	commitNym *math.G1,
-	NymEid *math.G1,
-	commitNymEid *bbs12381g2pub.ProverCommittedG1,
+	nymEid *attributeCommitment,
 	msg []byte,
 	sigType bccsp.SignatureType,
 ) *math.Zr {
@@ -91,8 +90,8 @@ func (s *Signer) getChallenge(
 
 	// hash the NymEid and t-value
 	if sigType == bccsp.EidNym || sigType == bccsp.EidNymRhNym {
-		challengeBytes = append(challengeBytes, NymEid.Bytes()...)
-		challengeBytes = append(challengeBytes, commitNymEid.Commitment.Bytes()...)
+		challengeBytes = append(challengeBytes, nymEid.comm.Bytes()...)
+		challengeBytes = append(challengeBytes, nymEid.proof.Commitment.Bytes()...)
 	}
 
 	// hash the nonce
@@ -108,7 +107,7 @@ func (s *Signer) packageProof(
 	Nym *math.G1,
 	proof *bbs12381g2pub.PoKOfSignatureProof,
 	proofNym *bbs12381g2pub.ProofG1,
-	NymEid *math.G1,
+	nymEid *attributeCommitment,
 	proofNymEid *bbs12381g2pub.ProofG1,
 ) ([]byte, error) {
 	payload := bbs12381g2pub.NewPoKPayload(len(attributes)+1, revealedAttributesIndex(attributes))
@@ -126,9 +125,10 @@ func (s *Signer) packageProof(
 		NymProof:      proofNym.ToBytes(),
 	}
 
-	if NymEid != nil {
-		sig.NymEid = NymEid.Bytes()
+	if nymEid != nil {
+		sig.NymEid = nymEid.comm.Bytes()
 		sig.NymEidProof = proofNymEid.ToBytes()
+		sig.NymEidIdx = int32(nymEid.index)
 	}
 
 	return proto.Marshal(sig)
@@ -155,6 +155,13 @@ func (s *Signer) getCommitNym(
 	return commit.Finish()
 }
 
+type attributeCommitment struct {
+	index int
+	proof *bbs12381g2pub.ProverCommittedG1
+	comm  *math.G1
+	r     *math.Zr
+}
+
 func (s *Signer) getCommitNymEid(
 	ipk *IssuerPublicKey,
 	pokSignature *bbs12381g2pub.PoKOfSignature,
@@ -162,10 +169,10 @@ func (s *Signer) getCommitNymEid(
 	idxInBases int,
 	sigType bccsp.SignatureType,
 	metadata *bccsp.IdemixSignerMetadata,
-) (*bbs12381g2pub.ProverCommittedG1, *math.Zr, *math.G1, error) {
+) (*attributeCommitment, error) {
 
 	if sigType == bccsp.Standard {
-		return nil, nil, nil, nil
+		return nil, nil
 	}
 
 	var NymEid *math.G1
@@ -173,7 +180,7 @@ func (s *Signer) getCommitNymEid(
 	cb := bbs12381g2pub.NewCommitmentBuilder(2)
 	if metadata != nil && metadata.EidNymAuditData != nil {
 		if !eid.Equals(metadata.EidNymAuditData.Attr) {
-			return nil, nil, nil, fmt.Errorf("eid supplied in metadata differs from signed")
+			return nil, fmt.Errorf("eid supplied in metadata differs from signed")
 		}
 
 		RNymEid = metadata.EidNymAuditData.Rand
@@ -183,7 +190,7 @@ func (s *Signer) getCommitNymEid(
 		NymEid = cb.Build()
 
 		if !metadata.EidNymAuditData.Nym.Equals(NymEid) {
-			return nil, nil, nil, fmt.Errorf("NymEid supplied in metadata cannot be recomputed")
+			return nil, fmt.Errorf("NymEid supplied in metadata cannot be recomputed")
 		}
 	} else {
 		RNymEid = s.Curve.NewRandomZr(s.Rng)
@@ -195,7 +202,7 @@ func (s *Signer) getCommitNymEid(
 
 	eidIndexInCommitment, err := s.indexOfAttributeInCommitment(pokSignature.PokVC2, idxInBases, ipk.PKwG)
 	if err != nil {
-		return nil, nil, nil, fmt.Errorf("error determining index for NymEid: %w", err)
+		return nil, fmt.Errorf("error determining index for NymEid: %w", err)
 	}
 
 	commit := bbs12381g2pub.NewProverCommittingG1()
@@ -204,7 +211,12 @@ func (s *Signer) getCommitNymEid(
 	// we force the same blinding factor used in PokVC2 to prove equality.
 	commit.BlindingFactors[AttributeIndexInNym] = pokSignature.PokVC2.BlindingFactors[eidIndexInCommitment]
 
-	return commit.Finish(), RNymEid, NymEid, nil
+	return &attributeCommitment{
+		index: eidIndexInCommitment,
+		proof: commit.Finish(),
+		comm:  NymEid,
+		r:     RNymEid,
+	}, nil
 }
 
 func (s *Signer) indexOfAttributeInCommitment(
@@ -273,7 +285,7 @@ func (s *Signer) Sign(
 	// increment the index to cater for the first hidden index for `sk`
 	eidIndex++
 
-	commitNymEid, RNymEid, NymEid, err := s.getCommitNymEid(ipk, pokSignature, messagesFr[eidIndex].FR, eidIndex, sigType, metadata)
+	nymEid, err := s.getCommitNymEid(ipk, pokSignature, messagesFr[eidIndex].FR, eidIndex, sigType, metadata)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -282,7 +294,7 @@ func (s *Signer) Sign(
 	// Get the challenge //
 	///////////////////////
 
-	proofChallenge := s.getChallenge(pokSignature, Nym, commitNym.Commitment, NymEid, commitNymEid, msg, sigType)
+	proofChallenge := s.getChallenge(pokSignature, Nym, commitNym.Commitment, nymEid, msg, sigType)
 
 	////////////////////////
 	// Generate responses //
@@ -294,15 +306,15 @@ func (s *Signer) Sign(
 	proofNym := commitNym.GenerateProof(proofChallenge, []*math.Zr{RNym, sk})
 	// 3) NymEid
 	var proofNymEid *bbs12381g2pub.ProofG1
-	if commitNymEid != nil {
-		proofNymEid = commitNymEid.GenerateProof(proofChallenge, []*math.Zr{RNymEid, messagesFr[eidIndex].FR})
+	if nymEid != nil {
+		proofNymEid = nymEid.proof.GenerateProof(proofChallenge, []*math.Zr{nymEid.r, messagesFr[eidIndex].FR})
 	}
 
 	///////////////////
 	// Package proof //
 	///////////////////
 
-	sigBytes, err := s.packageProof(attributes, Nym, proof, proofNym, NymEid, proofNymEid)
+	sigBytes, err := s.packageProof(attributes, Nym, proof, proofNym, nymEid, proofNymEid)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -439,7 +451,7 @@ func (s *Signer) Verify(
 
 	// verify that `sk` in the Nym is the same as the one in the signature
 	if !nymProof.Responses[AttributeIndexInNym].Equals(signatureProof.ProofVC2.Responses[IndexOffsetVC2Attributes+UserSecretKeyIndex]) {
-		return fmt.Errorf("failed equality proof")
+		return fmt.Errorf("failed equality proof for sk")
 	}
 
 	// verify the proof of knowledge of the Nym
@@ -449,8 +461,10 @@ func (s *Signer) Verify(
 	}
 
 	if verifyEIDNym {
-		// TODO: verify that eid in the NymEid is the same as the one in the signature
-		// TODO: I need to know the offset into signatureProof.ProofVC2.Responses
+		// verify that eid in the NymEid is the same as the one in the signature
+		if !nymEidProof.Responses[AttributeIndexInNym].Equals(signatureProof.ProofVC2.Responses[sig.NymEidIdx]) {
+			return fmt.Errorf("failed equality proof for eid")
+		}
 
 		// verify the proof of knowledge of the Nym
 		err = nymEidProof.Verify([]*math.G1{ipk.PKwG.H0, ipk.PKwG.H[eidIndex+1]}, NymEid, proofChallenge)
