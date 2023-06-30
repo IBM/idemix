@@ -63,7 +63,8 @@ func (s *Signer) getChallengeHash(
 	pokSignature *bbs12381g2pub.PoKOfSignature,
 	Nym *math.G1,
 	commitNym *math.G1,
-	nymEid *attributeCommitment,
+	eid *attributeCommitment,
+	rh *attributeCommitment,
 	msg []byte,
 	sigType bccsp.SignatureType,
 ) *math.Zr {
@@ -90,8 +91,14 @@ func (s *Signer) getChallengeHash(
 
 	// hash the NymEid and t-value
 	if sigType == bccsp.EidNym || sigType == bccsp.EidNymRhNym {
-		challengeBytes = append(challengeBytes, nymEid.comm.Bytes()...)
-		challengeBytes = append(challengeBytes, nymEid.proof.Commitment.Bytes()...)
+		challengeBytes = append(challengeBytes, eid.comm.Bytes()...)
+		challengeBytes = append(challengeBytes, eid.proof.Commitment.Bytes()...)
+	}
+
+	// hash the NymEid and t-value
+	if sigType == bccsp.EidNymRhNym {
+		challengeBytes = append(challengeBytes, rh.comm.Bytes()...)
+		challengeBytes = append(challengeBytes, rh.proof.Commitment.Bytes()...)
 	}
 
 	// hash the nonce
@@ -109,6 +116,8 @@ func (s *Signer) packageProof(
 	proofNym *bbs12381g2pub.ProofG1,
 	nymEid *attributeCommitment,
 	proofNymEid *bbs12381g2pub.ProofG1,
+	rhNym *attributeCommitment,
+	proofRhNym *bbs12381g2pub.ProofG1,
 ) ([]byte, error) {
 	payload := bbs12381g2pub.NewPoKPayload(len(attributes)+1, revealedAttributesIndex(attributes))
 
@@ -129,6 +138,12 @@ func (s *Signer) packageProof(
 		sig.NymEid = nymEid.comm.Bytes()
 		sig.NymEidProof = proofNymEid.ToBytes()
 		sig.NymEidIdx = int32(nymEid.index)
+	}
+
+	if rhNym != nil {
+		sig.NymRh = rhNym.comm.Bytes()
+		sig.NymRhProof = proofRhNym.ToBytes()
+		sig.NymRhIdx = int32(rhNym.index)
 	}
 
 	return proto.Marshal(sig)
@@ -160,6 +175,18 @@ type attributeCommitment struct {
 	proof *bbs12381g2pub.ProverCommittedG1
 	comm  *math.G1
 	r     *math.Zr
+}
+
+func safeRhNymAuditDataAccess(metadata *bccsp.IdemixSignerMetadata) *bccsp.AttrNymAuditData {
+	if metadata == nil {
+		return nil
+	}
+
+	return metadata.RhNymAuditData
+}
+
+func rhAttrCommitmentEnabled(sigType bccsp.SignatureType) bool {
+	return sigType == bccsp.EidNymRhNym
 }
 
 func safeNymEidAuditDataAccess(metadata *bccsp.IdemixSignerMetadata) *bccsp.AttrNymAuditData {
@@ -274,10 +301,6 @@ func (s *Signer) Sign(
 	// TODO:
 	// 1) revocation
 	_ = cri
-	// 2) rhIndex
-	_ = rhIndex
-	// 4) metadata
-	_ = metadata
 
 	//////////////////////////////////
 	// Generate main PoK (1st move) //
@@ -306,11 +329,23 @@ func (s *Signer) Sign(
 		return nil, nil, err
 	}
 
+	///////////////////
+	// Handle RhNym //
+	///////////////////
+
+	// increment the index to cater for the first hidden index for `sk`
+	rhIndex++
+
+	rhNym, err := s.getAttributeCommitment(ipk, pokSignature, messagesFr[rhIndex].FR, rhIndex, rhAttrCommitmentEnabled(sigType), safeRhNymAuditDataAccess(metadata))
+	if err != nil {
+		return nil, nil, err
+	}
+
 	///////////////////////
 	// Get the challenge //
 	///////////////////////
 
-	proofChallenge := s.getChallengeHash(pokSignature, Nym, commitNym.Commitment, nymEid, msg, sigType)
+	proofChallenge := s.getChallengeHash(pokSignature, Nym, commitNym.Commitment, nymEid, rhNym, msg, sigType)
 
 	////////////////////////
 	// Generate responses //
@@ -325,12 +360,17 @@ func (s *Signer) Sign(
 	if nymEid != nil {
 		proofNymEid = nymEid.proof.GenerateProof(proofChallenge, []*math.Zr{nymEid.r, messagesFr[eidIndex].FR})
 	}
+	// 4) RhNym
+	var proofRhNym *bbs12381g2pub.ProofG1
+	if rhNym != nil {
+		proofRhNym = rhNym.proof.GenerateProof(proofChallenge, []*math.Zr{rhNym.r, messagesFr[rhIndex].FR})
+	}
 
 	///////////////////
 	// Package proof //
 	///////////////////
 
-	sigBytes, err := s.packageProof(attributes, Nym, proof, proofNym, nymEid, proofNymEid)
+	sigBytes, err := s.packageProof(attributes, Nym, proof, proofNym, nymEid, proofNymEid, rhNym, proofRhNym)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -360,10 +400,6 @@ func (s *Signer) Verify(
 	// 1) revocation
 	_ = revocationPublicKey
 	_ = epoch
-	// 2) rhIndex
-	_ = rhIndex
-	// 3) eidIndex
-	_ = eidIndex
 	// 4) verType
 	_ = verType
 	// 5) meta
@@ -423,6 +459,20 @@ func (s *Signer) Verify(
 		}
 	}
 
+	var rhNymProof *bbs12381g2pub.ProofG1
+	var RhNym *math.G1
+	if verifyRHNym {
+		rhNymProof, err = bbs12381g2pub.ParseProofG1(sig.NymRhProof)
+		if err != nil {
+			return fmt.Errorf("parse rh proof: %w", err)
+		}
+
+		RhNym, err = s.Curve.NewG1FromBytes(sig.NymRh)
+		if err != nil {
+			return fmt.Errorf("parse rh commit: %w", err)
+		}
+	}
+
 	////////////////////////
 	// Hash the challenge //
 	////////////////////////
@@ -445,6 +495,11 @@ func (s *Signer) Verify(
 	if verifyEIDNym {
 		challengeBytes = append(challengeBytes, sig.NymEid...)
 		challengeBytes = append(challengeBytes, nymEidProof.Commitment.Bytes()...)
+	}
+
+	if verifyRHNym {
+		challengeBytes = append(challengeBytes, sig.NymRh...)
+		challengeBytes = append(challengeBytes, rhNymProof.Commitment.Bytes()...)
 	}
 
 	proofNonce := bbs12381g2pub.ParseProofNonce(msg)
@@ -484,6 +539,19 @@ func (s *Signer) Verify(
 
 		// verify the proof of knowledge of the Nym
 		err = nymEidProof.Verify([]*math.G1{ipk.PKwG.H0, ipk.PKwG.H[eidIndex+1]}, NymEid, proofChallenge)
+		if err != nil {
+			return fmt.Errorf("verify nym eid proof: %w", err)
+		}
+	}
+
+	if verifyRHNym {
+		// verify that rh in the RhNym is the same as the one in the signature
+		if !rhNymProof.Responses[AttributeIndexInNym].Equals(signatureProof.ProofVC2.Responses[sig.NymRhIdx]) {
+			return fmt.Errorf("failed equality proof for rh")
+		}
+
+		// verify the proof of knowledge of the Rh
+		err = rhNymProof.Verify([]*math.G1{ipk.PKwG.H0, ipk.PKwG.H[rhIndex+1]}, RhNym, proofChallenge)
 		if err != nil {
 			return fmt.Errorf("verify nym eid proof: %w", err)
 		}
