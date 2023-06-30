@@ -59,7 +59,7 @@ func (s *Signer) getPoKOfSignature(
 	return pokOS, messagesFr, nil
 }
 
-func (s *Signer) getChallenge(
+func (s *Signer) getChallengeHash(
 	pokSignature *bbs12381g2pub.PoKOfSignature,
 	Nym *math.G1,
 	commitNym *math.G1,
@@ -162,60 +162,75 @@ type attributeCommitment struct {
 	r     *math.Zr
 }
 
-func (s *Signer) getCommitNymEid(
+func safeNymEidAuditDataAccess(metadata *bccsp.IdemixSignerMetadata) *bccsp.AttrNymAuditData {
+	if metadata == nil {
+		return nil
+	}
+
+	return metadata.EidNymAuditData
+}
+
+func nymEidAttrCommitmentEnabled(sigType bccsp.SignatureType) bool {
+	return sigType != bccsp.Standard
+}
+
+func (s *Signer) getAttributeCommitment(
 	ipk *IssuerPublicKey,
 	pokSignature *bbs12381g2pub.PoKOfSignature,
-	eid *math.Zr,
+	attr *math.Zr,
 	idxInBases int,
-	sigType bccsp.SignatureType,
-	metadata *bccsp.IdemixSignerMetadata,
+	enabled bool,
+	auditData *bccsp.AttrNymAuditData,
 ) (*attributeCommitment, error) {
 
-	if sigType == bccsp.Standard {
+	if !enabled {
 		return nil, nil
 	}
 
-	var NymEid *math.G1
-	var RNymEid *math.Zr
+	var Nym *math.G1
+	var R *math.Zr
+
 	cb := bbs12381g2pub.NewCommitmentBuilder(2)
-	if metadata != nil && metadata.EidNymAuditData != nil {
-		if !eid.Equals(metadata.EidNymAuditData.Attr) {
-			return nil, fmt.Errorf("eid supplied in metadata differs from signed")
+
+	if auditData != nil {
+		if !attr.Equals(auditData.Attr) {
+			return nil, fmt.Errorf("attribute supplied in metadata differs from signed")
 		}
 
-		RNymEid = metadata.EidNymAuditData.Rand
+		R = auditData.Rand
 
-		cb.Add(ipk.PKwG.H0, RNymEid)
-		cb.Add(ipk.PKwG.H[idxInBases], metadata.EidNymAuditData.Attr)
-		NymEid = cb.Build()
+		cb.Add(ipk.PKwG.H0, R)
+		cb.Add(ipk.PKwG.H[idxInBases], auditData.Attr)
+		Nym = cb.Build()
 
-		if !metadata.EidNymAuditData.Nym.Equals(NymEid) {
-			return nil, fmt.Errorf("NymEid supplied in metadata cannot be recomputed")
+		if !auditData.Nym.Equals(Nym) {
+			return nil, fmt.Errorf("nym supplied in metadata cannot be recomputed")
 		}
 	} else {
-		RNymEid = s.Curve.NewRandomZr(s.Rng)
+		R = s.Curve.NewRandomZr(s.Rng)
 
-		cb.Add(ipk.PKwG.H0, RNymEid)
-		cb.Add(ipk.PKwG.H[idxInBases], eid)
-		NymEid = cb.Build()
+		cb.Add(ipk.PKwG.H0, R)
+		cb.Add(ipk.PKwG.H[idxInBases], attr)
+		Nym = cb.Build()
 	}
 
-	eidIndexInCommitment, err := s.indexOfAttributeInCommitment(pokSignature.PokVC2, idxInBases, ipk.PKwG)
+	attrIndexInCommitment, err := s.indexOfAttributeInCommitment(pokSignature.PokVC2, idxInBases, ipk.PKwG)
 	if err != nil {
-		return nil, fmt.Errorf("error determining index for NymEid: %w", err)
+		return nil, fmt.Errorf("error determining index for attribute: %w", err)
 	}
 
 	commit := bbs12381g2pub.NewProverCommittingG1()
 	commit.Commit(ipk.PKwG.H0)
 	commit.Commit(ipk.PKwG.H[idxInBases])
+
 	// we force the same blinding factor used in PokVC2 to prove equality.
-	commit.BlindingFactors[AttributeIndexInNym] = pokSignature.PokVC2.BlindingFactors[eidIndexInCommitment]
+	commit.BlindingFactors[AttributeIndexInNym] = pokSignature.PokVC2.BlindingFactors[attrIndexInCommitment]
 
 	return &attributeCommitment{
-		index: eidIndexInCommitment,
+		index: attrIndexInCommitment,
 		proof: commit.Finish(),
-		comm:  NymEid,
-		r:     RNymEid,
+		comm:  Nym,
+		r:     R,
 	}, nil
 }
 
@@ -224,6 +239,7 @@ func (s *Signer) indexOfAttributeInCommitment(
 	indexInPk int,
 	ipk *bbs12381g2pub.PublicKeyWithGenerators,
 ) (int, error) {
+
 	// this is the base used in the public key for the attribute; no +1 since we assume that the caller has already catered for that
 	base := ipk.H[indexInPk]
 
@@ -285,7 +301,7 @@ func (s *Signer) Sign(
 	// increment the index to cater for the first hidden index for `sk`
 	eidIndex++
 
-	nymEid, err := s.getCommitNymEid(ipk, pokSignature, messagesFr[eidIndex].FR, eidIndex, sigType, metadata)
+	nymEid, err := s.getAttributeCommitment(ipk, pokSignature, messagesFr[eidIndex].FR, eidIndex, nymEidAttrCommitmentEnabled(sigType), safeNymEidAuditDataAccess(metadata))
 	if err != nil {
 		return nil, nil, err
 	}
@@ -294,7 +310,7 @@ func (s *Signer) Sign(
 	// Get the challenge //
 	///////////////////////
 
-	proofChallenge := s.getChallenge(pokSignature, Nym, commitNym.Commitment, nymEid, msg, sigType)
+	proofChallenge := s.getChallengeHash(pokSignature, Nym, commitNym.Commitment, nymEid, msg, sigType)
 
 	////////////////////////
 	// Generate responses //

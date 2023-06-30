@@ -192,7 +192,7 @@ func TestSigner(t *testing.T) {
 	}
 
 	_, _, err = signer.Sign(cred, sk, Nym, RNmy, ipk, idemixAttrs, []byte("silliness"), rhIndex, eidIndex, nil, bccsp.EidNym, meta)
-	assert.EqualError(t, err, "NymEid supplied in metadata cannot be recomputed")
+	assert.EqualError(t, err, "nym supplied in metadata cannot be recomputed")
 
 	//////////////////////
 	// eidNym signature // (but eid disclosed)
@@ -217,5 +217,5 @@ func TestSigner(t *testing.T) {
 	}
 
 	_, _, err = signer.Sign(cred, sk, Nym, RNmy, ipk, idemixAttrs, []byte("silliness"), rhIndex, eidIndex, nil, bccsp.EidNym, nil)
-	assert.EqualError(t, err, "error determining index for NymEid: attribute not found")
+	assert.EqualError(t, err, "error determining index for attribute: attribute not found")
 }
