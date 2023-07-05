@@ -45,4 +45,4 @@ require (
 
 replace github.com/onsi/gomega => github.com/onsi/gomega v1.9.0
 
-replace github.com/hyperledger/aries-framework-go/component/kmscrypto => /home/aso/w/Projects/OBC/Workspace/src/github.com/hyperledger/aries-framework-go/component/kmscrypto
+replace github.com/hyperledger/aries-framework-go/component/kmscrypto => github.ibm.com/research-ssi/aries-framework-go/component/kmscrypto v0.0.0-20230630075813-b7e4c6a2156c
