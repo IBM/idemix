@@ -345,6 +345,8 @@ func (s *Signer) Sign(
 	// Get the challenge //
 	///////////////////////
 
+	// TODO: add revocation in the hash
+
 	proofChallenge := s.getChallengeHash(pokSignature, Nym, commitNym.Commitment, nymEid, rhNym, msg, sigType)
 
 	////////////////////////
@@ -594,6 +596,7 @@ func (s *Signer) AuditNymEid(
 	RNymEid *math.Zr,
 	verType bccsp.AuditVerificationType,
 ) error {
+	// TODO
 	return nil
 }
 
@@ -606,5 +609,6 @@ func (s *Signer) AuditNymRh(
 	RNymRh *math.Zr,
 	verType bccsp.AuditVerificationType,
 ) error {
+	// TODO
 	return nil
 }
