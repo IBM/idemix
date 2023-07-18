@@ -71,8 +71,8 @@ func TestSigner(t *testing.T) {
 			Value: 34,
 		},
 		{
-			Type:  bccsp.IdemixIntAttribute,
-			Value: 35,
+			Type:  bccsp.IdemixBytesAttribute,
+			Value: []byte("nymeid"),
 		},
 		{
 			Type:  bccsp.IdemixIntAttribute,
@@ -158,7 +158,7 @@ func TestSigner(t *testing.T) {
 
 	cb = bbs12381g2pub.NewCommitmentBuilder(2)
 	cb.Add(ipk.(*aries.IssuerPublicKey).PKwG.H0, rNym)
-	cb.Add(ipk.(*aries.IssuerPublicKey).PKwG.H[eidIndex+1], curve.NewZrFromInt(35))
+	cb.Add(ipk.(*aries.IssuerPublicKey).PKwG.H[eidIndex+1], bbs12381g2pub.FrFromOKM([]byte("nymeid")))
 	nym := cb.Build()
 
 	meta := &bccsp.IdemixSignerMetadata{
@@ -166,7 +166,7 @@ func TestSigner(t *testing.T) {
 		EidNymAuditData: &bccsp.AttrNymAuditData{
 			Nym:  nym,
 			Rand: rNym,
-			Attr: curve.NewZrFromInt(35),
+			Attr: bbs12381g2pub.FrFromOKM([]byte("nymeid")),
 		},
 	}
 
@@ -195,12 +195,24 @@ func TestSigner(t *testing.T) {
 		rhIndex, eidIndex, nil, 0, bccsp.ExpectEidNym, meta)
 	assert.EqualError(t, err, "signature invalid: nym eid validation failed, does not match regenerated nym eid")
 
+	// audit with AuditNymEid - it should succeed with the right nym and randomness
+	err = signer.AuditNymEid(ipk, eidIndex, sig, "nymeid", rNym, bccsp.AuditExpectSignature)
+	assert.NoError(t, err)
+
+	// audit with AuditNymEid - it should fail with the wrong nym
+	err = signer.AuditNymEid(ipk, eidIndex, sig, "not so much the nymeid", rNym, bccsp.AuditExpectSignature)
+	assert.EqualError(t, err, "eid nym does not match")
+
+	// audit with AuditNymEid - it should fail with the wrong randomness
+	err = signer.AuditNymEid(ipk, eidIndex, sig, "nymeid", curve.NewRandomZr(rand), bccsp.AuditExpectSignature)
+	assert.EqualError(t, err, "eid nym does not match")
+
 	meta = &bccsp.IdemixSignerMetadata{
 		EidNym: nym.Bytes(),
 		EidNymAuditData: &bccsp.AttrNymAuditData{
 			Nym:  curve.GenG1.Mul(curve.NewRandomZr(rand)),
 			Rand: rNym,
-			Attr: curve.NewZrFromInt(35),
+			Attr: bbs12381g2pub.FrFromOKM([]byte("nymeid")),
 		},
 	}
 
@@ -217,7 +229,7 @@ func TestSigner(t *testing.T) {
 
 	cb = bbs12381g2pub.NewCommitmentBuilder(2)
 	cb.Add(ipk.(*aries.IssuerPublicKey).PKwG.H0, rNym)
-	cb.Add(ipk.(*aries.IssuerPublicKey).PKwG.H[eidIndex+1], curve.NewZrFromInt(36))
+	cb.Add(ipk.(*aries.IssuerPublicKey).PKwG.H[eidIndex+1], curve.HashToZr([]byte("Not the nymeid")))
 	nym = cb.Build()
 
 	meta = &bccsp.IdemixSignerMetadata{
@@ -225,7 +237,7 @@ func TestSigner(t *testing.T) {
 		EidNymAuditData: &bccsp.AttrNymAuditData{
 			Nym:  nym,
 			Rand: rNym,
-			Attr: curve.NewZrFromInt(35),
+			Attr: bbs12381g2pub.FrFromOKM([]byte("nymeid")),
 		},
 	}
 
@@ -291,7 +303,7 @@ func TestSigner(t *testing.T) {
 		},
 	}
 
-	// supply correct metadata for verification
+	// supply wrong metadata for verification
 	err = signer.Verify(ipk, sig, []byte("silliness"), idemixAttrs, rhIndex, eidIndex, nil, 0, bccsp.ExpectEidNymRhNym, meta)
 	assert.EqualError(t, err, "signature invalid: nym rh validation failed, does not match regenerated nym rh")
 
@@ -304,7 +316,7 @@ func TestSigner(t *testing.T) {
 		},
 	}
 
-	// supply correct metadata for verification
+	// supply wrong metadata for verification
 	err = signer.Verify(ipk, sig, []byte("silliness"), idemixAttrs, rhIndex, eidIndex, nil, 0, bccsp.ExpectEidNymRhNym, meta)
 	assert.EqualError(t, err, "signature invalid: nym rh validation failed, does not match metadata")
 
@@ -365,8 +377,8 @@ func TestSigner(t *testing.T) {
 			Value: 34,
 		},
 		{
-			Type:  bccsp.IdemixIntAttribute,
-			Value: 35,
+			Type:  bccsp.IdemixBytesAttribute,
+			Value: []byte("nymeid"),
 		},
 		{
 			Type: bccsp.IdemixHiddenAttribute,
