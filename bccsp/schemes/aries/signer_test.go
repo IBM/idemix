@@ -176,6 +176,39 @@ func TestSigner(t *testing.T) {
 	err = signer.Verify(ipk, sig, []byte("silliness"), idemixAttrs, rhIndex, eidIndex, nil, 0, bccsp.ExpectEidNym, nil)
 	assert.NoError(t, err)
 
+	// supply correct metadata for verification
+	err = signer.Verify(ipk, sig, []byte("silliness"), idemixAttrs,
+		rhIndex, eidIndex, nil, 0, bccsp.ExpectEidNym, meta)
+	assert.NoError(t, err)
+
+	meta = &bccsp.IdemixSignerMetadata{
+		EidNym: nym.Bytes(),
+		EidNymAuditData: &bccsp.AttrNymAuditData{
+			Nym:  nym,
+			Rand: rNym,
+			Attr: curve.NewZrFromInt(36),
+		},
+	}
+
+	// supply wrong metadata for verification
+	err = signer.Verify(ipk, sig, []byte("silliness"), idemixAttrs,
+		rhIndex, eidIndex, nil, 0, bccsp.ExpectEidNym, meta)
+	assert.EqualError(t, err, "signature invalid: nym eid validation failed, does not match regenerated nym eid")
+
+	meta = &bccsp.IdemixSignerMetadata{
+		EidNym: nym.Bytes(),
+		EidNymAuditData: &bccsp.AttrNymAuditData{
+			Nym:  curve.GenG1.Mul(curve.NewRandomZr(rand)),
+			Rand: rNym,
+			Attr: curve.NewZrFromInt(35),
+		},
+	}
+
+	// supply wrong metadata for verification
+	err = signer.Verify(ipk, sig, []byte("silliness"), idemixAttrs,
+		rhIndex, eidIndex, nil, 0, bccsp.ExpectEidNym, meta)
+	assert.EqualError(t, err, "signature invalid: nym eid validation failed, does not match metadata")
+
 	//////////////////////
 	// eidNym signature // (wrong nym supplied)
 	//////////////////////
@@ -244,6 +277,36 @@ func TestSigner(t *testing.T) {
 
 	err = signer.Verify(ipk, sig, []byte("silliness"), idemixAttrs, rhIndex, eidIndex, nil, 0, bccsp.ExpectEidNymRhNym, nil)
 	assert.NoError(t, err)
+
+	// supply correct metadata for verification
+	err = signer.Verify(ipk, sig, []byte("silliness"), idemixAttrs, rhIndex, eidIndex, nil, 0, bccsp.ExpectEidNymRhNym, meta)
+	assert.NoError(t, err)
+
+	meta = &bccsp.IdemixSignerMetadata{
+		RhNym: nym.Bytes(),
+		RhNymAuditData: &bccsp.AttrNymAuditData{
+			Nym:  nym,
+			Rand: rNym,
+			Attr: curve.NewZrFromInt(37),
+		},
+	}
+
+	// supply correct metadata for verification
+	err = signer.Verify(ipk, sig, []byte("silliness"), idemixAttrs, rhIndex, eidIndex, nil, 0, bccsp.ExpectEidNymRhNym, meta)
+	assert.EqualError(t, err, "signature invalid: nym rh validation failed, does not match regenerated nym rh")
+
+	meta = &bccsp.IdemixSignerMetadata{
+		RhNym: nym.Bytes(),
+		RhNymAuditData: &bccsp.AttrNymAuditData{
+			Nym:  curve.GenG1.Mul(curve.NewRandomZr(rand)),
+			Rand: rNym,
+			Attr: curve.NewZrFromInt(36),
+		},
+	}
+
+	// supply correct metadata for verification
+	err = signer.Verify(ipk, sig, []byte("silliness"), idemixAttrs, rhIndex, eidIndex, nil, 0, bccsp.ExpectEidNymRhNym, meta)
+	assert.EqualError(t, err, "signature invalid: nym rh validation failed, does not match metadata")
 
 	/////////////////////
 	// NymRh signature // (wrong nym supplied)

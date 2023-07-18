@@ -426,10 +426,6 @@ func (s *Signer) Verify(
 	// 1) revocation
 	_ = revocationPublicKey
 	_ = epoch
-	// 4) verType
-	_ = verType
-	// 5) meta
-	_ = meta
 
 	sig := &Signature{}
 	err := proto.Unmarshal(signature, sig)
@@ -539,11 +535,37 @@ func (s *Signer) Verify(
 
 	// audit eid nym if data provided and verification requested
 	if (verifyEIDNym || verifyRHNym) && meta != nil {
-		// TODO: verify the supplied Nyms (check what we have to do)
+		if meta.EidNymAuditData != nil {
+			ne := ipk.PKwG.H[eidIndex+1].Mul2(
+				meta.EidNymAuditData.Attr,
+				ipk.PKwG.H0, meta.EidNymAuditData.Rand)
+
+			if !ne.Equals(NymEid) {
+				return fmt.Errorf("signature invalid: nym eid validation failed, does not match regenerated nym eid")
+			}
+
+			if meta.EidNymAuditData.Nym != nil && !NymEid.Equals(meta.EidNymAuditData.Nym) {
+				return fmt.Errorf("signature invalid: nym eid validation failed, does not match metadata")
+			}
+		}
 	}
+
 	// audit rh nym if data provided and verification requested
 	if verifyRHNym && meta != nil {
-		// TODO: verify the supplied Nyms (check what we have to do)
+		if meta.RhNymAuditData != nil {
+			rn := ipk.PKwG.H[rhIndex+1].Mul2(
+				meta.RhNymAuditData.Attr,
+				ipk.PKwG.H0, meta.RhNymAuditData.Rand,
+			)
+
+			if !rn.Equals(RhNym) {
+				return fmt.Errorf("signature invalid: nym rh validation failed, does not match regenerated nym rh")
+			}
+
+			if meta.RhNymAuditData.Nym != nil && !RhNym.Equals(meta.RhNymAuditData.Nym) {
+				return fmt.Errorf("signature invalid: nym rh validation failed, does not match metadata")
+			}
+		}
 	}
 
 	// verify that `sk` in the Nym is the same as the one in the signature
