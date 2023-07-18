@@ -221,6 +221,30 @@ func TestSigner(t *testing.T) {
 	err = signer.AuditNymEid(ipk, eidIndex, sig, "nymeid", curve.NewRandomZr(rand), bccsp.AuditExpectSignature)
 	assert.EqualError(t, err, "eid nym does not match")
 
+	// audit with AuditNymEid - it should succeed with the right nym and randomness
+	err = signer.AuditNymEid(ipk, eidIndex, nym.Bytes(), "nymeid", rNym, bccsp.AuditExpectEidNym)
+	assert.NoError(t, err)
+
+	// audit with AuditNymEid - it should fail with the wrong nym
+	err = signer.AuditNymEid(ipk, eidIndex, nym.Bytes(), "not so much the nymeid", rNym, bccsp.AuditExpectEidNym)
+	assert.EqualError(t, err, "eid nym does not match")
+
+	// audit with AuditNymEid - it should fail with the wrong randomness
+	err = signer.AuditNymEid(ipk, eidIndex, nym.Bytes(), "nymeid", curve.NewRandomZr(rand), bccsp.AuditExpectEidNym)
+	assert.EqualError(t, err, "eid nym does not match")
+
+	// audit with AuditNymEid - it should succeed with the right nym and randomness
+	err = signer.AuditNymEid(ipk, eidIndex, nym.Bytes(), "nymeid", rNym, bccsp.AuditExpectEidNymRhNym)
+	assert.NoError(t, err)
+
+	// audit with AuditNymEid - it should fail with the wrong nym
+	err = signer.AuditNymEid(ipk, eidIndex, nym.Bytes(), "not so much the nymeid", rNym, bccsp.AuditExpectEidNymRhNym)
+	assert.EqualError(t, err, "eid nym does not match")
+
+	// audit with AuditNymEid - it should fail with the wrong randomness
+	err = signer.AuditNymEid(ipk, eidIndex, nym.Bytes(), "nymeid", curve.NewRandomZr(rand), bccsp.AuditExpectEidNymRhNym)
+	assert.EqualError(t, err, "eid nym does not match")
+
 	//////////////////////
 	// eidNym signature // (wrong nym supplied)
 	//////////////////////

@@ -623,15 +623,27 @@ func (s *Signer) AuditNymEid(
 		return fmt.Errorf("invalid issuer public key, expected *IssuerPublicKey, got [%T]", ipk)
 	}
 
-	sig := &Signature{}
-	err := proto.Unmarshal(signature, sig)
-	if err != nil {
-		return fmt.Errorf("proto.Unmarshal error: %w", err)
-	}
+	var NymEid *math.G1
+	switch verType {
+	case bccsp.AuditExpectSignature:
+		sig := &Signature{}
+		err := proto.Unmarshal(signature, sig)
+		if err != nil {
+			return fmt.Errorf("proto.Unmarshal error: %w", err)
+		}
 
-	NymEid, err := s.Curve.NewG1FromBytes(sig.NymEid)
-	if err != nil {
-		return fmt.Errorf("parse nym commit: %w", err)
+		NymEid, err = s.Curve.NewG1FromBytes(sig.NymEid)
+		if err != nil {
+			return fmt.Errorf("parse nym commit: %w", err)
+		}
+	case bccsp.AuditExpectEidNymRhNym:
+		fallthrough
+	case bccsp.AuditExpectEidNym:
+		var err error
+		NymEid, err = s.Curve.NewG1FromBytes(signature)
+		if err != nil {
+			return fmt.Errorf("parse nym commit: %w", err)
+		}
 	}
 
 	eidAttr := bbs12381g2pub.FrFromOKM([]byte(enrollmentID))
