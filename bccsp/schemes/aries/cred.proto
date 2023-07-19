@@ -28,3 +28,20 @@ message Signature {
 	bytes nym_rh_proof = 8;
 	int32 nym_rh_idx = 9;
 }
+
+message CredentialRevocationInformation {
+	// epoch contains the epoch (time window) in which this CRI is valid
+	int64 epoch = 1;
+
+	// epoch_pk is the public key that is used by the revocation authority in this epoch
+	bytes epoch_pk = 2;
+
+	// epoch_pk_sig is a signature on the EpochPK valid under the revocation authority's long term key
+	bytes epoch_pk_sig = 3;
+
+	// revocation_alg denotes which revocation algorithm is used
+	int32 revocation_alg = 4;
+
+	// revocation_data contains data specific to the revocation algorithm used
+	bytes revocation_data = 5;
+}
