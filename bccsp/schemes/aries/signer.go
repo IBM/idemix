@@ -118,6 +118,7 @@ func (s *Signer) packageProof(
 	proofNymEid *bbs12381g2pub.ProofG1,
 	rhNym *attributeCommitment,
 	proofRhNym *bbs12381g2pub.ProofG1,
+	cri *CredentialRevocationInformation,
 ) ([]byte, error) {
 	payload := bbs12381g2pub.NewPoKPayload(len(attributes)+1, revealedAttributesIndex(attributes))
 
@@ -129,9 +130,15 @@ func (s *Signer) packageProof(
 	signatureProofBytes := append(payloadBytes, proof.ToBytes()...)
 
 	sig := &Signature{
-		MainSignature: signatureProofBytes,
-		Nym:           Nym.Bytes(),
-		NymProof:      proofNym.ToBytes(),
+		MainSignature:     signatureProofBytes,
+		Nym:               Nym.Bytes(),
+		NymProof:          proofNym.ToBytes(),
+		RevocationEpochPk: cri.EpochPk,
+		RevocationPkSig:   cri.EpochPkSig,
+		Epoch:             cri.Epoch,
+		NonRevocationProof: &NonRevocationProof{
+			RevocationAlg: cri.RevocationAlg,
+		},
 	}
 
 	if nymEid != nil {
@@ -289,18 +296,45 @@ func (s *Signer) Sign(
 	attributes []bccsp.IdemixAttribute,
 	msg []byte,
 	rhIndex, eidIndex int,
-	cri []byte,
+	criRaw []byte,
 	sigType bccsp.SignatureType,
 	metadata *bccsp.IdemixSignerMetadata,
 ) ([]byte, *bccsp.IdemixSignerMetadata, error) {
+
+	///////////////
+	// arg check //
+	///////////////
+
+	if sigType == bccsp.EidNym &&
+		attributes[eidIndex].Type != bccsp.IdemixHiddenAttribute {
+		return nil, nil, fmt.Errorf("cannot create idemix signature: disclosure of enrollment ID requested for EidNym signature")
+	}
+
+	if sigType == bccsp.EidNymRhNym &&
+		(attributes[eidIndex].Type != bccsp.IdemixHiddenAttribute ||
+			attributes[rhIndex].Type != bccsp.IdemixHiddenAttribute) {
+		return nil, nil, fmt.Errorf("cannot create idemix signature: disclosure of enrollment ID or RH requested for EidNymRhNym signature")
+	}
+
 	ipk, ok := key.(*IssuerPublicKey)
 	if !ok {
 		return nil, nil, fmt.Errorf("invalid issuer public key, expected *IssuerPublicKey, got [%T]", ipk)
 	}
 
-	// TODO:
-	// 1) revocation
-	_ = cri
+	///////////////////////
+	// handle revocation //
+	///////////////////////
+
+	cri := &CredentialRevocationInformation{}
+	err := proto.Unmarshal(criRaw, cri)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed unmarshalling credential revocation information [%w]", err)
+	}
+
+	// if we add any other revocation algorithm, we need to change the challenge hash
+	if cri.RevocationAlg != int32(bccsp.AlgNoRevocation) {
+		return nil, nil, fmt.Errorf("Unsupported revocation algorithm")
+	}
 
 	//////////////////////////////////
 	// Generate main PoK (1st move) //
@@ -345,8 +379,6 @@ func (s *Signer) Sign(
 	// Get the challenge //
 	///////////////////////
 
-	// TODO: add revocation in the hash
-
 	proofChallenge := s.getChallengeHash(pokSignature, Nym, commitNym.Commitment, nymEid, rhNym, msg, sigType)
 
 	////////////////////////
@@ -372,7 +404,7 @@ func (s *Signer) Sign(
 	// Package proof //
 	///////////////////
 
-	sigBytes, err := s.packageProof(attributes, Nym, proof, proofNym, nymEid, proofNymEid, rhNym, proofRhNym)
+	sigBytes, err := s.packageProof(attributes, Nym, proof, proofNym, nymEid, proofNymEid, rhNym, proofRhNym, cri)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -412,8 +444,8 @@ func (s *Signer) Verify(
 	signature, msg []byte,
 	attributes []bccsp.IdemixAttribute,
 	rhIndex, eidIndex int,
-	revocationPublicKey *ecdsa.PublicKey,
-	epoch int,
+	_ *ecdsa.PublicKey,
+	_ int,
 	verType bccsp.VerificationType,
 	meta *bccsp.IdemixSignerMetadata,
 ) error {
@@ -422,15 +454,37 @@ func (s *Signer) Verify(
 		return fmt.Errorf("invalid issuer public key, expected *IssuerPublicKey, got [%T]", ipk)
 	}
 
-	// TODO:
-	// 1) revocation
-	_ = revocationPublicKey
-	_ = epoch
-
 	sig := &Signature{}
 	err := proto.Unmarshal(signature, sig)
 	if err != nil {
 		return fmt.Errorf("proto.Unmarshal error: %w", err)
+	}
+
+	if sig.NonRevocationProof.RevocationAlg != int32(bccsp.AlgNoRevocation) {
+		return fmt.Errorf("unsupported revocation algorithm")
+	}
+
+	if verType == bccsp.ExpectEidNym &&
+		(len(sig.NymEid) == 0 || len(sig.NymEidProof) == 0) {
+		return fmt.Errorf("no EidNym provided but ExpectEidNym required")
+	}
+
+	if verType == bccsp.ExpectEidNymRhNym {
+		if len(sig.NymEid) == 0 || len(sig.NymEidProof) == 0 {
+			return fmt.Errorf("no EidNym provided but ExpectEidNymRhNym required")
+		}
+		if len(sig.NymRh) == 0 || len(sig.NymRhProof) == 0 {
+			return fmt.Errorf("no RhNym provided but ExpectEidNymRhNym required")
+		}
+	}
+
+	if verType == bccsp.ExpectStandard {
+		if len(sig.NymEid) != 0 || len(sig.NymEidProof) != 0 {
+			return fmt.Errorf("RhNym available but ExpectStandard required")
+		}
+		if len(sig.NymRh) != 0 || len(sig.NymRhProof) != 0 {
+			return fmt.Errorf("EidNym available but ExpectStandard required")
+		}
 	}
 
 	verifyRHNym := (verType == bccsp.BestEffort && sig.NymRh != nil) || verType == bccsp.ExpectEidNymRhNym

@@ -27,6 +27,18 @@ message Signature {
 	bytes nym_rh = 7;
 	bytes nym_rh_proof = 8;
 	int32 nym_rh_idx = 9;
+
+	bytes revocation_epoch_pk = 10;
+	bytes revocation_pk_sig = 11;
+	int64 epoch = 12;
+
+	NonRevocationProof non_revocation_proof = 13;
+}
+
+// NonRevocationProof contains proof that the credential is not revoked
+message NonRevocationProof {
+	int32 revocation_alg = 1;
+	bytes non_revocation_proof = 2;
 }
 
 message CredentialRevocationInformation {
