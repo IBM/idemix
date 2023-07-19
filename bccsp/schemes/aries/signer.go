@@ -644,6 +644,8 @@ func (s *Signer) AuditNymEid(
 		if err != nil {
 			return fmt.Errorf("parse nym commit: %w", err)
 		}
+	default:
+		return fmt.Errorf("invalid audit type [%d]", verType)
 	}
 
 	eidAttr := bbs12381g2pub.FrFromOKM([]byte(enrollmentID))
@@ -671,15 +673,27 @@ func (s *Signer) AuditNymRh(
 		return fmt.Errorf("invalid issuer public key, expected *IssuerPublicKey, got [%T]", ipk)
 	}
 
-	sig := &Signature{}
-	err := proto.Unmarshal(signature, sig)
-	if err != nil {
-		return fmt.Errorf("proto.Unmarshal error: %w", err)
-	}
+	var RhNym *math.G1
+	switch verType {
+	case bccsp.AuditExpectSignature:
+		sig := &Signature{}
+		err := proto.Unmarshal(signature, sig)
+		if err != nil {
+			return fmt.Errorf("proto.Unmarshal error: %w", err)
+		}
 
-	RhNym, err := s.Curve.NewG1FromBytes(sig.NymRh)
-	if err != nil {
-		return fmt.Errorf("parse rh commit: %w", err)
+		RhNym, err = s.Curve.NewG1FromBytes(sig.NymRh)
+		if err != nil {
+			return fmt.Errorf("parse rh commit: %w", err)
+		}
+	case bccsp.AuditExpectEidNymRhNym:
+		var err error
+		RhNym, err = s.Curve.NewG1FromBytes(signature)
+		if err != nil {
+			return fmt.Errorf("parse nym commit: %w", err)
+		}
+	default:
+		return fmt.Errorf("invalid audit type [%d]", verType)
 	}
 
 	rhAttr := bbs12381g2pub.FrFromOKM([]byte(revocationHandle))

@@ -356,6 +356,22 @@ func TestSigner(t *testing.T) {
 	err = signer.AuditNymRh(ipk, rhIndex, sig, "nymrh", curve.NewRandomZr(rand), bccsp.AuditExpectSignature)
 	assert.EqualError(t, err, "rh nym does not match")
 
+	// audit with AuditNymEid - it should succeed with the right nym and randomness
+	err = signer.AuditNymRh(ipk, rhIndex, nym.Bytes(), "nymrh", rNym, bccsp.AuditExpectEidNymRhNym)
+	assert.NoError(t, err)
+
+	// audit with AuditNymEid - it should fail with the wrong nym
+	err = signer.AuditNymRh(ipk, rhIndex, nym.Bytes(), "not so much the nymrh", rNym, bccsp.AuditExpectEidNymRhNym)
+	assert.EqualError(t, err, "rh nym does not match")
+
+	// audit with AuditNymEid - it should fail with the wrong randomness
+	err = signer.AuditNymRh(ipk, rhIndex, nym.Bytes(), "nymrh", curve.NewRandomZr(rand), bccsp.AuditExpectEidNymRhNym)
+	assert.EqualError(t, err, "rh nym does not match")
+
+	// audit with AuditNymEid - it should fail with AuditExpectEidNym
+	err = signer.AuditNymRh(ipk, rhIndex, nym.Bytes(), "nymrh", rNym, bccsp.AuditExpectEidNym)
+	assert.EqualError(t, err, "invalid audit type [1]")
+
 	/////////////////////
 	// NymRh signature // (wrong nym supplied)
 	/////////////////////
