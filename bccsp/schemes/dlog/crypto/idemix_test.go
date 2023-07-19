@@ -16,6 +16,7 @@ import (
 
 	opts "github.com/IBM/idemix/bccsp/schemes"
 	"github.com/IBM/idemix/bccsp/schemes/dlog/crypto/translator/amcl"
+	weakbb "github.com/IBM/idemix/bccsp/schemes/weak-bb"
 )
 
 type testEnv struct {
@@ -76,16 +77,16 @@ func testIdemix(t *testing.T, curve *math.Curve, tr Translator) {
 	// Test KeyGen
 	rng, err := curve.Rand()
 	require.NoError(t, err)
-	wbbsk, wbbpk := wbbKeyGen(curve, rng)
+	wbbsk, wbbpk := weakbb.WbbKeyGen(curve, rng)
 
 	// Get random message
 	testmsg := curve.NewRandomZr(rng)
 
 	// Test Signing
-	wbbsig := wbbSign(curve, wbbsk, testmsg)
+	wbbsig := weakbb.WbbSign(curve, wbbsk, testmsg)
 
 	// Test Verification
-	err = wbbVerify(curve, wbbpk, wbbsig, testmsg)
+	err = weakbb.WbbVerify(curve, wbbpk, wbbsig, testmsg)
 	require.NoError(t, err)
 
 	// Test idemix functionality
