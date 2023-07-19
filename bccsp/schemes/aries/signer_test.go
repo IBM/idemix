@@ -403,7 +403,7 @@ func TestSigner(t *testing.T) {
 	assert.NoError(t, err)
 
 	err = signer.Verify(ipk, sig, []byte("silliness"), idemixAttrs, rhIndex, eidIndex, nil, 0, bccsp.ExpectEidNym, nil)
-	assert.EqualError(t, err, "parse nym proof: invalid size of G1 signature proof")
+	assert.EqualError(t, err, "no EidNym provided but ExpectEidNym required")
 
 	/////////////////////
 	// rhNym signature // (rhNym missing but expected)
@@ -413,7 +413,7 @@ func TestSigner(t *testing.T) {
 	assert.NoError(t, err)
 
 	err = signer.Verify(ipk, sig, []byte("silliness"), idemixAttrs, rhIndex, eidIndex, nil, 0, bccsp.ExpectEidNymRhNym, nil)
-	assert.EqualError(t, err, "parse rh proof: invalid size of G1 signature proof")
+	assert.EqualError(t, err, "no RhNym provided but ExpectEidNymRhNym required")
 
 	//////////////////////
 	// eidNym signature // (but eid disclosed)
@@ -438,7 +438,7 @@ func TestSigner(t *testing.T) {
 	}
 
 	_, _, err = signer.Sign(cred, sk, Nym, RNmy, ipk, idemixAttrs, []byte("silliness"), rhIndex, eidIndex, nil, bccsp.EidNym, nil)
-	assert.EqualError(t, err, "error determining index for attribute: attribute not found")
+	assert.EqualError(t, err, "cannot create idemix signature: disclosure of enrollment ID requested for EidNym signature")
 
 	/////////////////////
 	// rhNym signature // (but rh disclosed)
@@ -463,5 +463,5 @@ func TestSigner(t *testing.T) {
 	}
 
 	_, _, err = signer.Sign(cred, sk, Nym, RNmy, ipk, idemixAttrs, []byte("silliness"), rhIndex, eidIndex, nil, bccsp.EidNymRhNym, nil)
-	assert.EqualError(t, err, "error determining index for attribute: attribute not found")
+	assert.EqualError(t, err, "cannot create idemix signature: disclosure of enrollment ID or RH requested for EidNymRhNym signature")
 }
