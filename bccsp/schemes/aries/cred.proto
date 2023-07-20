@@ -19,20 +19,21 @@ message Credential {
 // Signature is a PoK of a BBS+ signature (a credential)
 message Signature {
 	bytes main_signature = 1;
-	bytes nym = 2;
-	bytes nym_proof = 3;
-	bytes nym_eid = 4;
-	bytes nym_eid_proof = 5;
-	int32 nym_eid_idx = 6;
-	bytes nym_rh = 7;
-	bytes nym_rh_proof = 8;
-	int32 nym_rh_idx = 9;
+	bytes nonce = 2;
+	bytes nym = 3;
+	bytes nym_proof = 4;
+	bytes nym_eid = 5;
+	bytes nym_eid_proof = 6;
+	int32 nym_eid_idx = 7;
+	bytes nym_rh = 8;
+	bytes nym_rh_proof = 9;
+	int32 nym_rh_idx = 10;
 
-	bytes revocation_epoch_pk = 10;
-	bytes revocation_pk_sig = 11;
-	int64 epoch = 12;
+	bytes revocation_epoch_pk = 11;
+	bytes revocation_pk_sig = 12;
+	int64 epoch = 13;
 
-	NonRevocationProof non_revocation_proof = 13;
+	NonRevocationProof non_revocation_proof = 14;
 }
 
 // NonRevocationProof contains proof that the credential is not revoked

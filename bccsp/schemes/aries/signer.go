@@ -67,7 +67,7 @@ func (s *Signer) getChallengeHash(
 	rh *attributeCommitment,
 	msg []byte,
 	sigType bccsp.SignatureType,
-) *math.Zr {
+) (*math.Zr, *math.Zr) {
 
 	// hash the signature type first
 	var challengeBytes []byte
@@ -106,7 +106,14 @@ func (s *Signer) getChallengeHash(
 	proofNonceBytes := proofNonce.ToBytes()
 	challengeBytes = append(challengeBytes, proofNonceBytes...)
 
-	return bbs12381g2pub.FrFromOKM(challengeBytes)
+	c := bbs12381g2pub.FrFromOKM(challengeBytes)
+
+	Nonce := s.Curve.NewRandomZr(s.Rng)
+
+	challengeBytes = c.Bytes()
+	challengeBytes = append(challengeBytes, Nonce.Bytes()...)
+
+	return bbs12381g2pub.FrFromOKM(challengeBytes), Nonce
 }
 
 func (s *Signer) packageProof(
@@ -119,6 +126,7 @@ func (s *Signer) packageProof(
 	rhNym *attributeCommitment,
 	proofRhNym *bbs12381g2pub.ProofG1,
 	cri *CredentialRevocationInformation,
+	nonce *math.Zr,
 ) ([]byte, error) {
 	payload := bbs12381g2pub.NewPoKPayload(len(attributes)+1, revealedAttributesIndex(attributes))
 
@@ -131,6 +139,7 @@ func (s *Signer) packageProof(
 
 	sig := &Signature{
 		MainSignature:     signatureProofBytes,
+		Nonce:             nonce.Bytes(),
 		Nym:               Nym.Bytes(),
 		NymProof:          proofNym.ToBytes(),
 		RevocationEpochPk: cri.EpochPk,
@@ -379,7 +388,7 @@ func (s *Signer) Sign(
 	// Get the challenge //
 	///////////////////////
 
-	proofChallenge := s.getChallengeHash(pokSignature, Nym, commitNym.Commitment, nymEid, rhNym, msg, sigType)
+	proofChallenge, Nonce := s.getChallengeHash(pokSignature, Nym, commitNym.Commitment, nymEid, rhNym, msg, sigType)
 
 	////////////////////////
 	// Generate responses //
@@ -404,7 +413,7 @@ func (s *Signer) Sign(
 	// Package proof //
 	///////////////////
 
-	sigBytes, err := s.packageProof(attributes, Nym, proof, proofNym, nymEid, proofNymEid, rhNym, proofRhNym, cri)
+	sigBytes, err := s.packageProof(attributes, Nym, proof, proofNym, nymEid, proofNymEid, rhNym, proofRhNym, cri, Nonce)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -582,6 +591,10 @@ func (s *Signer) Verify(
 	proofNonceBytes := proofNonce.ToBytes()
 	challengeBytes = append(challengeBytes, proofNonceBytes...)
 	proofChallenge := bbs12381g2pub.FrFromOKM(challengeBytes)
+
+	challengeBytes = proofChallenge.Bytes()
+	challengeBytes = append(challengeBytes, sig.Nonce...)
+	proofChallenge = bbs12381g2pub.FrFromOKM(challengeBytes)
 
 	//////////////////////
 	// Verify responses //
