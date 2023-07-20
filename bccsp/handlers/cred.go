@@ -36,6 +36,37 @@ func (c *CredentialRequestSigner) Sign(k bccsp.Key, digest []byte, opts bccsp.Si
 	return c.CredRequest.Sign(userSecretKey.Sk, issuerPK.pk, credentialRequestSignerOpts.IssuerNonce)
 }
 
+type BlindCredentialRequestSigner struct {
+	CredRequest BlindCredRequest
+}
+
+func (c *BlindCredentialRequestSigner) Sign(k bccsp.Key, digest []byte, opts bccsp.SignerOpts) ([]byte, error) {
+	userSecretKey, ok := k.(*UserSecretKey)
+	if !ok {
+		return nil, errors.New("invalid key, expected *userSecretKey")
+	}
+	credentialRequestSignerOpts, ok := opts.(*bccsp.IdemixBlindCredentialRequestSignerOpts)
+	if !ok {
+		return nil, errors.New("invalid options, expected *IdemixCredentialRequestSignerOpts")
+	}
+	if credentialRequestSignerOpts.IssuerPK == nil {
+		return nil, errors.New("invalid options, missing issuer public key")
+	}
+	issuerPK, ok := credentialRequestSignerOpts.IssuerPK.(*issuerPublicKey)
+	if !ok {
+		return nil, errors.New("invalid options, expected IssuerPK as *issuerPublicKey")
+	}
+
+	cred, blinding, err := c.CredRequest.Blind(userSecretKey.Sk, issuerPK.pk, credentialRequestSignerOpts.IssuerNonce)
+	if err != nil {
+		return nil, err
+	}
+
+	credentialRequestSignerOpts.Blinding = blinding
+
+	return cred, err
+}
+
 // CredentialRequestVerifier verifies credential requests
 type CredentialRequestVerifier struct {
 	// CredRequest implements the underlying cryptographic algorithms
@@ -53,6 +84,28 @@ func (c *CredentialRequestVerifier) Verify(k bccsp.Key, signature, digest []byte
 	}
 
 	err := c.CredRequest.Verify(signature, issuerPublicKey.pk, credentialRequestSignerOpts.IssuerNonce)
+	if err != nil {
+		return false, err
+	}
+
+	return true, nil
+}
+
+type BlindCredentialRequestVerifier struct {
+	CredRequest BlindCredRequest
+}
+
+func (c *BlindCredentialRequestVerifier) Verify(k bccsp.Key, signature, digest []byte, opts bccsp.SignerOpts) (bool, error) {
+	issuerPublicKey, ok := k.(*issuerPublicKey)
+	if !ok {
+		return false, errors.New("invalid key, expected *issuerPublicKey")
+	}
+	credentialRequestSignerOpts, ok := opts.(*bccsp.IdemixBlindCredentialRequestSignerOpts)
+	if !ok {
+		return false, errors.New("invalid options, expected *IdemixCredentialRequestSignerOpts")
+	}
+
+	err := c.CredRequest.BlindVerify(signature, issuerPublicKey.pk, credentialRequestSignerOpts.IssuerNonce)
 	if err != nil {
 		return false, err
 	}
