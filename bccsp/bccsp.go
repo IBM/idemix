@@ -34,67 +34,139 @@ func New(keyStore bccsp.KeyStore, curve *math.Curve, translator idemix.Translato
 	}
 
 	// key generators
-	base.AddWrapper(reflect.TypeOf(&bccsp.IdemixIssuerKeyGenOpts{}), &handlers.IssuerKeyGen{Exportable: exportable, Issuer: &bridge.Issuer{Idemix: idmx, Translator: translator}})
-	base.AddWrapper(reflect.TypeOf(&bccsp.IdemixUserSecretKeyGenOpts{}), &handlers.UserKeyGen{Exportable: exportable, User: &bridge.User{Idemix: idmx, Translator: translator}})
-	base.AddWrapper(reflect.TypeOf(&bccsp.IdemixRevocationKeyGenOpts{}), &handlers.RevocationKeyGen{Exportable: exportable, Revocation: &bridge.Revocation{Idemix: idmx, Translator: translator}})
+	base.AddWrapper(reflect.TypeOf(&bccsp.IdemixIssuerKeyGenOpts{}),
+		&handlers.IssuerKeyGen{
+			Exportable: exportable,
+			Issuer: &bridge.Issuer{
+				Idemix: idmx, Translator: translator,
+			},
+		})
+	base.AddWrapper(reflect.TypeOf(&bccsp.IdemixUserSecretKeyGenOpts{}),
+		&handlers.UserKeyGen{
+			Exportable: exportable,
+			User: &bridge.User{
+				Idemix: idmx, Translator: translator,
+			},
+		})
+	base.AddWrapper(reflect.TypeOf(&bccsp.IdemixRevocationKeyGenOpts{}),
+		&handlers.RevocationKeyGen{
+			Exportable: exportable,
+			Revocation: &bridge.Revocation{
+				Idemix: idmx, Translator: translator,
+			},
+		})
 
 	// key derivers
-	base.AddWrapper(reflect.TypeOf(handlers.NewUserSecretKey(nil, true)), &handlers.NymKeyDerivation{
-		Exportable: exportable,
-		User:       &bridge.User{Idemix: idmx, Translator: translator},
-		Translator: translator,
-	})
+	base.AddWrapper(reflect.TypeOf(handlers.NewUserSecretKey(nil, true)),
+		&handlers.NymKeyDerivation{
+			Exportable: exportable,
+			Translator: translator,
+			User: &bridge.User{
+				Idemix: idmx, Translator: translator,
+			},
+		})
 
 	// signers
-	base.AddWrapper(reflect.TypeOf(handlers.NewUserSecretKey(nil, true)), &userSecreKeySignerMultiplexer{
-		signer:                  &handlers.Signer{SignatureScheme: &bridge.SignatureScheme{Idemix: idmx, Translator: translator}},
-		nymSigner:               &handlers.NymSigner{NymSignatureScheme: &bridge.NymSignatureScheme{Idemix: idmx, Translator: translator}},
-		credentialRequestSigner: &handlers.CredentialRequestSigner{CredRequest: &bridge.CredRequest{Idemix: idmx, Translator: translator}},
-	})
-	base.AddWrapper(reflect.TypeOf(handlers.NewIssuerSecretKey(nil, true)), &handlers.CredentialSigner{
-		Credential: &bridge.Credential{Idemix: idmx, Translator: translator},
-	})
-	base.AddWrapper(reflect.TypeOf(handlers.NewRevocationSecretKey(nil, true)), &handlers.CriSigner{
-		Revocation: &bridge.Revocation{Idemix: idmx, Translator: translator},
-	})
+	base.AddWrapper(reflect.TypeOf(handlers.NewUserSecretKey(nil, true)),
+		&userSecreKeySignerMultiplexer{
+			signer: &handlers.Signer{
+				SignatureScheme: &bridge.SignatureScheme{
+					Idemix: idmx, Translator: translator,
+				}},
+			nymSigner: &handlers.NymSigner{
+				NymSignatureScheme: &bridge.NymSignatureScheme{
+					Idemix: idmx, Translator: translator,
+				}},
+			credentialRequestSigner: &handlers.CredentialRequestSigner{
+				CredRequest: &bridge.CredRequest{
+					Idemix: idmx, Translator: translator,
+				}},
+		})
+	base.AddWrapper(reflect.TypeOf(handlers.NewIssuerSecretKey(nil, true)),
+		&handlers.CredentialSigner{
+			Credential: &bridge.Credential{
+				Idemix: idmx, Translator: translator,
+			},
+		})
+	base.AddWrapper(reflect.TypeOf(handlers.NewRevocationSecretKey(nil, true)),
+		&handlers.CriSigner{
+			Revocation: &bridge.Revocation{
+				Idemix: idmx, Translator: translator,
+			},
+		})
 
 	// verifiers
-	base.AddWrapper(reflect.TypeOf(handlers.NewIssuerPublicKey(nil)), &issuerPublicKeyVerifierMultiplexer{
-		verifier:                  &handlers.Verifier{SignatureScheme: &bridge.SignatureScheme{Idemix: idmx, Translator: translator}},
-		credentialRequestVerifier: &handlers.CredentialRequestVerifier{CredRequest: &bridge.CredRequest{Idemix: idmx, Translator: translator}},
-	})
-	base.AddWrapper(reflect.TypeOf(handlers.NewNymPublicKey(nil, translator)), &handlers.NymVerifier{
-		NymSignatureScheme: &bridge.NymSignatureScheme{Idemix: idmx, Translator: translator},
-	})
-	base.AddWrapper(reflect.TypeOf(handlers.NewUserSecretKey(nil, true)), &handlers.CredentialVerifier{
-		Credential: &bridge.Credential{Idemix: idmx, Translator: translator},
-	})
-	base.AddWrapper(reflect.TypeOf(handlers.NewRevocationPublicKey(nil)), &handlers.CriVerifier{
-		Revocation: &bridge.Revocation{Idemix: idmx, Translator: translator},
-	})
+	base.AddWrapper(reflect.TypeOf(handlers.NewIssuerPublicKey(nil)),
+		&issuerPublicKeyVerifierMultiplexer{
+			verifier: &handlers.Verifier{
+				SignatureScheme: &bridge.SignatureScheme{
+					Idemix: idmx, Translator: translator,
+				}},
+			credentialRequestVerifier: &handlers.CredentialRequestVerifier{
+				CredRequest: &bridge.CredRequest{
+					Idemix: idmx, Translator: translator,
+				}},
+		})
+	base.AddWrapper(reflect.TypeOf(handlers.NewNymPublicKey(nil, translator)),
+		&handlers.NymVerifier{
+			NymSignatureScheme: &bridge.NymSignatureScheme{
+				Idemix: idmx, Translator: translator,
+			},
+		})
+	base.AddWrapper(reflect.TypeOf(handlers.NewUserSecretKey(nil, true)),
+		&handlers.CredentialVerifier{
+			Credential: &bridge.Credential{
+				Idemix: idmx, Translator: translator,
+			},
+		})
+	base.AddWrapper(reflect.TypeOf(handlers.NewRevocationPublicKey(nil)),
+		&handlers.CriVerifier{
+			Revocation: &bridge.Revocation{
+				Idemix: idmx, Translator: translator,
+			},
+		})
 
 	// importers
-	base.AddWrapper(reflect.TypeOf(&bccsp.IdemixUserSecretKeyImportOpts{}), &handlers.UserKeyImporter{
-		User: &bridge.User{Idemix: idmx, Translator: translator},
-	})
-	base.AddWrapper(reflect.TypeOf(&bccsp.IdemixIssuerPublicKeyImportOpts{}), &handlers.IssuerPublicKeyImporter{
-		Issuer: &bridge.Issuer{Idemix: idmx, Translator: translator},
-	})
-	base.AddWrapper(reflect.TypeOf(&bccsp.IdemixIssuerKeyImportOpts{}), &handlers.IssuerKeyImporter{
-		Issuer: &bridge.Issuer{Idemix: idmx, Translator: translator},
-	})
-	base.AddWrapper(reflect.TypeOf(&bccsp.IdemixNymPublicKeyImportOpts{}), &handlers.NymPublicKeyImporter{
-		User:       &bridge.User{Idemix: idmx, Translator: translator},
-		Translator: translator,
-	})
-	base.AddWrapper(reflect.TypeOf(&bccsp.IdemixNymKeyImportOpts{}), &handlers.NymKeyImporter{
-		User:       &bridge.User{Idemix: idmx, Translator: translator},
-		Translator: translator,
-	})
-	base.AddWrapper(reflect.TypeOf(&bccsp.IdemixRevocationPublicKeyImportOpts{}), &handlers.RevocationPublicKeyImporter{})
-	base.AddWrapper(reflect.TypeOf(&bccsp.IdemixRevocationKeyImportOpts{}), &handlers.RevocationKeyImporter{
-		Revocation: &bridge.Revocation{Idemix: idmx, Translator: translator},
-	})
+	base.AddWrapper(reflect.TypeOf(&bccsp.IdemixUserSecretKeyImportOpts{}),
+		&handlers.UserKeyImporter{
+			User: &bridge.User{
+				Idemix: idmx, Translator: translator,
+			},
+		})
+	base.AddWrapper(reflect.TypeOf(&bccsp.IdemixIssuerPublicKeyImportOpts{}),
+		&handlers.IssuerPublicKeyImporter{
+			Issuer: &bridge.Issuer{
+				Idemix: idmx, Translator: translator,
+			},
+		})
+	base.AddWrapper(reflect.TypeOf(&bccsp.IdemixIssuerKeyImportOpts{}),
+		&handlers.IssuerKeyImporter{
+			Issuer: &bridge.Issuer{
+				Idemix: idmx, Translator: translator,
+			},
+		})
+	base.AddWrapper(reflect.TypeOf(&bccsp.IdemixNymPublicKeyImportOpts{}),
+		&handlers.NymPublicKeyImporter{
+			User: &bridge.User{
+				Idemix: idmx, Translator: translator,
+			},
+			Translator: translator,
+		})
+	base.AddWrapper(reflect.TypeOf(&bccsp.IdemixNymKeyImportOpts{}),
+		&handlers.NymKeyImporter{
+			User: &bridge.User{
+				Idemix: idmx, Translator: translator,
+			},
+			Translator: translator,
+		})
+	base.AddWrapper(reflect.TypeOf(&bccsp.IdemixRevocationPublicKeyImportOpts{}),
+		&handlers.RevocationPublicKeyImporter{})
+	base.AddWrapper(reflect.TypeOf(&bccsp.IdemixRevocationKeyImportOpts{}),
+		&handlers.RevocationKeyImporter{
+			Revocation: &bridge.Revocation{
+				Idemix: idmx, Translator: translator,
+			},
+		})
 
 	return csp, nil
 }
