@@ -80,7 +80,7 @@ func curveName(id math.CurveID) string {
 	}
 }
 
-var _ = FDescribe("aries test", func() {
+var _ = Describe("aries test", func() {
 	testAries()
 })
 
