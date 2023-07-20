@@ -58,3 +58,8 @@ message CredentialRevocationInformation {
 	// revocation_data contains data specific to the revocation algorithm used
 	bytes revocation_data = 5;
 }
+
+message NymSignature {
+	bytes main_signature = 1;
+	bytes nonce = 2;
+}
