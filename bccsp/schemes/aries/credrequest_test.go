@@ -84,4 +84,70 @@ func TestCredRequest(t *testing.T) {
 
 	err = credProto.Verify(sk, ipk, cred, idemixAttrs)
 	assert.NoError(t, err)
+
+	idemixAttrs = []bccsp.IdemixAttribute{
+		{
+			Type:  bccsp.IdemixBytesAttribute,
+			Value: []byte("msg1"),
+		},
+		{
+			Type:  bccsp.IdemixIntAttribute,
+			Value: 3,
+		},
+		{
+			Type:  bccsp.IdemixBytesAttribute,
+			Value: []byte("msg3"),
+		},
+		{
+			Type: bccsp.IdemixHiddenAttribute,
+		},
+	}
+
+	// verify succeeds when supplying hidden attrs
+	err = credProto.Verify(sk, ipk, cred, idemixAttrs)
+	assert.NoError(t, err)
+
+	idemixAttrs = []bccsp.IdemixAttribute{
+		{
+			Type:  bccsp.IdemixBytesAttribute,
+			Value: []byte("msg2"),
+		},
+		{
+			Type:  bccsp.IdemixIntAttribute,
+			Value: 3,
+		},
+		{
+			Type:  bccsp.IdemixBytesAttribute,
+			Value: []byte("msg3"),
+		},
+		{
+			Type: bccsp.IdemixHiddenAttribute,
+		},
+	}
+
+	// verify fails when supplying wrong attrs
+	err = credProto.Verify(sk, ipk, cred, idemixAttrs)
+	assert.EqualError(t, err, "credential does not contain the correct attribute value at position [0]")
+
+	idemixAttrs = []bccsp.IdemixAttribute{
+		{
+			Type:  bccsp.IdemixBytesAttribute,
+			Value: []byte("msg1"),
+		},
+		{
+			Type:  bccsp.IdemixIntAttribute,
+			Value: 2,
+		},
+		{
+			Type:  bccsp.IdemixBytesAttribute,
+			Value: []byte("msg3"),
+		},
+		{
+			Type: bccsp.IdemixHiddenAttribute,
+		},
+	}
+
+	// verify fails when supplying wrong attrs
+	err = credProto.Verify(sk, ipk, cred, idemixAttrs)
+	assert.EqualError(t, err, "credential does not contain the correct attribute value at position [1]")
 }

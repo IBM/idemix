@@ -29,7 +29,7 @@ func setupWithVersion(configPath string, ID string, version MSPVersion) (MSP, er
 		return nil, err
 	}
 
-	conf, err := GetIdemixMspConfig(configPath, ID)
+	conf, err := GetIdemixMspConfig(configPath, ID, IDEMIX)
 	if err != nil {
 		return nil, errors.Wrap(err, "Getting MSP config failed")
 	}
@@ -97,7 +97,7 @@ func TestSetupBad(t *testing.T) {
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "failed unmarshalling idemix msp config")
 
-	conf, err = GetIdemixMspConfig("testdata/idemix/MSP1OU1", "IdemixMSP1")
+	conf, err = GetIdemixMspConfig("testdata/idemix/MSP1OU1", "IdemixMSP1", IDEMIX)
 	require.NoError(t, err)
 	idemixconfig := &im.IdemixMSPConfig{}
 	err = proto.Unmarshal(conf.Config, idemixconfig)

@@ -79,5 +79,32 @@ func (c *Cred) Verify(sk *math.Zr, key handlers.IssuerPublicKey, credBytes []byt
 		return fmt.Errorf("ParseSignature failed [%w]", err)
 	}
 
-	return sigma.Verify(attributesToSignatureMessage(sk, attributes, c.Curve), ipk.PKwG)
+	sm := make([]*bbs12381g2pub.SignatureMessage, len(credential.Attrs)+1)
+	sm[0] = &bbs12381g2pub.SignatureMessage{
+		FR:  sk,
+		Idx: 0,
+	}
+	for i, v := range credential.Attrs {
+		sm[i+1] = &bbs12381g2pub.SignatureMessage{
+			FR:  c.Curve.NewZrFromBytes(v),
+			Idx: i + 1,
+		}
+
+		switch attributes[i].Type {
+		case bccsp.IdemixHiddenAttribute:
+			continue
+		case bccsp.IdemixBytesAttribute:
+			fr := bbs12381g2pub.FrFromOKM(attributes[i].Value.([]byte))
+			if !fr.Equals(sm[i+1].FR) {
+				return errors.Errorf("credential does not contain the correct attribute value at position [%d]", i)
+			}
+		case bccsp.IdemixIntAttribute:
+			fr := c.Curve.NewZrFromInt(int64(attributes[i].Value.(int)))
+			if !fr.Equals(sm[i+1].FR) {
+				return errors.Errorf("credential does not contain the correct attribute value at position [%d]", i)
+			}
+		}
+	}
+
+	return sigma.Verify(sm, ipk.PKwG)
 }

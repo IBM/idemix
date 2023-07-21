@@ -96,15 +96,26 @@ func NewIdemixMsp(version MSPVersion) (MSP, error) {
 	return &msp, nil
 }
 
+// NewIdemixMspAries creates a new instance of idemixmsp
+func NewIdemixMspAries(version MSPVersion) (MSP, error) {
+	mspLogger.Debugf("Creating Idemix-based MSP instance")
+
+	curve := math.Curves[math.FP256BN_AMCL]
+	csp, err := idemix.NewAries(&keystore.Dummy{}, curve, &amcl.Gurvy{C: curve}, true)
+	if err != nil {
+		panic(fmt.Sprintf("unexpected condition, error received [%s]", err))
+	}
+
+	msp := Idemixmsp{csp: csp}
+	msp.version = version
+	return &msp, nil
+}
+
 func (msp *Idemixmsp) Setup(conf1 *m.MSPConfig) error {
 	mspLogger.Debugf("Setting up Idemix-based MSP instance")
 
 	if conf1 == nil {
 		return errors.Errorf("setup error: nil conf reference")
-	}
-
-	if conf1.Type != int32(IDEMIX) {
-		return errors.Errorf("setup error: config is not of type IDEMIX")
 	}
 
 	var conf im.IdemixMSPConfig
@@ -115,6 +126,13 @@ func (msp *Idemixmsp) Setup(conf1 *m.MSPConfig) error {
 
 	msp.name = conf.Name
 	mspLogger.Debugf("Setting up Idemix MSP instance %s", msp.name)
+
+	switch conf1.Type {
+	case int32(IDEMIX):
+	case int32(IDEMIX_ARIES):
+	default:
+		return errors.Errorf("setup error: config is not of type IDEMIX")
+	}
 
 	// Import Issuer Public Key
 	IssuerPublicKey, err := msp.csp.KeyImport(
@@ -706,7 +724,7 @@ const (
 )
 
 // GetIdemixMspConfig returns the configuration for the Idemix MSP
-func GetIdemixMspConfig(dir string, ID string) (*m.MSPConfig, error) {
+func GetIdemixMspConfig(dir string, ID string, mspType ProviderType) (*m.MSPConfig, error) {
 	ipkBytes, err := readFile(filepath.Join(dir, IdemixConfigDirMsp, IdemixConfigFileIssuerPublicKey))
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to read issuer public key file")
@@ -738,5 +756,5 @@ func GetIdemixMspConfig(dir string, ID string) (*m.MSPConfig, error) {
 		return nil, err
 	}
 
-	return &m.MSPConfig{Config: confBytes, Type: int32(IDEMIX)}, nil
+	return &m.MSPConfig{Config: confBytes, Type: int32(mspType)}, nil
 }

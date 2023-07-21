@@ -21,7 +21,6 @@ import (
 	"path/filepath"
 
 	math "github.com/IBM/mathlib"
-	"github.com/golang/protobuf/proto"
 	"github.com/pkg/errors"
 	"gopkg.in/alecthomas/kingpin.v2"
 
@@ -51,6 +50,7 @@ var (
 
 	outputDir = app.Flag("output", "The output directory in which to place artifacts").Default("idemix-config").String()
 	curveID   = app.Flag("curve", "The curve to use to generate the crypto material").Short('c').Default(FP256BN_AMCL).Enum(FP256BN_AMCL, BN254, FP256BN_AMCL_MIRACL, BLS12_377_GURVY, BLS12_381_GURVY, BLS12_381)
+	useAries  = app.Flag("aries", "Use the aries-backed implementation").Bool()
 
 	genIssuerKey            = app.Command("ca-keygen", "Generate CA key material")
 	genSignerConfig         = app.Command("signerconfig", "Generate a default signer for this Idemix MSP")
@@ -105,10 +105,21 @@ func main() {
 		Curve: curve,
 	}
 
+	if *useAries {
+		curve = math.Curves[math.BLS12_381_BBS]
+	}
+
 	switch command {
 
 	case genIssuerKey.FullCommand():
-		isk, ipk, err := idemixca.GenerateIssuerKey(idmx, tr)
+		var isk, ipk []byte
+		var err error
+
+		if *useAries {
+			isk, ipk, err = idemixca.GenerateIssuerKeyAries(curve)
+		} else {
+			isk, ipk, err = idemixca.GenerateIssuerKey(idmx, tr)
+		}
 		handleError(err)
 
 		revocationKey, err := idmx.GenerateLongTermRevocationKey()
@@ -147,17 +158,30 @@ func main() {
 		if *genCAInput == "" {
 			genCAInput = outputDir
 		}
-		ipk, ipkRaw := readIssuerKey()
+		iskBytes, ipkBytes := readIssuerKey()
 		rsk := readRevocationKey()
 		rpk := readRevocationPublicKey()
 
-		config, err := idemixca.GenerateSignerConfig(
-			roleMask,
-			*genCredOU,
-			*genCredEnrollmentId,
-			*genCredRevocationHandle,
-			ipk, rsk, idmx, tr,
-		)
+		var config []byte
+		var err error
+		if *useAries {
+			config, err = idemixca.GenerateSignerConfigAries(
+				roleMask,
+				*genCredOU,
+				*genCredEnrollmentId,
+				*genCredRevocationHandle,
+				iskBytes, ipkBytes, rsk,
+				curve,
+			)
+		} else {
+			config, err = idemixca.GenerateSignerConfig(
+				roleMask,
+				*genCredOU,
+				*genCredEnrollmentId,
+				*genCredRevocationHandle,
+				iskBytes, ipkBytes, rsk, idmx, tr,
+			)
+		}
 		handleError(err)
 
 		path := filepath.Join(*outputDir, imsp.IdemixConfigDirUser)
@@ -171,7 +195,7 @@ func main() {
 		if *genCAInput != *outputDir {
 			handleError(os.MkdirAll(filepath.Join(*outputDir, imsp.IdemixConfigDirMsp), 0770))
 			writeFile(filepath.Join(*outputDir, imsp.IdemixConfigDirMsp, imsp.IdemixConfigFileRevocationPublicKey), rpk)
-			writeFile(filepath.Join(*outputDir, imsp.IdemixConfigDirMsp, imsp.IdemixConfigFileIssuerPublicKey), ipkRaw)
+			writeFile(filepath.Join(*outputDir, imsp.IdemixConfigDirMsp, imsp.IdemixConfigFileIssuerPublicKey), ipkBytes)
 		}
 
 	case version.FullCommand():
@@ -190,9 +214,9 @@ func writeFile(path string, contents []byte) {
 }
 
 // readIssuerKey reads the issuer key from the current directory
-func readIssuerKey() (*idemix.IssuerKey, []byte) {
+func readIssuerKey() ([]byte, []byte) {
 	path := filepath.Join(*genCAInput, IdemixDirIssuer, IdemixConfigIssuerSecretKey)
-	isk, err := ioutil.ReadFile(path)
+	iskBytes, err := ioutil.ReadFile(path)
 	if err != nil {
 		handleError(errors.Wrapf(err, "failed to open issuer secret key file: %s", path))
 	}
@@ -201,11 +225,8 @@ func readIssuerKey() (*idemix.IssuerKey, []byte) {
 	if err != nil {
 		handleError(errors.Wrapf(err, "failed to open issuer public key file: %s", path))
 	}
-	ipk := &idemix.IssuerPublicKey{}
-	handleError(proto.Unmarshal(ipkBytes, ipk))
-	key := &idemix.IssuerKey{Isk: isk, Ipk: ipk}
 
-	return key, ipkBytes
+	return iskBytes, ipkBytes
 }
 
 func readRevocationKey() *ecdsa.PrivateKey {
