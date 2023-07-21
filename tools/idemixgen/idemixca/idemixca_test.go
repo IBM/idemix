@@ -14,7 +14,9 @@ import (
 	"path/filepath"
 	"testing"
 
+	imsp "github.com/IBM/idemix"
 	m "github.com/IBM/idemix"
+	"github.com/IBM/idemix/bccsp/schemes/aries"
 	idemix "github.com/IBM/idemix/bccsp/schemes/dlog/crypto"
 	amclt "github.com/IBM/idemix/bccsp/schemes/dlog/crypto/translator/amcl"
 	math "github.com/IBM/mathlib"
@@ -24,6 +26,64 @@ import (
 )
 
 var testDir = filepath.Join(os.TempDir(), "idemixca-test")
+
+func TestIdemixCaAries(t *testing.T) {
+	cleanup()
+
+	curve := math.Curves[math.BLS12_381_BBS]
+	rng, err := curve.Rand()
+	require.NoError(t, err)
+
+	iskBytes, ipkBytes, err := GenerateIssuerKeyAries(curve)
+	require.NoError(t, err)
+
+	revAuth := &aries.RevocationAuthority{
+		Curve: curve,
+		Rng:   rng,
+	}
+
+	issuer := &aries.Issuer{}
+
+	revocationkey, err := revAuth.NewKey()
+	require.NoError(t, err)
+
+	AttributeNames := []string{imsp.AttributeNameOU, imsp.AttributeNameRole, imsp.AttributeNameEnrollmentId, imsp.AttributeNameRevocationHandle}
+	ipk, err := issuer.NewPublicKeyFromBytes(ipkBytes, AttributeNames)
+	require.NoError(t, err)
+	isk, err := issuer.NewKeyFromBytes(iskBytes, AttributeNames)
+	require.NoError(t, err)
+
+	_ = ipk
+	_ = isk
+
+	encodedRevocationPK, err := x509.MarshalPKIXPublicKey(revocationkey.Public())
+	require.NoError(t, err)
+	pemEncodedRevocationPK := pem.EncodeToMemory(&pem.Block{Type: "PUBLIC KEY", Bytes: encodedRevocationPK})
+
+	writeVerifierToFile(ipkBytes, pemEncodedRevocationPK)
+
+	conf, err := GenerateSignerConfigAries(m.GetRoleMaskFromIdemixRole(m.MEMBER), "OU1", "enrollmentid1", "1", iskBytes, ipkBytes, revocationkey, curve)
+	require.NoError(t, err)
+	cleanupSigner()
+	require.NoError(t, writeSignerToFile(conf))
+	require.NoError(t, setupMSP(imsp.IDEMIX_ARIES))
+
+	conf, err = GenerateSignerConfigAries(m.GetRoleMaskFromIdemixRole(m.ADMIN), "OU1", "enrollmentid2", "1234", iskBytes, ipkBytes, revocationkey, curve)
+	require.NoError(t, err)
+	cleanupSigner()
+	require.NoError(t, writeSignerToFile(conf))
+	require.NoError(t, setupMSP(imsp.IDEMIX_ARIES))
+
+	// Without the verifier dir present, setup should give an error
+	cleanupVerifier()
+	require.Error(t, setupMSP(imsp.IDEMIX_ARIES))
+
+	_, err = GenerateSignerConfigAries(m.GetRoleMaskFromIdemixRole(m.ADMIN), "", "enrollmentid", "1", iskBytes, ipkBytes, revocationkey, curve)
+	require.EqualError(t, err, "the OU attribute value is empty")
+
+	_, err = GenerateSignerConfigAries(m.GetRoleMaskFromIdemixRole(m.ADMIN), "OU1", "", "1", iskBytes, ipkBytes, revocationkey, curve)
+	require.EqualError(t, err, "the enrollment id value is empty")
+}
 
 func TestIdemixCa(t *testing.T) {
 	cleanup()
@@ -37,7 +97,7 @@ func TestIdemixCa(t *testing.T) {
 		Curve: curve,
 	}
 
-	isk, ipkBytes, err := GenerateIssuerKey(idmx, tr)
+	iskBytes, ipkBytes, err := GenerateIssuerKey(idmx, tr)
 	require.NoError(t, err)
 
 	revocationkey, err := idmx.GenerateLongTermRevocationKey()
@@ -53,28 +113,26 @@ func TestIdemixCa(t *testing.T) {
 
 	writeVerifierToFile(ipkBytes, pemEncodedRevocationPK)
 
-	key := &idemix.IssuerKey{Isk: isk, Ipk: ipk}
-
-	conf, err := GenerateSignerConfig(m.GetRoleMaskFromIdemixRole(m.MEMBER), "OU1", "enrollmentid1", "1", key, revocationkey, idmx, tr)
+	conf, err := GenerateSignerConfig(m.GetRoleMaskFromIdemixRole(m.MEMBER), "OU1", "enrollmentid1", "1", iskBytes, ipkBytes, revocationkey, idmx, tr)
 	require.NoError(t, err)
 	cleanupSigner()
 	require.NoError(t, writeSignerToFile(conf))
-	require.NoError(t, setupMSP())
+	require.NoError(t, setupMSP(imsp.IDEMIX))
 
-	conf, err = GenerateSignerConfig(m.GetRoleMaskFromIdemixRole(m.ADMIN), "OU1", "enrollmentid2", "1234", key, revocationkey, idmx, tr)
+	conf, err = GenerateSignerConfig(m.GetRoleMaskFromIdemixRole(m.ADMIN), "OU1", "enrollmentid2", "1234", iskBytes, ipkBytes, revocationkey, idmx, tr)
 	require.NoError(t, err)
 	cleanupSigner()
 	require.NoError(t, writeSignerToFile(conf))
-	require.NoError(t, setupMSP())
+	require.NoError(t, setupMSP(imsp.IDEMIX))
 
 	// Without the verifier dir present, setup should give an error
 	cleanupVerifier()
-	require.Error(t, setupMSP())
+	require.Error(t, setupMSP(imsp.IDEMIX))
 
-	_, err = GenerateSignerConfig(m.GetRoleMaskFromIdemixRole(m.ADMIN), "", "enrollmentid", "1", key, revocationkey, idmx, tr)
+	_, err = GenerateSignerConfig(m.GetRoleMaskFromIdemixRole(m.ADMIN), "", "enrollmentid", "1", iskBytes, ipkBytes, revocationkey, idmx, tr)
 	require.EqualError(t, err, "the OU attribute value is empty")
 
-	_, err = GenerateSignerConfig(m.GetRoleMaskFromIdemixRole(m.ADMIN), "OU1", "", "1", key, revocationkey, idmx, tr)
+	_, err = GenerateSignerConfig(m.GetRoleMaskFromIdemixRole(m.ADMIN), "OU1", "", "1", iskBytes, ipkBytes, revocationkey, idmx, tr)
 	require.EqualError(t, err, "the enrollment id value is empty")
 }
 
@@ -118,13 +176,20 @@ func writeSignerToFile(signerBytes []byte) error {
 
 // setupMSP tests whether we can successfully setup an idemix msp
 // with the generated config bytes
-func setupMSP() error {
+func setupMSP(idType imsp.ProviderType) error {
 	// setup an idemix msp from the test directory
-	msp, err := m.NewIdemixMsp(m.MSPv1_1)
+	var msp imsp.MSP
+	var err error
+	if idType == imsp.IDEMIX {
+		msp, err = m.NewIdemixMsp(m.MSPv1_1)
+	} else {
+		msp, err = m.NewIdemixMspAries(m.MSPv1_1)
+	}
 	if err != nil {
 		return errors.Wrap(err, "Getting MSP failed")
 	}
-	mspConfig, err := m.GetIdemixMspConfig(testDir, "TestName")
+
+	mspConfig, err := m.GetIdemixMspConfig(testDir, "TestName", idType)
 
 	if err != nil {
 		return err

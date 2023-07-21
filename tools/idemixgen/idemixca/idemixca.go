@@ -42,7 +42,16 @@ func GenerateIssuerKey(idmx *idemix.Idemix, tr idemix.Translator) ([]byte, []byt
 // GenerateSignerConfig creates a new signer config.
 // It generates a fresh user secret and issues a credential
 // with four attributes (described above) using the CA's key pair.
-func GenerateSignerConfig(roleMask int, ouString string, enrollmentId, revocationHandle string, key *idemix.IssuerKey, revKey *ecdsa.PrivateKey, idmx *idemix.Idemix, tr idemix.Translator) ([]byte, error) {
+func GenerateSignerConfig(
+	roleMask int,
+	ouString string,
+	enrollmentId,
+	revocationHandle string,
+	iskBytes, ipkBytes []byte,
+	revKey *ecdsa.PrivateKey,
+	idmx *idemix.Idemix,
+	tr idemix.Translator,
+) ([]byte, error) {
 	attrs := make([]*math.Zr, 4)
 
 	if ouString == "" {
@@ -57,6 +66,13 @@ func GenerateSignerConfig(roleMask int, ouString string, enrollmentId, revocatio
 	attrs[imsp.AttributeIndexRole] = idmx.Curve.NewZrFromInt(int64(roleMask))
 	attrs[imsp.AttributeIndexEnrollmentId] = idmx.Curve.HashToZr([]byte(enrollmentId))
 	attrs[imsp.AttributeIndexRevocationHandle] = idmx.Curve.HashToZr([]byte(revocationHandle))
+
+	ipk := &idemix.IssuerPublicKey{}
+	err := proto.Unmarshal(ipkBytes, ipk)
+	if err != nil {
+		return nil, errors.WithMessage(err, "Error unmarshalling ipk")
+	}
+	key := &idemix.IssuerKey{Isk: iskBytes, Ipk: ipk}
 
 	rng, err := idmx.Curve.Rand()
 	if err != nil {
