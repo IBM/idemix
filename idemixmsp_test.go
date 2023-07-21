@@ -20,16 +20,29 @@ import (
 )
 
 func setup(configPath string, ID string) (MSP, error) {
-	return setupWithVersion(configPath, ID, MSPv1_3)
+	return setupWithTypeAndVersion(configPath, ID, MSPv1_3, IDEMIX)
 }
 
 func setupWithVersion(configPath string, ID string, version MSPVersion) (MSP, error) {
-	msp, err := NewIdemixMsp(version)
+	return setupWithTypeAndVersion(configPath, ID, version, IDEMIX)
+}
+
+func setupWithTypeAndVersion(configPath string, ID string, version MSPVersion, mspType ProviderType) (MSP, error) {
+	var msp MSP
+	var err error
+	switch mspType {
+	case IDEMIX:
+		msp, err = NewIdemixMsp(version)
+	case IDEMIX_ARIES:
+		msp, err = NewIdemixMspAries(version)
+	default:
+		panic("programming error")
+	}
 	if err != nil {
 		return nil, err
 	}
 
-	conf, err := GetIdemixMspConfig(configPath, ID, IDEMIX)
+	conf, err := GetIdemixMspConfig(configPath, ID, mspType)
 	if err != nil {
 		return nil, errors.Wrap(err, "Getting MSP config failed")
 	}
@@ -136,6 +149,33 @@ func TestSetupBad(t *testing.T) {
 	require.Contains(t, err.Error(), "failed to unmarshal ipk from idemix msp config")
 }
 
+func TestSigningAries(t *testing.T) {
+	msp, err := setupWithTypeAndVersion("testdata/aries/MSP1OU1eid1/", "MSP1", MSPv1_3, IDEMIX_ARIES)
+	require.NoError(t, err)
+
+	id, err := getDefaultSigner(msp)
+	require.NoError(t, err)
+
+	msg := []byte("TestMessage")
+	sig, err := id.Sign(msg)
+	require.NoError(t, err)
+
+	err = id.Verify(msg, sig)
+	require.NoError(t, err)
+
+	err = id.Verify([]byte("OtherMessage"), sig)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "contribution is not zero")
+
+	verMsp, err := setupWithTypeAndVersion("testdata/aries/MSP1Verifier", "MSP1", MSPv1_3, IDEMIX_ARIES)
+	require.NoError(t, err)
+	err = verMsp.Validate(id)
+	require.NoError(t, err)
+	_, err = verMsp.GetDefaultSigningIdentity()
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "no default signer setup")
+}
+
 func TestSigning(t *testing.T) {
 	msp, err := setup("testdata/idemix/MSP1OU1", "MSP1")
 	require.NoError(t, err)
@@ -176,6 +216,27 @@ func TestSigningBad(t *testing.T) {
 	err = id.Verify(msg, sig)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "error unmarshalling signature")
+}
+
+func TestIdentitySerializationAries(t *testing.T) {
+	msp, err := setupWithTypeAndVersion("testdata/aries/MSP1OU1eid1/", "MSP1", MSPv1_3, IDEMIX_ARIES)
+	require.NoError(t, err)
+
+	id, err := getDefaultSigner(msp)
+	require.NoError(t, err)
+
+	// Test serialization of identities
+	serializedID, err := id.Serialize()
+	require.NoError(t, err)
+
+	verID, err := msp.DeserializeIdentity(serializedID)
+	require.NoError(t, err)
+
+	err = verID.Validate()
+	require.NoError(t, err)
+
+	err = msp.Validate(verID)
+	require.NoError(t, err)
 }
 
 func TestIdentitySerialization(t *testing.T) {
@@ -222,6 +283,24 @@ func TestIdentitySerializationWrongMSP(t *testing.T) {
 	_, err = msp1.DeserializeIdentity(idBytes)
 	require.Error(t, err, "DeserializeIdentity should have failed for ID of other MSP")
 	require.Contains(t, err.Error(), "expected MSP ID MSP1OU1, received MSP2OU1")
+}
+
+func TestPrincipalIdentityAries(t *testing.T) {
+	msp1, err := setupWithTypeAndVersion("testdata/aries/MSP1OU1eid1/", "MSP1", MSPv1_3, IDEMIX_ARIES)
+	require.NoError(t, err)
+
+	id1, err := getDefaultSigner(msp1)
+	require.NoError(t, err)
+
+	idBytes, err := id1.Serialize()
+	require.NoError(t, err)
+
+	principal := &msp.MSPPrincipal{
+		PrincipalClassification: msp.MSPPrincipal_IDENTITY,
+		Principal:               idBytes}
+
+	err = id1.SatisfiesPrincipal(principal)
+	require.NoError(t, err)
 }
 
 func TestPrincipalIdentity(t *testing.T) {
@@ -284,6 +363,24 @@ func TestPrincipalIdentityBadIdentity(t *testing.T) {
 	err = id1.SatisfiesPrincipal(principal)
 	require.Error(t, err, "Identity MSP principal for a bad principal should fail")
 	require.Contains(t, err.Error(), "the identities do not match")
+}
+
+func TestAnonymityPrincipalAries(t *testing.T) {
+	msp1, err := setupWithTypeAndVersion("testdata/aries/MSP1OU1eid1/", "MSP1", MSPv1_3, IDEMIX_ARIES)
+	require.NoError(t, err)
+
+	id1, err := getDefaultSigner(msp1)
+	require.NoError(t, err)
+
+	principalBytes, err := proto.Marshal(&msp.MSPIdentityAnonymity{AnonymityType: msp.MSPIdentityAnonymity_ANONYMOUS})
+	require.NoError(t, err)
+
+	principal := &msp.MSPPrincipal{
+		PrincipalClassification: msp.MSPPrincipal_ANONYMITY,
+		Principal:               principalBytes}
+
+	err = id1.SatisfiesPrincipal(principal)
+	require.NoError(t, err)
 }
 
 func TestAnonymityPrincipal(t *testing.T) {
@@ -362,6 +459,29 @@ func TestIdemixIsWellFormed(t *testing.T) {
 	require.Contains(t, err.Error(), "not an idemix identity")
 }
 
+func TestPrincipalOUAries(t *testing.T) {
+	msp1, err := setupWithTypeAndVersion("testdata/aries/MSP1OU1eid1/", "MSP1", MSPv1_3, IDEMIX_ARIES)
+	require.NoError(t, err)
+
+	id1, err := getDefaultSigner(msp1)
+	require.NoError(t, err)
+
+	ou := &msp.OrganizationUnit{
+		OrganizationalUnitIdentifier: id1.GetOrganizationalUnits()[0].OrganizationalUnitIdentifier,
+		MspIdentifier:                id1.GetMSPIdentifier(),
+		CertifiersIdentifier:         nil,
+	}
+	bytes, err := proto.Marshal(ou)
+	require.NoError(t, err)
+
+	principal := &msp.MSPPrincipal{
+		PrincipalClassification: msp.MSPPrincipal_ORGANIZATION_UNIT,
+		Principal:               bytes}
+
+	err = id1.SatisfiesPrincipal(principal)
+	require.NoError(t, err)
+}
+
 func TestPrincipalOU(t *testing.T) {
 	msp1, err := setup("testdata/idemix/MSP1OU1", "MSP1OU1")
 	require.NoError(t, err)
@@ -387,6 +507,31 @@ func TestPrincipalOU(t *testing.T) {
 
 func TestPrincipalOUWrongOU(t *testing.T) {
 	msp1, err := setup("testdata/idemix/MSP1OU1", "MSP1OU1")
+	require.NoError(t, err)
+
+	id1, err := getDefaultSigner(msp1)
+	require.NoError(t, err)
+
+	ou := &msp.OrganizationUnit{
+		OrganizationalUnitIdentifier: "DifferentOU",
+		MspIdentifier:                id1.GetMSPIdentifier(),
+		CertifiersIdentifier:         nil,
+	}
+	bytes, err := proto.Marshal(ou)
+	require.NoError(t, err)
+
+	principal := &msp.MSPPrincipal{
+		PrincipalClassification: msp.MSPPrincipal_ORGANIZATION_UNIT,
+		Principal:               bytes}
+
+	err = id1.SatisfiesPrincipal(principal)
+	require.Error(t, err, "OU MSP principal should have failed for user of different OU")
+	require.Contains(t, err.Error(), "user is not part of the desired organizational unit")
+
+}
+
+func TestPrincipalOUWrongOUAries(t *testing.T) {
+	msp1, err := setupWithTypeAndVersion("testdata/aries/MSP1OU1eid1/", "MSP1", MSPv1_3, IDEMIX_ARIES)
 	require.NoError(t, err)
 
 	id1, err := getDefaultSigner(msp1)
@@ -452,6 +597,35 @@ func TestPrincipalOUBad(t *testing.T) {
 	err = id1.SatisfiesPrincipal(principal)
 	require.Error(t, err, "OU MSP principal should have failed for a bad OU principal")
 	require.Contains(t, err.Error(), "could not unmarshal OU from principal")
+}
+
+func TestPrincipalRoleMemberAries(t *testing.T) {
+	msp1, err := setupWithTypeAndVersion("testdata/aries/MSP1OU1eid1/", "MSP1", MSPv1_3, IDEMIX_ARIES)
+	require.NoError(t, err)
+
+	id1, err := getDefaultSigner(msp1)
+	require.NoError(t, err)
+
+	principalBytes, err := proto.Marshal(&msp.MSPRole{Role: msp.MSPRole_MEMBER, MspIdentifier: id1.GetMSPIdentifier()})
+	require.NoError(t, err)
+
+	principal := &msp.MSPPrincipal{
+		PrincipalClassification: msp.MSPPrincipal_ROLE,
+		Principal:               principalBytes}
+
+	err = id1.SatisfiesPrincipal(principal)
+	require.NoError(t, err)
+
+	// Member should also satisfy client
+	principalBytes, err = proto.Marshal(&msp.MSPRole{Role: msp.MSPRole_CLIENT, MspIdentifier: id1.GetMSPIdentifier()})
+	require.NoError(t, err)
+
+	principal = &msp.MSPPrincipal{
+		PrincipalClassification: msp.MSPPrincipal_ROLE,
+		Principal:               principalBytes}
+
+	err = id1.SatisfiesPrincipal(principal)
+	require.NoError(t, err)
 }
 
 func TestPrincipalRoleMember(t *testing.T) {
@@ -603,6 +777,45 @@ func TestPrincipalBad(t *testing.T) {
 	err = id1.SatisfiesPrincipal(principal)
 	require.Error(t, err, "Principal with bad Classification should fail")
 	require.Contains(t, err.Error(), "invalid principal type")
+}
+
+func TestPrincipalCombinedAries(t *testing.T) {
+	msp1, err := setupWithTypeAndVersion("testdata/aries/MSP1OU1eid1/", "MSP1", MSPv1_3, IDEMIX_ARIES)
+	require.NoError(t, err)
+
+	id1, err := getDefaultSigner(msp1)
+	require.NoError(t, err)
+
+	ou := &msp.OrganizationUnit{
+		OrganizationalUnitIdentifier: id1.GetOrganizationalUnits()[0].OrganizationalUnitIdentifier,
+		MspIdentifier:                id1.GetMSPIdentifier(),
+		CertifiersIdentifier:         nil,
+	}
+	principalBytes, err := proto.Marshal(ou)
+	require.NoError(t, err)
+
+	principalOU := &msp.MSPPrincipal{
+		PrincipalClassification: msp.MSPPrincipal_ORGANIZATION_UNIT,
+		Principal:               principalBytes}
+
+	principalBytes, err = proto.Marshal(&msp.MSPRole{Role: msp.MSPRole_MEMBER, MspIdentifier: id1.GetMSPIdentifier()})
+	require.NoError(t, err)
+
+	principalRole := &msp.MSPPrincipal{
+		PrincipalClassification: msp.MSPPrincipal_ROLE,
+		Principal:               principalBytes}
+
+	principals := []*msp.MSPPrincipal{principalOU, principalRole}
+
+	combinedPrincipal := &msp.CombinedPrincipal{Principals: principals}
+	combinedPrincipalBytes, err := proto.Marshal(combinedPrincipal)
+
+	require.NoError(t, err)
+
+	principalsCombined := &msp.MSPPrincipal{PrincipalClassification: msp.MSPPrincipal_COMBINED, Principal: combinedPrincipalBytes}
+
+	err = id1.SatisfiesPrincipal(principalsCombined)
+	require.NoError(t, err)
 }
 
 func TestPrincipalCombined(t *testing.T) {
