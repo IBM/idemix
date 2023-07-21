@@ -100,7 +100,7 @@ func NewIdemixMsp(version MSPVersion) (MSP, error) {
 func NewIdemixMspAries(version MSPVersion) (MSP, error) {
 	mspLogger.Debugf("Creating Idemix-based MSP instance")
 
-	curve := math.Curves[math.FP256BN_AMCL]
+	curve := math.Curves[math.BLS12_381_BBS]
 	csp, err := idemix.NewAries(&keystore.Dummy{}, curve, &amcl.Gurvy{C: curve}, true)
 	if err != nil {
 		panic(fmt.Sprintf("unexpected condition, error received [%s]", err))
