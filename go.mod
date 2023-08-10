@@ -3,6 +3,9 @@ module github.com/IBM/idemix
 go 1.19
 
 require (
+	github.com/IBM/idemix/bccsp/schemes/aries v0.0.0-20230810173054-c991cc1e54ca
+	github.com/IBM/idemix/bccsp/schemes/weak-bb v0.0.0-20230810173054-c991cc1e54ca
+	github.com/IBM/idemix/bccsp/types v0.0.0-20230810173054-c991cc1e54ca
 	github.com/IBM/mathlib v0.0.3-0.20230605104224-932ab92f2ce0
 	github.com/alecthomas/template v0.0.0-20190718012654-fb15b899a751 // indirect
 	github.com/alecthomas/units v0.0.0-20210912230133-d1bdfacee922 // indirect
@@ -17,12 +20,6 @@ require (
 	go.uber.org/zap v1.16.0
 	google.golang.org/grpc v1.31.0
 	gopkg.in/alecthomas/kingpin.v2 v2.2.6
-)
-
-require (
-	github.com/IBM/idemix/bccsp/schemes/aries v0.0.0-00010101000000-000000000000
-	github.com/IBM/idemix/bccsp/schemes/weak-bb v0.0.0-00010101000000-000000000000
-	github.com/IBM/idemix/bccsp/types v0.0.0-00010101000000-000000000000
 )
 
 require (
@@ -52,9 +49,3 @@ require (
 replace github.com/onsi/gomega => github.com/onsi/gomega v1.9.0
 
 replace github.com/hyperledger/aries-framework-go/component/kmscrypto => github.com/ale-linux/aries-framework-go/component/kmscrypto v0.0.0-20230630075813-b7e4c6a2156c
-
-replace github.com/IBM/idemix/bccsp/types => ./bccsp/types
-
-replace github.com/IBM/idemix/bccsp/schemes/aries => ./bccsp/schemes/aries
-
-replace github.com/IBM/idemix/bccsp/schemes/weak-bb => ./bccsp/schemes/weak-bb

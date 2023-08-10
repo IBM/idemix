@@ -3,11 +3,11 @@ module github.com/IBM/idemix/bccsp/schemes/aries
 go 1.19
 
 require (
-	github.com/IBM/idemix/bccsp/schemes/weak-bb v0.0.0-00010101000000-000000000000
-	github.com/IBM/idemix/bccsp/types v0.0.0-00010101000000-000000000000
+	github.com/IBM/idemix/bccsp/schemes/weak-bb v0.0.0-20230810173054-c991cc1e54ca
+	github.com/IBM/idemix/bccsp/types v0.0.0-20230810173054-c991cc1e54ca
 	github.com/IBM/mathlib v0.0.3-0.20230605104224-932ab92f2ce0
 	github.com/golang/protobuf v1.5.3
-	github.com/hyperledger/aries-framework-go/component/kmscrypto v0.0.0-20230810150537-71e132ba5968
+	github.com/hyperledger/aries-framework-go/component/kmscrypto v0.0.0
 	github.com/pkg/errors v0.9.1
 	github.com/stretchr/testify v1.8.4
 )
@@ -27,6 +27,4 @@ require (
 	rsc.io/tmplfunc v0.0.3 // indirect
 )
 
-replace github.com/IBM/idemix/bccsp/schemes/weak-bb => ../weak-bb
-
-replace github.com/IBM/idemix/bccsp/types => ../../types
+replace github.com/hyperledger/aries-framework-go/component/kmscrypto => github.com/ale-linux/aries-framework-go/component/kmscrypto v0.0.0-20230630075813-b7e4c6a2156c
