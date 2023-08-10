@@ -1,3 +1,9 @@
+/*
+Copyright IBM Corp. All Rights Reserved.
+
+SPDX-License-Identifier: Apache-2.0
+*/
+
 package types_test
 
 //go:generate counterfeiter -o mock/issuer.go -fake-name Issuer . Issuer

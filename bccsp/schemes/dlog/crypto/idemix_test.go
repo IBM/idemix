@@ -14,9 +14,9 @@ import (
 	math "github.com/IBM/mathlib"
 	"github.com/stretchr/testify/require"
 
-	opts "github.com/IBM/idemix/bccsp/types"
 	"github.com/IBM/idemix/bccsp/schemes/dlog/crypto/translator/amcl"
 	weakbb "github.com/IBM/idemix/bccsp/schemes/weak-bb"
+	opts "github.com/IBM/idemix/bccsp/types"
 )
 
 type testEnv struct {
