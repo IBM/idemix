@@ -1,5 +1,11 @@
+github.com/IBM/idemix/bccsp/schemes/weak-bb v0.0.0-20230810173054-c991cc1e54ca h1:yzLkH3CGAvTHJiFgz+sHMz8HSQBahYney1LaoP/42CM=
+github.com/IBM/idemix/bccsp/schemes/weak-bb v0.0.0-20230810173054-c991cc1e54ca/go.mod h1:n86zzYREwJdjUybye3rerxmAFfgVJtPvNOrRX30CbrU=
+github.com/IBM/idemix/bccsp/types v0.0.0-20230810173054-c991cc1e54ca h1:d/RRnouZVXKQR/uLOgfy8fhRgN934oPbzH1xk3eoBtg=
+github.com/IBM/idemix/bccsp/types v0.0.0-20230810173054-c991cc1e54ca/go.mod h1:6ura+11RaC9RwTQ2SEq5KZ+2w6+c7BuArQOP1Ktrlq0=
 github.com/IBM/mathlib v0.0.3-0.20230605104224-932ab92f2ce0 h1:V3ElfC3Xs8bxJyc7VPcBQ9th6vyBBX8u/5bIUOXljk4=
 github.com/IBM/mathlib v0.0.3-0.20230605104224-932ab92f2ce0/go.mod h1:k0NBSWMYVgaZ2keDuI8DSwdIEhUNhp8XnlVmm6Xwyuk=
+github.com/ale-linux/aries-framework-go/component/kmscrypto v0.0.0-20230630075813-b7e4c6a2156c h1:pIeW9nAHIHHa9LZboAn/+9DfsWVdhSJpdhr14c0SSmw=
+github.com/ale-linux/aries-framework-go/component/kmscrypto v0.0.0-20230630075813-b7e4c6a2156c/go.mod h1:+rH73XbcYcDOp0G22zMkPqMLEi/PCBOogCWKHd8HNYQ=
 github.com/btcsuite/btcutil v1.0.3-0.20201208143702-a53e38424cce h1:YtWJF7RHm2pYCvA5t0RPmAaLUhREsKuKd+SLhxFbFeQ=
 github.com/consensys/bavard v0.1.13 h1:oLhMLOFGTLdlda/kma4VOJazblc7IM5y5QPd2A/YjhQ=
 github.com/consensys/bavard v0.1.13/go.mod h1:9ItSMtA/dXMAiL7BG6bqW2m3NdSEObYWoH223nGHukI=
@@ -13,8 +19,6 @@ github.com/golang/protobuf v1.5.3/go.mod h1:XVQd3VNwM+JqD3oG2Ue2ip4fOMUkwXdXDdiu
 github.com/google/go-cmp v0.5.5 h1:Khx7svrCpmxxtHBq5j2mp/xVjsi8hQMfNLvJFAlrGgU=
 github.com/google/go-cmp v0.5.5/go.mod h1:v8dTdLbMG2kIc/vJvl+f65V22dbkXbowE6jgT/gNBxE=
 github.com/google/subcommands v1.2.0/go.mod h1:ZjhPrFU+Olkh9WazFPsl27BQ4UPiG37m3yTrtFlrHVk=
-github.com/hyperledger/aries-framework-go/component/kmscrypto v0.0.0-20230810150537-71e132ba5968 h1:ZGi9n/A8YQ3lESexlhRuTUiRo9WkQV9xm5gpztRD2/M=
-github.com/hyperledger/aries-framework-go/component/kmscrypto v0.0.0-20230810150537-71e132ba5968/go.mod h1:nmT2WqhIs9Eyncdr9feYrUIy7ggf00bWnTzCN6/t8PY=
 github.com/hyperledger/fabric-amcl v0.0.0-20230602173724-9e02669dceb2 h1:B1Nt8hKb//KvgGRprk0h1t4lCnwhE9/ryb1WqfZbV+M=
 github.com/hyperledger/fabric-amcl v0.0.0-20230602173724-9e02669dceb2/go.mod h1:X+DIyUsaTmalOpmpQfIvFZjKHQedrURQ5t4YqquX7lE=
 github.com/kilic/bls12-381 v0.1.0 h1:encrdjqKMEvabVQ7qYOKu1OvhqpK4s47wDYtNiPtlp4=
