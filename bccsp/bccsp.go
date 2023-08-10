@@ -9,10 +9,10 @@ import (
 	"reflect"
 
 	"github.com/IBM/idemix/bccsp/handlers"
-	bccsp "github.com/IBM/idemix/bccsp/types"
 	"github.com/IBM/idemix/bccsp/schemes/aries"
 	"github.com/IBM/idemix/bccsp/schemes/dlog/bridge"
 	idemix "github.com/IBM/idemix/bccsp/schemes/dlog/crypto"
+	bccsp "github.com/IBM/idemix/bccsp/types"
 	math "github.com/IBM/mathlib"
 	"github.com/hyperledger/aries-framework-go/component/kmscrypto/crypto/primitive/bbs12381g2pub"
 	"github.com/pkg/errors"
