@@ -14,7 +14,7 @@ import (
 	"fmt"
 	"reflect"
 
-	bccsp "github.com/IBM/idemix/bccsp/schemes"
+	bccsp "github.com/IBM/idemix/bccsp/types"
 	"github.com/pkg/errors"
 )
 

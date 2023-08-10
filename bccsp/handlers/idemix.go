@@ -10,7 +10,7 @@ import (
 
 	math "github.com/IBM/mathlib"
 
-	bccsp "github.com/IBM/idemix/bccsp/schemes"
+	bccsp "github.com/IBM/idemix/bccsp/types"
 )
 
 // IssuerPublicKey is the issuer public key

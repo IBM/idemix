@@ -8,7 +8,7 @@ package aries_test
 import (
 	"testing"
 
-	idemix "github.com/IBM/idemix/bccsp/schemes"
+	idemix "github.com/IBM/idemix/bccsp/types"
 	"github.com/IBM/idemix/bccsp/schemes/aries"
 	math "github.com/IBM/mathlib"
 	"github.com/stretchr/testify/assert"

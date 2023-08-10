@@ -9,7 +9,7 @@ package idemix
 import (
 	"testing"
 
-	bccsp "github.com/IBM/idemix/bccsp/schemes"
+	bccsp "github.com/IBM/idemix/bccsp/types"
 	im "github.com/IBM/idemix/idemixmsp"
 	"github.com/golang/protobuf/proto"
 	"github.com/stretchr/testify/assert"
