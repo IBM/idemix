@@ -23,7 +23,7 @@ func TestAudit(t *testing.T) {
 	// idemixgen ca-keygen
 	// idemixgen signerconfig --ca-input=./idemix-config/ --enrollmentId=my-enrollment-id --revocationHandle=my-revocation-handle --org-unit=my-ou
 
-	conf, err := GetIdemixMspConfig("testdata/idemix/EidRH", "EidRH", IDEMIX)
+	conf, err := GetIdemixMspConfigWithType("testdata/idemix/EidRH", "EidRH", IDEMIX)
 	assert.NoError(t, err)
 
 	err = msp.Setup(conf)

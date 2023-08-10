@@ -724,7 +724,12 @@ const (
 )
 
 // GetIdemixMspConfig returns the configuration for the Idemix MSP
-func GetIdemixMspConfig(dir string, ID string, mspType ProviderType) (*m.MSPConfig, error) {
+func GetIdemixMspConfig(dir string, ID string) (*m.MSPConfig, error) {
+	return GetIdemixMspConfigWithType(dir, ID, IDEMIX)
+}
+
+// GetIdemixMspConfigWithType returns the configuration for the Idemix MSP of the specified type
+func GetIdemixMspConfigWithType(dir string, ID string, mspType ProviderType) (*m.MSPConfig, error) {
 	ipkBytes, err := readFile(filepath.Join(dir, IdemixConfigDirMsp, IdemixConfigFileIssuerPublicKey))
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to read issuer public key file")

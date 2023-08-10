@@ -189,8 +189,7 @@ func setupMSP(idType imsp.ProviderType) error {
 		return errors.Wrap(err, "Getting MSP failed")
 	}
 
-	mspConfig, err := m.GetIdemixMspConfig(testDir, "TestName", idType)
-
+	mspConfig, err := m.GetIdemixMspConfigWithType(testDir, "TestName", idType)
 	if err != nil {
 		return err
 	}
