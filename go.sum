@@ -3,6 +3,8 @@ github.com/BurntSushi/toml v0.3.1 h1:WXkYYl6Yr3qBf1K79EBnL4mak0OimBfB0XUf9Vl28OQ
 github.com/BurntSushi/toml v0.3.1/go.mod h1:xHWCNGjB5oqiDr8zfno3MHue2Ht5sIBksp03qcyfWMU=
 github.com/IBM/mathlib v0.0.3-0.20230605104224-932ab92f2ce0 h1:V3ElfC3Xs8bxJyc7VPcBQ9th6vyBBX8u/5bIUOXljk4=
 github.com/IBM/mathlib v0.0.3-0.20230605104224-932ab92f2ce0/go.mod h1:k0NBSWMYVgaZ2keDuI8DSwdIEhUNhp8XnlVmm6Xwyuk=
+github.com/ale-linux/aries-framework-go/component/kmscrypto v0.0.0-20230630075813-b7e4c6a2156c h1:pIeW9nAHIHHa9LZboAn/+9DfsWVdhSJpdhr14c0SSmw=
+github.com/ale-linux/aries-framework-go/component/kmscrypto v0.0.0-20230630075813-b7e4c6a2156c/go.mod h1:+rH73XbcYcDOp0G22zMkPqMLEi/PCBOogCWKHd8HNYQ=
 github.com/alecthomas/template v0.0.0-20190718012654-fb15b899a751 h1:JYp7IbQjafoB+tBA3gMyHYHrpOtNuDiK/uB5uXxq5wM=
 github.com/alecthomas/template v0.0.0-20190718012654-fb15b899a751/go.mod h1:LOuyumcjzFXgccqObfd/Ljyb9UuFJ6TxHnclSeseNhc=
 github.com/alecthomas/units v0.0.0-20210912230133-d1bdfacee922 h1:8ypNbf5sd3Sm3cKJ9waOGoQv6dKAFiFty9L6NP1AqJ4=
@@ -80,8 +82,6 @@ github.com/stretchr/testify v1.8.1 h1:w7B6lhMri9wdJUVmEZPGGhZzrYTPvgJArz7wNPgYKs
 github.com/stretchr/testify v1.8.1/go.mod h1:w2LPCIKwWwSfY2zedu0+kehJoqGctiVI29o6fzry7u4=
 github.com/sykesm/zap-logfmt v0.0.2 h1:czSzn+PIXCOAP/4NAIHTTziIKB8201PzoDkKTn+VR/8=
 github.com/sykesm/zap-logfmt v0.0.2/go.mod h1:TerDJT124HaO8UTpZ2wJCipJRAKQ9XONM1mzUabIh6M=
-github.ibm.com/research-ssi/aries-framework-go/component/kmscrypto v0.0.0-20230630075813-b7e4c6a2156c h1:igvr5zXY1VqxLAvErlDu8NQKR2MSfuELxpcFZwuMWsw=
-github.ibm.com/research-ssi/aries-framework-go/component/kmscrypto v0.0.0-20230630075813-b7e4c6a2156c/go.mod h1:+rH73XbcYcDOp0G22zMkPqMLEi/PCBOogCWKHd8HNYQ=
 go.uber.org/atomic v1.3.2/go.mod h1:gD2HeocX3+yG+ygLZcrzQJaqmWj9AIm7n08wl/qW/PE=
 go.uber.org/atomic v1.6.0 h1:Ezj3JGmsOnG1MoRWQkPBsKLe9DwWD9QeXzTRzzldNVk=
 go.uber.org/atomic v1.6.0/go.mod h1:sABNBOSYdrvTF6hTgEIbc7YasKWGhgEQZyfxyTvoXHQ=
