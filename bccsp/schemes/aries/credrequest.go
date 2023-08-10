@@ -8,7 +8,7 @@ package aries
 import (
 	"fmt"
 
-	"github.com/IBM/idemix/bccsp/handlers"
+	"github.com/IBM/idemix/bccsp/types"
 	math "github.com/IBM/mathlib"
 	"github.com/golang/protobuf/proto"
 	"github.com/pkg/errors"
@@ -20,7 +20,7 @@ type CredRequest struct {
 
 // Sign creates a new Credential Request, the first message of the interactive credential issuance protocol
 // (from user to issuer)
-func (c *CredRequest) Blind(sk *math.Zr, key handlers.IssuerPublicKey, nonce []byte) ([]byte, []byte, error) {
+func (c *CredRequest) Blind(sk *math.Zr, key types.IssuerPublicKey, nonce []byte) ([]byte, []byte, error) {
 	ipk, ok := key.(*IssuerPublicKey)
 	if !ok {
 		return nil, nil, errors.Errorf("invalid issuer public key, expected *IssuerPublicKey, got [%T]", ipk)
@@ -38,7 +38,7 @@ func (c *CredRequest) Blind(sk *math.Zr, key handlers.IssuerPublicKey, nonce []b
 }
 
 // Verify verifies the credential request
-func (c *CredRequest) BlindVerify(credRequest []byte, key handlers.IssuerPublicKey, nonce []byte) error {
+func (c *CredRequest) BlindVerify(credRequest []byte, key types.IssuerPublicKey, nonce []byte) error {
 	ipk, ok := key.(*IssuerPublicKey)
 	if !ok {
 		return errors.Errorf("invalid issuer public key, expected *IssuerPublicKey, got [%T]", ipk)

@@ -8,8 +8,7 @@ package aries
 import (
 	"fmt"
 
-	"github.com/IBM/idemix/bccsp/handlers"
-	bccsp "github.com/IBM/idemix/bccsp/types"
+	"github.com/IBM/idemix/bccsp/types"
 	math "github.com/IBM/mathlib"
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/aries-framework-go/component/kmscrypto/crypto/primitive/bbs12381g2pub"
@@ -24,7 +23,7 @@ type Cred struct {
 // Sign issues a new credential, which is the last step of the interactive issuance protocol
 // All attribute values are added by the issuer at this step and then signed together with a commitment to
 // the user's secret key from a credential request
-func (c *Cred) Sign(key handlers.IssuerSecretKey, credentialRequest []byte, attributes []bccsp.IdemixAttribute) ([]byte, error) {
+func (c *Cred) Sign(key types.IssuerSecretKey, credentialRequest []byte, attributes []types.IdemixAttribute) ([]byte, error) {
 	isk, ok := key.(*IssuerSecretKey)
 	if !ok {
 		return nil, errors.Errorf("invalid issuer public key, expected *IssuerPublicKey, got [%T]", key)
@@ -62,7 +61,7 @@ func (c *Cred) Sign(key handlers.IssuerSecretKey, credentialRequest []byte, attr
 
 // Verify cryptographically verifies the credential by verifying the signature
 // on the attribute values and user's secret key
-func (c *Cred) Verify(sk *math.Zr, key handlers.IssuerPublicKey, credBytes []byte, attributes []bccsp.IdemixAttribute) error {
+func (c *Cred) Verify(sk *math.Zr, key types.IssuerPublicKey, credBytes []byte, attributes []types.IdemixAttribute) error {
 	ipk, ok := key.(*IssuerPublicKey)
 	if !ok {
 		return errors.Errorf("invalid issuer public key, expected *IssuerPublicKey, got [%T]", ipk)
@@ -91,14 +90,14 @@ func (c *Cred) Verify(sk *math.Zr, key handlers.IssuerPublicKey, credBytes []byt
 		}
 
 		switch attributes[i].Type {
-		case bccsp.IdemixHiddenAttribute:
+		case types.IdemixHiddenAttribute:
 			continue
-		case bccsp.IdemixBytesAttribute:
+		case types.IdemixBytesAttribute:
 			fr := bbs12381g2pub.FrFromOKM(attributes[i].Value.([]byte))
 			if !fr.Equals(sm[i+1].FR) {
 				return errors.Errorf("credential does not contain the correct attribute value at position [%d]", i)
 			}
-		case bccsp.IdemixIntAttribute:
+		case types.IdemixIntAttribute:
 			fr := c.Curve.NewZrFromInt(int64(attributes[i].Value.(int)))
 			if !fr.Equals(sm[i+1].FR) {
 				return errors.Errorf("credential does not contain the correct attribute value at position [%d]", i)

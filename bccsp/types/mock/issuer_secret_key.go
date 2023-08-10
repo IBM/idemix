@@ -4,7 +4,7 @@ package mock
 import (
 	"sync"
 
-	"github.com/IBM/idemix/bccsp/handlers"
+	"github.com/IBM/idemix/bccsp/types"
 )
 
 type IssuerSecretKey struct {
@@ -20,15 +20,15 @@ type IssuerSecretKey struct {
 		result1 []byte
 		result2 error
 	}
-	PublicStub        func() handlers.IssuerPublicKey
+	PublicStub        func() types.IssuerPublicKey
 	publicMutex       sync.RWMutex
 	publicArgsForCall []struct {
 	}
 	publicReturns struct {
-		result1 handlers.IssuerPublicKey
+		result1 types.IssuerPublicKey
 	}
 	publicReturnsOnCall map[int]struct {
-		result1 handlers.IssuerPublicKey
+		result1 types.IssuerPublicKey
 	}
 	invocations      map[string][][]interface{}
 	invocationsMutex sync.RWMutex
@@ -90,7 +90,7 @@ func (fake *IssuerSecretKey) BytesReturnsOnCall(i int, result1 []byte, result2 e
 	}{result1, result2}
 }
 
-func (fake *IssuerSecretKey) Public() handlers.IssuerPublicKey {
+func (fake *IssuerSecretKey) Public() types.IssuerPublicKey {
 	fake.publicMutex.Lock()
 	ret, specificReturn := fake.publicReturnsOnCall[len(fake.publicArgsForCall)]
 	fake.publicArgsForCall = append(fake.publicArgsForCall, struct {
@@ -114,32 +114,32 @@ func (fake *IssuerSecretKey) PublicCallCount() int {
 	return len(fake.publicArgsForCall)
 }
 
-func (fake *IssuerSecretKey) PublicCalls(stub func() handlers.IssuerPublicKey) {
+func (fake *IssuerSecretKey) PublicCalls(stub func() types.IssuerPublicKey) {
 	fake.publicMutex.Lock()
 	defer fake.publicMutex.Unlock()
 	fake.PublicStub = stub
 }
 
-func (fake *IssuerSecretKey) PublicReturns(result1 handlers.IssuerPublicKey) {
+func (fake *IssuerSecretKey) PublicReturns(result1 types.IssuerPublicKey) {
 	fake.publicMutex.Lock()
 	defer fake.publicMutex.Unlock()
 	fake.PublicStub = nil
 	fake.publicReturns = struct {
-		result1 handlers.IssuerPublicKey
+		result1 types.IssuerPublicKey
 	}{result1}
 }
 
-func (fake *IssuerSecretKey) PublicReturnsOnCall(i int, result1 handlers.IssuerPublicKey) {
+func (fake *IssuerSecretKey) PublicReturnsOnCall(i int, result1 types.IssuerPublicKey) {
 	fake.publicMutex.Lock()
 	defer fake.publicMutex.Unlock()
 	fake.PublicStub = nil
 	if fake.publicReturnsOnCall == nil {
 		fake.publicReturnsOnCall = make(map[int]struct {
-			result1 handlers.IssuerPublicKey
+			result1 types.IssuerPublicKey
 		})
 	}
 	fake.publicReturnsOnCall[i] = struct {
-		result1 handlers.IssuerPublicKey
+		result1 types.IssuerPublicKey
 	}{result1}
 }
 
@@ -169,4 +169,4 @@ func (fake *IssuerSecretKey) recordInvocation(key string, args []interface{}) {
 	fake.invocations[key] = append(fake.invocations[key], args)
 }
 
-var _ handlers.IssuerSecretKey = new(IssuerSecretKey)
+var _ types.IssuerSecretKey = new(IssuerSecretKey)

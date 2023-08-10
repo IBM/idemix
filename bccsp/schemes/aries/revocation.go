@@ -16,8 +16,8 @@ import (
 	"io"
 	"math/big"
 
-	bccsp "github.com/IBM/idemix/bccsp/types"
 	weakbb "github.com/IBM/idemix/bccsp/schemes/weak-bb"
+	"github.com/IBM/idemix/bccsp/types"
 	math "github.com/IBM/mathlib"
 	"github.com/golang/protobuf/proto"
 	"github.com/pkg/errors"
@@ -45,7 +45,7 @@ func (r *RevocationAuthority) NewKeyFromBytes(raw []byte) (*ecdsa.PrivateKey, er
 
 // Sign creates the Credential Revocation Information for a certain time period (epoch).
 // Users can use the CRI to prove that they are not revoked.
-func (r *RevocationAuthority) Sign(key *ecdsa.PrivateKey, _ [][]byte, epoch int, alg bccsp.RevocationAlgorithm) ([]byte, error) {
+func (r *RevocationAuthority) Sign(key *ecdsa.PrivateKey, _ [][]byte, epoch int, alg types.RevocationAlgorithm) ([]byte, error) {
 	if key == nil {
 		return nil, errors.Errorf("CreateCRI received nil input")
 	}
@@ -54,7 +54,7 @@ func (r *RevocationAuthority) Sign(key *ecdsa.PrivateKey, _ [][]byte, epoch int,
 	cri.RevocationAlg = int32(alg)
 	cri.Epoch = int64(epoch)
 
-	if alg == bccsp.AlgNoRevocation {
+	if alg == types.AlgNoRevocation {
 		// put a dummy PK in the proto
 		cri.EpochPk = r.Curve.GenG2.Bytes()
 	} else {
@@ -76,7 +76,7 @@ func (r *RevocationAuthority) Sign(key *ecdsa.PrivateKey, _ [][]byte, epoch int,
 		return nil, err
 	}
 
-	if alg == bccsp.AlgNoRevocation {
+	if alg == types.AlgNoRevocation {
 		return proto.Marshal(cri)
 	} else {
 		return nil, errors.Errorf("the specified revocation algorithm is not supported.")
@@ -88,7 +88,7 @@ func (r *RevocationAuthority) Sign(key *ecdsa.PrivateKey, _ [][]byte, epoch int,
 // Note that even if we use no revocation (i.e., alg = ALG_NO_REVOCATION), we need
 // to verify the signature to make sure the issuer indeed signed that no revocation
 // is used in this epoch.
-func (r *RevocationAuthority) Verify(pk *ecdsa.PublicKey, criRaw []byte, epoch int, alg bccsp.RevocationAlgorithm) error {
+func (r *RevocationAuthority) Verify(pk *ecdsa.PublicKey, criRaw []byte, epoch int, alg types.RevocationAlgorithm) error {
 	if pk == nil {
 		return fmt.Errorf("CreateCRI received nil input")
 	}

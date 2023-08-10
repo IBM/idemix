@@ -9,8 +9,8 @@ package aries_test
 import (
 	"testing"
 
-	bccsp "github.com/IBM/idemix/bccsp/types"
 	"github.com/IBM/idemix/bccsp/schemes/aries"
+	"github.com/IBM/idemix/bccsp/types"
 	math "github.com/IBM/mathlib"
 	"github.com/hyperledger/aries-framework-go/component/kmscrypto/crypto/primitive/bbs12381g2pub"
 	"github.com/stretchr/testify/assert"
@@ -57,21 +57,21 @@ func TestCredRequest(t *testing.T) {
 	err = cr.BlindVerify(credReq, ipk, []byte("la la land"))
 	assert.NoError(t, err)
 
-	idemixAttrs := []bccsp.IdemixAttribute{
+	idemixAttrs := []types.IdemixAttribute{
 		{
-			Type:  bccsp.IdemixBytesAttribute,
+			Type:  types.IdemixBytesAttribute,
 			Value: []byte("msg1"),
 		},
 		{
-			Type:  bccsp.IdemixIntAttribute,
+			Type:  types.IdemixIntAttribute,
 			Value: 3,
 		},
 		{
-			Type:  bccsp.IdemixBytesAttribute,
+			Type:  types.IdemixBytesAttribute,
 			Value: []byte("msg3"),
 		},
 		{
-			Type:  bccsp.IdemixBytesAttribute,
+			Type:  types.IdemixBytesAttribute,
 			Value: []byte("msg4"),
 		},
 	}
@@ -85,21 +85,21 @@ func TestCredRequest(t *testing.T) {
 	err = credProto.Verify(sk, ipk, cred, idemixAttrs)
 	assert.NoError(t, err)
 
-	idemixAttrs = []bccsp.IdemixAttribute{
+	idemixAttrs = []types.IdemixAttribute{
 		{
-			Type:  bccsp.IdemixBytesAttribute,
+			Type:  types.IdemixBytesAttribute,
 			Value: []byte("msg1"),
 		},
 		{
-			Type:  bccsp.IdemixIntAttribute,
+			Type:  types.IdemixIntAttribute,
 			Value: 3,
 		},
 		{
-			Type:  bccsp.IdemixBytesAttribute,
+			Type:  types.IdemixBytesAttribute,
 			Value: []byte("msg3"),
 		},
 		{
-			Type: bccsp.IdemixHiddenAttribute,
+			Type: types.IdemixHiddenAttribute,
 		},
 	}
 
@@ -107,21 +107,21 @@ func TestCredRequest(t *testing.T) {
 	err = credProto.Verify(sk, ipk, cred, idemixAttrs)
 	assert.NoError(t, err)
 
-	idemixAttrs = []bccsp.IdemixAttribute{
+	idemixAttrs = []types.IdemixAttribute{
 		{
-			Type:  bccsp.IdemixBytesAttribute,
+			Type:  types.IdemixBytesAttribute,
 			Value: []byte("msg2"),
 		},
 		{
-			Type:  bccsp.IdemixIntAttribute,
+			Type:  types.IdemixIntAttribute,
 			Value: 3,
 		},
 		{
-			Type:  bccsp.IdemixBytesAttribute,
+			Type:  types.IdemixBytesAttribute,
 			Value: []byte("msg3"),
 		},
 		{
-			Type: bccsp.IdemixHiddenAttribute,
+			Type: types.IdemixHiddenAttribute,
 		},
 	}
 
@@ -129,21 +129,21 @@ func TestCredRequest(t *testing.T) {
 	err = credProto.Verify(sk, ipk, cred, idemixAttrs)
 	assert.EqualError(t, err, "credential does not contain the correct attribute value at position [0]")
 
-	idemixAttrs = []bccsp.IdemixAttribute{
+	idemixAttrs = []types.IdemixAttribute{
 		{
-			Type:  bccsp.IdemixBytesAttribute,
+			Type:  types.IdemixBytesAttribute,
 			Value: []byte("msg1"),
 		},
 		{
-			Type:  bccsp.IdemixIntAttribute,
+			Type:  types.IdemixIntAttribute,
 			Value: 2,
 		},
 		{
-			Type:  bccsp.IdemixBytesAttribute,
+			Type:  types.IdemixBytesAttribute,
 			Value: []byte("msg3"),
 		},
 		{
-			Type: bccsp.IdemixHiddenAttribute,
+			Type: types.IdemixHiddenAttribute,
 		},
 	}
 

@@ -9,7 +9,7 @@ package aries
 import (
 	"io"
 
-	"github.com/IBM/idemix/bccsp/handlers"
+	"github.com/IBM/idemix/bccsp/types"
 	math "github.com/IBM/mathlib"
 	"github.com/hyperledger/aries-framework-go/component/kmscrypto/crypto/primitive/bbs12381g2pub"
 	"github.com/pkg/errors"
@@ -37,7 +37,7 @@ func (u *User) NewKeyFromBytes(raw []byte) (*math.Zr, error) {
 }
 
 // MakeNym creates a new unlinkable pseudonym
-func (u *User) MakeNym(sk *math.Zr, key handlers.IssuerPublicKey) (*math.G1, *math.Zr, error) {
+func (u *User) MakeNym(sk *math.Zr, key types.IssuerPublicKey) (*math.G1, *math.Zr, error) {
 	ipk, ok := key.(*IssuerPublicKey)
 	if !ok {
 		return nil, nil, errors.Errorf("invalid issuer public key, expected *IssuerPublicKey, got [%T]", ipk)

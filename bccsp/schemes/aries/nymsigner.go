@@ -9,7 +9,7 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/IBM/idemix/bccsp/handlers"
+	"github.com/IBM/idemix/bccsp/types"
 	math "github.com/IBM/mathlib"
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/aries-framework-go/component/kmscrypto/crypto/primitive/bbs12381g2pub"
@@ -27,7 +27,7 @@ func (s *NymSigner) Sign(
 	sk *math.Zr,
 	Nym *math.G1,
 	RNym *math.Zr,
-	key handlers.IssuerPublicKey,
+	key types.IssuerPublicKey,
 	digest []byte,
 ) ([]byte, error) {
 	ipk, ok := key.(*IssuerPublicKey)
@@ -65,7 +65,7 @@ func (s *NymSigner) Sign(
 
 // Verify verifies an idemix NymSignature
 func (s *NymSigner) Verify(
-	key handlers.IssuerPublicKey,
+	key types.IssuerPublicKey,
 	Nym *math.G1,
 	sigBytes, digest []byte,
 ) error {

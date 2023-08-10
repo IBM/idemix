@@ -4,16 +4,16 @@ package mock
 import (
 	"sync"
 
-	"github.com/IBM/idemix/bccsp/handlers"
+	"github.com/IBM/idemix/bccsp/types"
 	math "github.com/IBM/mathlib"
 )
 
 type User struct {
-	MakeNymStub        func(*math.Zr, handlers.IssuerPublicKey) (*math.G1, *math.Zr, error)
+	MakeNymStub        func(*math.Zr, types.IssuerPublicKey) (*math.G1, *math.Zr, error)
 	makeNymMutex       sync.RWMutex
 	makeNymArgsForCall []struct {
 		arg1 *math.Zr
-		arg2 handlers.IssuerPublicKey
+		arg2 types.IssuerPublicKey
 	}
 	makeNymReturns struct {
 		result1 *math.G1
@@ -82,12 +82,12 @@ type User struct {
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *User) MakeNym(arg1 *math.Zr, arg2 handlers.IssuerPublicKey) (*math.G1, *math.Zr, error) {
+func (fake *User) MakeNym(arg1 *math.Zr, arg2 types.IssuerPublicKey) (*math.G1, *math.Zr, error) {
 	fake.makeNymMutex.Lock()
 	ret, specificReturn := fake.makeNymReturnsOnCall[len(fake.makeNymArgsForCall)]
 	fake.makeNymArgsForCall = append(fake.makeNymArgsForCall, struct {
 		arg1 *math.Zr
-		arg2 handlers.IssuerPublicKey
+		arg2 types.IssuerPublicKey
 	}{arg1, arg2})
 	stub := fake.MakeNymStub
 	fakeReturns := fake.makeNymReturns
@@ -108,13 +108,13 @@ func (fake *User) MakeNymCallCount() int {
 	return len(fake.makeNymArgsForCall)
 }
 
-func (fake *User) MakeNymCalls(stub func(*math.Zr, handlers.IssuerPublicKey) (*math.G1, *math.Zr, error)) {
+func (fake *User) MakeNymCalls(stub func(*math.Zr, types.IssuerPublicKey) (*math.G1, *math.Zr, error)) {
 	fake.makeNymMutex.Lock()
 	defer fake.makeNymMutex.Unlock()
 	fake.MakeNymStub = stub
 }
 
-func (fake *User) MakeNymArgsForCall(i int) (*math.Zr, handlers.IssuerPublicKey) {
+func (fake *User) MakeNymArgsForCall(i int) (*math.Zr, types.IssuerPublicKey) {
 	fake.makeNymMutex.RLock()
 	defer fake.makeNymMutex.RUnlock()
 	argsForCall := fake.makeNymArgsForCall[i]
@@ -448,4 +448,4 @@ func (fake *User) recordInvocation(key string, args []interface{}) {
 	fake.invocations[key] = append(fake.invocations[key], args)
 }
 
-var _ handlers.User = new(User)
+var _ types.User = new(User)

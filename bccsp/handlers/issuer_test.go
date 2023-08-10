@@ -7,8 +7,8 @@ package handlers_test
 
 import (
 	"github.com/IBM/idemix/bccsp/handlers"
-	"github.com/IBM/idemix/bccsp/handlers/mock"
 	bccsp "github.com/IBM/idemix/bccsp/types"
+	"github.com/IBM/idemix/bccsp/types/mock"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/pkg/errors"

@@ -8,6 +8,7 @@ package handlers
 import (
 	"crypto/sha256"
 
+	"github.com/IBM/idemix/bccsp/types"
 	bccsp "github.com/IBM/idemix/bccsp/types"
 	math "github.com/IBM/mathlib"
 	"github.com/pkg/errors"
@@ -57,7 +58,7 @@ type UserKeyGen struct {
 	// If a secret key is marked as Exportable, its Bytes method will return the key's byte representation.
 	Exportable bool
 	// User implements the underlying cryptographic algorithms
-	User User
+	User types.User
 }
 
 func (g *UserKeyGen) KeyGen(opts bccsp.KeyGenOpts) (bccsp.Key, error) {
@@ -75,7 +76,7 @@ type UserKeyImporter struct {
 	// If a secret key is marked as Exportable, its Bytes method will return the key's byte representation.
 	Exportable bool
 	// User implements the underlying cryptographic algorithms
-	User User
+	User types.User
 }
 
 func (i *UserKeyImporter) KeyImport(raw interface{}, opts bccsp.KeyImportOpts) (k bccsp.Key, err error) {

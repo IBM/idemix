@@ -14,6 +14,7 @@ import (
 	"fmt"
 	"reflect"
 
+	"github.com/IBM/idemix/bccsp/types"
 	bccsp "github.com/IBM/idemix/bccsp/types"
 	"github.com/pkg/errors"
 )
@@ -123,7 +124,7 @@ type RevocationKeyGen struct {
 	// If a secret key is marked as exportable, its Bytes method will return the key's byte representation.
 	Exportable bool
 	// Revocation implements the underlying cryptographic algorithms
-	Revocation Revocation
+	Revocation types.Revocation
 }
 
 func (g *RevocationKeyGen) KeyGen(opts bccsp.KeyGenOpts) (bccsp.Key, error) {
@@ -172,7 +173,7 @@ type RevocationKeyImporter struct {
 	// If a secret key is marked as exportable, its Bytes method will return the key's byte representation.
 	Exportable bool
 	// Revocation implements the underlying cryptographic algorithms
-	Revocation Revocation
+	Revocation types.Revocation
 }
 
 func (i *RevocationKeyImporter) KeyImport(raw interface{}, opts bccsp.KeyImportOpts) (k bccsp.Key, err error) {
@@ -197,7 +198,7 @@ func (i *RevocationKeyImporter) KeyImport(raw interface{}, opts bccsp.KeyImportO
 }
 
 type CriSigner struct {
-	Revocation Revocation
+	Revocation types.Revocation
 }
 
 func (s *CriSigner) Sign(k bccsp.Key, digest []byte, opts bccsp.SignerOpts) ([]byte, error) {
@@ -219,7 +220,7 @@ func (s *CriSigner) Sign(k bccsp.Key, digest []byte, opts bccsp.SignerOpts) ([]b
 }
 
 type CriVerifier struct {
-	Revocation Revocation
+	Revocation types.Revocation
 }
 
 func (v *CriVerifier) Verify(k bccsp.Key, signature, digest []byte, opts bccsp.SignerOpts) (bool, error) {

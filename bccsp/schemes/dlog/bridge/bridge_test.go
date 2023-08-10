@@ -11,11 +11,11 @@ import (
 	"io"
 
 	"github.com/IBM/idemix/bccsp/handlers"
-	"github.com/IBM/idemix/bccsp/handlers/mock"
-	bccsp "github.com/IBM/idemix/bccsp/types"
 	"github.com/IBM/idemix/bccsp/schemes/dlog/bridge"
 	idemix "github.com/IBM/idemix/bccsp/schemes/dlog/crypto"
 	"github.com/IBM/idemix/bccsp/schemes/dlog/crypto/translator/amcl"
+	"github.com/IBM/idemix/bccsp/types"
+	"github.com/IBM/idemix/bccsp/types/mock"
 	math "github.com/IBM/mathlib"
 	"github.com/golang/protobuf/proto"
 	. "github.com/onsi/ginkgo"
@@ -34,8 +34,8 @@ func rndOrPanic(curve *math.Curve) io.Reader {
 var _ = Describe("Idemix Bridge", func() {
 	var (
 		userSecretKey   *math.Zr
-		issuerPublicKey handlers.IssuerPublicKey
-		issuerSecretKey handlers.IssuerSecretKey
+		issuerPublicKey types.IssuerPublicKey
+		issuerSecretKey types.IssuerSecretKey
 		nymPublicKey    *math.G1
 		nymSecretKey    *math.Zr
 	)
@@ -61,7 +61,7 @@ var _ = Describe("Idemix Bridge", func() {
 
 			Context("successful generation", func() {
 				var (
-					key        handlers.IssuerSecretKey
+					key        types.IssuerSecretKey
 					err        error
 					attributes []string
 				)
@@ -123,7 +123,7 @@ var _ = Describe("Idemix Bridge", func() {
 
 			Context("and it is modified", func() {
 				var (
-					pk handlers.IssuerPublicKey
+					pk types.IssuerPublicKey
 				)
 				BeforeEach(func() {
 					attributes := []string{"A", "B"}
@@ -335,7 +335,7 @@ var _ = Describe("Idemix Bridge", func() {
 
 	Describe("credential", func() {
 		var (
-			Credential handlers.Credential
+			Credential types.Credential
 		)
 		BeforeEach(func() {
 			Credential = &bridge.Credential{
@@ -366,7 +366,7 @@ var _ = Describe("Idemix Bridge", func() {
 			})
 
 			It("fail on invalid attributes", func() {
-				raw, err := Credential.Sign(issuerSecretKey, nil, []bccsp.IdemixAttribute{
+				raw, err := Credential.Sign(issuerSecretKey, nil, []types.IdemixAttribute{
 					{Type: 5, Value: nil},
 				})
 				Expect(err).To(MatchError("attribute type not allowed or supported [5] at position [0]"))
@@ -386,7 +386,7 @@ var _ = Describe("Idemix Bridge", func() {
 			})
 
 			It("fail on invalid attributes", func() {
-				err := Credential.Verify(userSecretKey, issuerPublicKey, nil, []bccsp.IdemixAttribute{
+				err := Credential.Verify(userSecretKey, issuerPublicKey, nil, []types.IdemixAttribute{
 					{Type: 5, Value: nil},
 				})
 				Expect(err).To(MatchError("attribute type not allowed or supported [5] at position [0]"))
@@ -396,7 +396,7 @@ var _ = Describe("Idemix Bridge", func() {
 
 	Describe("revocation", func() {
 		var (
-			Revocation handlers.Revocation
+			Revocation types.Revocation
 		)
 		BeforeEach(func() {
 			Revocation = &bridge.Revocation{Idemix: &idemix.Idemix{Curve: math.Curves[math.FP256BN_AMCL]}}
@@ -432,7 +432,7 @@ var _ = Describe("Idemix Bridge", func() {
 
 	Describe("signature", func() {
 		var (
-			SignatureScheme handlers.SignatureScheme
+			SignatureScheme types.SignatureScheme
 		)
 		BeforeEach(func() {
 			SignatureScheme = &bridge.SignatureScheme{Idemix: &idemix.Idemix{Curve: math.Curves[math.FP256BN_AMCL]}}
@@ -464,7 +464,7 @@ var _ = Describe("Idemix Bridge", func() {
 
 			It("fail on invalid attributes", func() {
 				err := SignatureScheme.Verify(issuerPublicKey, nil, nil,
-					[]bccsp.IdemixAttribute{{Type: -1}}, 0, 2, nil, 0, 0, nil)
+					[]types.IdemixAttribute{{Type: -1}}, 0, 2, nil, 0, 0, nil)
 				Expect(err).To(MatchError("attribute type not allowed or supported [-1] at position [0]"))
 			})
 		})
@@ -472,7 +472,7 @@ var _ = Describe("Idemix Bridge", func() {
 
 	Describe("nym signature", func() {
 		var (
-			NymSignatureScheme handlers.NymSignatureScheme
+			NymSignatureScheme types.NymSignatureScheme
 		)
 		BeforeEach(func() {
 			NymSignatureScheme = &bridge.NymSignatureScheme{Idemix: &idemix.Idemix{Curve: math.Curves[math.FP256BN_AMCL]}, Translator: &amcl.Fp256bn{C: math.Curves[math.FP256BN_AMCL]}}
@@ -507,34 +507,34 @@ var _ = Describe("Idemix Bridge", func() {
 
 	Describe("setting up the environment with one issuer and one user", func() {
 		var (
-			Issuer          handlers.Issuer
+			Issuer          types.Issuer
 			IssuerKeyGen    *handlers.IssuerKeyGen
-			IssuerKey       bccsp.Key
-			IssuerPublicKey bccsp.Key
+			IssuerKey       types.Key
+			IssuerPublicKey types.Key
 			AttributeNames  []string
 
-			User             handlers.User
+			User             types.User
 			UserKeyGen       *handlers.UserKeyGen
-			UserKey          bccsp.Key
+			UserKey          types.Key
 			NymKeyDerivation *handlers.NymKeyDerivation
-			NymKey           bccsp.Key
-			NymPublicKey     bccsp.Key
+			NymKey           types.Key
+			NymPublicKey     types.Key
 
-			CredRequest               handlers.CredRequest
+			CredRequest               types.CredRequest
 			CredentialRequestSigner   *handlers.CredentialRequestSigner
 			CredentialRequestVerifier *handlers.CredentialRequestVerifier
 			IssuerNonce               []byte
 			credRequest               []byte
 
-			Credential         handlers.Credential
+			Credential         types.Credential
 			CredentialSigner   *handlers.CredentialSigner
 			CredentialVerifier *handlers.CredentialVerifier
 			credential         []byte
 
-			Revocation          handlers.Revocation
+			Revocation          types.Revocation
 			RevocationKeyGen    *handlers.RevocationKeyGen
-			RevocationKey       bccsp.Key
-			RevocationPublicKey bccsp.Key
+			RevocationKey       types.Key
+			RevocationPublicKey types.Key
 			CriSigner           *handlers.CriSigner
 			CriVerifier         *handlers.CriVerifier
 			cri                 []byte
@@ -546,7 +546,7 @@ var _ = Describe("Idemix Bridge", func() {
 			Issuer = &bridge.Issuer{Idemix: &idemix.Idemix{Curve: math.Curves[math.FP256BN_AMCL]}, Translator: &amcl.Fp256bn{C: math.Curves[math.FP256BN_AMCL]}}
 			IssuerKeyGen = &handlers.IssuerKeyGen{Issuer: Issuer}
 			AttributeNames = []string{"Attr1", "Attr2", "Attr3", "Attr4", "Attr5"}
-			IssuerKey, err = IssuerKeyGen.KeyGen(&bccsp.IdemixIssuerKeyGenOpts{Temporary: true, AttributeNames: AttributeNames})
+			IssuerKey, err = IssuerKeyGen.KeyGen(&types.IdemixIssuerKeyGenOpts{Temporary: true, AttributeNames: AttributeNames})
 			Expect(err).NotTo(HaveOccurred())
 			IssuerPublicKey, err = IssuerKey.PublicKey()
 			Expect(err).NotTo(HaveOccurred())
@@ -554,12 +554,12 @@ var _ = Describe("Idemix Bridge", func() {
 			// User
 			User = &bridge.User{Idemix: &idemix.Idemix{Curve: math.Curves[math.FP256BN_AMCL]}, Translator: &amcl.Fp256bn{C: math.Curves[math.FP256BN_AMCL]}}
 			UserKeyGen = &handlers.UserKeyGen{User: User}
-			UserKey, err = UserKeyGen.KeyGen(&bccsp.IdemixUserSecretKeyGenOpts{})
+			UserKey, err = UserKeyGen.KeyGen(&types.IdemixUserSecretKeyGenOpts{})
 			Expect(err).NotTo(HaveOccurred())
 
 			// User Nym Key
 			NymKeyDerivation = &handlers.NymKeyDerivation{User: User, Translator: &amcl.Fp256bn{C: math.Curves[math.FP256BN_AMCL]}}
-			NymKey, err = NymKeyDerivation.KeyDeriv(UserKey, &bccsp.IdemixNymKeyDerivationOpts{IssuerPK: IssuerPublicKey})
+			NymKey, err = NymKeyDerivation.KeyDeriv(UserKey, &types.IdemixNymKeyDerivationOpts{IssuerPK: IssuerPublicKey})
 			Expect(err).NotTo(HaveOccurred())
 			NymPublicKey, err = NymKey.PublicKey()
 			Expect(err).NotTo(HaveOccurred())
@@ -576,7 +576,7 @@ var _ = Describe("Idemix Bridge", func() {
 			credRequest, err = CredentialRequestSigner.Sign(
 				UserKey,
 				nil,
-				&bccsp.IdemixCredentialRequestSignerOpts{IssuerPK: IssuerPublicKey, IssuerNonce: IssuerNonce},
+				&types.IdemixCredentialRequestSignerOpts{IssuerPK: IssuerPublicKey, IssuerNonce: IssuerNonce},
 			)
 			Expect(err).NotTo(HaveOccurred())
 
@@ -592,13 +592,13 @@ var _ = Describe("Idemix Bridge", func() {
 			credential, err = CredentialSigner.Sign(
 				IssuerKey,
 				credRequest,
-				&bccsp.IdemixCredentialSignerOpts{
-					Attributes: []bccsp.IdemixAttribute{
-						{Type: bccsp.IdemixBytesAttribute, Value: []byte{0}},
-						{Type: bccsp.IdemixBytesAttribute, Value: []byte{0, 1}},
-						{Type: bccsp.IdemixBytesAttribute, Value: []byte{2, 1, 0}},
-						{Type: bccsp.IdemixBytesAttribute, Value: []byte{0, 1, 2}},
-						{Type: bccsp.IdemixBytesAttribute, Value: []byte{0, 1, 2, 3}},
+				&types.IdemixCredentialSignerOpts{
+					Attributes: []types.IdemixAttribute{
+						{Type: types.IdemixBytesAttribute, Value: []byte{0}},
+						{Type: types.IdemixBytesAttribute, Value: []byte{0, 1}},
+						{Type: types.IdemixBytesAttribute, Value: []byte{2, 1, 0}},
+						{Type: types.IdemixBytesAttribute, Value: []byte{0, 1, 2}},
+						{Type: types.IdemixBytesAttribute, Value: []byte{0, 1, 2, 3}},
 					},
 				},
 			)
@@ -607,7 +607,7 @@ var _ = Describe("Idemix Bridge", func() {
 			// Revocation
 			Revocation = &bridge.Revocation{Idemix: &idemix.Idemix{Curve: math.Curves[math.FP256BN_AMCL]}, Translator: &amcl.Fp256bn{C: math.Curves[math.FP256BN_AMCL]}}
 			RevocationKeyGen = &handlers.RevocationKeyGen{Revocation: Revocation}
-			RevocationKey, err = RevocationKeyGen.KeyGen(&bccsp.IdemixRevocationKeyGenOpts{})
+			RevocationKey, err = RevocationKeyGen.KeyGen(&types.IdemixRevocationKeyGenOpts{})
 			Expect(err).NotTo(HaveOccurred())
 			RevocationPublicKey, err = RevocationKey.PublicKey()
 			Expect(err).NotTo(HaveOccurred())
@@ -618,7 +618,7 @@ var _ = Describe("Idemix Bridge", func() {
 			cri, err = CriSigner.Sign(
 				RevocationKey,
 				nil,
-				&bccsp.IdemixCRISignerOpts{},
+				&types.IdemixCRISignerOpts{},
 			)
 			Expect(err).NotTo(HaveOccurred())
 		})
@@ -629,7 +629,7 @@ var _ = Describe("Idemix Bridge", func() {
 				IssuerPublicKey,
 				credRequest,
 				nil,
-				&bccsp.IdemixCredentialRequestSignerOpts{IssuerNonce: IssuerNonce},
+				&types.IdemixCredentialRequestSignerOpts{IssuerNonce: IssuerNonce},
 			)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(valid).To(BeTrue())
@@ -639,14 +639,14 @@ var _ = Describe("Idemix Bridge", func() {
 				UserKey,
 				credential,
 				nil,
-				&bccsp.IdemixCredentialSignerOpts{
+				&types.IdemixCredentialSignerOpts{
 					IssuerPK: IssuerPublicKey,
-					Attributes: []bccsp.IdemixAttribute{
-						{Type: bccsp.IdemixBytesAttribute, Value: []byte{0}},
-						{Type: bccsp.IdemixBytesAttribute, Value: []byte{0, 1}},
-						{Type: bccsp.IdemixBytesAttribute, Value: []byte{2, 1, 0}},
-						{Type: bccsp.IdemixBytesAttribute, Value: []byte{0, 1, 2}},
-						{Type: bccsp.IdemixHiddenAttribute},
+					Attributes: []types.IdemixAttribute{
+						{Type: types.IdemixBytesAttribute, Value: []byte{0}},
+						{Type: types.IdemixBytesAttribute, Value: []byte{0, 1}},
+						{Type: types.IdemixBytesAttribute, Value: []byte{2, 1, 0}},
+						{Type: types.IdemixBytesAttribute, Value: []byte{0, 1, 2}},
+						{Type: types.IdemixHiddenAttribute},
 					},
 				},
 			)
@@ -658,7 +658,7 @@ var _ = Describe("Idemix Bridge", func() {
 				RevocationPublicKey,
 				cri,
 				nil,
-				&bccsp.IdemixCRISignerOpts{},
+				&types.IdemixCRISignerOpts{},
 			)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(valid).To(BeTrue())
@@ -671,7 +671,7 @@ var _ = Describe("Idemix Bridge", func() {
 					IssuerPublicKey,
 					credRequest,
 					nil,
-					&bccsp.IdemixCredentialRequestSignerOpts{IssuerNonce: []byte("pine-apple-pine-apple-pine-apple")},
+					&types.IdemixCredentialRequestSignerOpts{IssuerNonce: []byte("pine-apple-pine-apple-pine-apple")},
 				)
 				Expect(err).To(MatchError(fmt.Sprintf("invalid nonce, expected [%v], got [%v]", []byte("pine-apple-pine-apple-pine-apple"), IssuerNonce)))
 				Expect(valid).NotTo(BeTrue())
@@ -682,7 +682,7 @@ var _ = Describe("Idemix Bridge", func() {
 					IssuerPublicKey,
 					credRequest,
 					nil,
-					&bccsp.IdemixCredentialRequestSignerOpts{IssuerNonce: []byte("pin-apple-pine-apple-pineapple")},
+					&types.IdemixCredentialRequestSignerOpts{IssuerNonce: []byte("pin-apple-pine-apple-pineapple")},
 				)
 				Expect(err).To(MatchError("invalid issuer nonce, expected length 32, got 30"))
 				Expect(valid).NotTo(BeTrue())
@@ -698,7 +698,7 @@ var _ = Describe("Idemix Bridge", func() {
 					IssuerPublicKey,
 					credRequest,
 					nil,
-					&bccsp.IdemixCredentialRequestSignerOpts{IssuerNonce: IssuerNonce},
+					&types.IdemixCredentialRequestSignerOpts{IssuerNonce: IssuerNonce},
 				)
 				Expect(err).To(MatchError("zero knowledge proof is invalid"))
 				Expect(valid).NotTo(BeTrue())
@@ -713,13 +713,13 @@ var _ = Describe("Idemix Bridge", func() {
 				credential, err := CredentialSigner.Sign(
 					IssuerKey,
 					credRequest,
-					&bccsp.IdemixCredentialSignerOpts{
-						Attributes: []bccsp.IdemixAttribute{
-							{Type: bccsp.IdemixBytesAttribute, Value: []byte{0}},
-							{Type: bccsp.IdemixBytesAttribute, Value: []byte{0, 1}},
-							{Type: bccsp.IdemixBytesAttribute, Value: []byte{2, 1, 0}},
-							{Type: bccsp.IdemixBytesAttribute, Value: []byte{0, 1, 2}},
-							{Type: bccsp.IdemixBytesAttribute, Value: []byte{0, 1, 2, 3}},
+					&types.IdemixCredentialSignerOpts{
+						Attributes: []types.IdemixAttribute{
+							{Type: types.IdemixBytesAttribute, Value: []byte{0}},
+							{Type: types.IdemixBytesAttribute, Value: []byte{0, 1}},
+							{Type: types.IdemixBytesAttribute, Value: []byte{2, 1, 0}},
+							{Type: types.IdemixBytesAttribute, Value: []byte{0, 1, 2}},
+							{Type: types.IdemixBytesAttribute, Value: []byte{0, 1, 2, 3}},
 						},
 					},
 				)
@@ -733,14 +733,14 @@ var _ = Describe("Idemix Bridge", func() {
 					UserKey,
 					nil,
 					nil,
-					&bccsp.IdemixCredentialSignerOpts{
+					&types.IdemixCredentialSignerOpts{
 						IssuerPK: IssuerPublicKey,
-						Attributes: []bccsp.IdemixAttribute{
-							{Type: bccsp.IdemixBytesAttribute, Value: []byte{1}},
-							{Type: bccsp.IdemixBytesAttribute, Value: []byte{0, 1}},
-							{Type: bccsp.IdemixBytesAttribute, Value: []byte{2, 1, 0}},
-							{Type: bccsp.IdemixBytesAttribute, Value: []byte{0, 1, 2}},
-							{Type: bccsp.IdemixHiddenAttribute},
+						Attributes: []types.IdemixAttribute{
+							{Type: types.IdemixBytesAttribute, Value: []byte{1}},
+							{Type: types.IdemixBytesAttribute, Value: []byte{0, 1}},
+							{Type: types.IdemixBytesAttribute, Value: []byte{2, 1, 0}},
+							{Type: types.IdemixBytesAttribute, Value: []byte{0, 1, 2}},
+							{Type: types.IdemixHiddenAttribute},
 						},
 					},
 				)
@@ -754,14 +754,14 @@ var _ = Describe("Idemix Bridge", func() {
 					UserKey,
 					[]byte{0, 1, 2, 3, 4},
 					nil,
-					&bccsp.IdemixCredentialSignerOpts{
+					&types.IdemixCredentialSignerOpts{
 						IssuerPK: IssuerPublicKey,
-						Attributes: []bccsp.IdemixAttribute{
-							{Type: bccsp.IdemixBytesAttribute, Value: []byte{1}},
-							{Type: bccsp.IdemixBytesAttribute, Value: []byte{0, 1}},
-							{Type: bccsp.IdemixBytesAttribute, Value: []byte{2, 1, 0}},
-							{Type: bccsp.IdemixBytesAttribute, Value: []byte{0, 1, 2}},
-							{Type: bccsp.IdemixHiddenAttribute},
+						Attributes: []types.IdemixAttribute{
+							{Type: types.IdemixBytesAttribute, Value: []byte{1}},
+							{Type: types.IdemixBytesAttribute, Value: []byte{0, 1}},
+							{Type: types.IdemixBytesAttribute, Value: []byte{2, 1, 0}},
+							{Type: types.IdemixBytesAttribute, Value: []byte{0, 1, 2}},
+							{Type: types.IdemixHiddenAttribute},
 						},
 					},
 				)
@@ -782,14 +782,14 @@ var _ = Describe("Idemix Bridge", func() {
 					UserKey,
 					credential,
 					nil,
-					&bccsp.IdemixCredentialSignerOpts{
+					&types.IdemixCredentialSignerOpts{
 						IssuerPK: IssuerPublicKey,
-						Attributes: []bccsp.IdemixAttribute{
-							{Type: bccsp.IdemixBytesAttribute, Value: []byte{0}},
-							{Type: bccsp.IdemixBytesAttribute, Value: []byte{0, 1}},
-							{Type: bccsp.IdemixBytesAttribute, Value: []byte{2, 1, 0}},
-							{Type: bccsp.IdemixBytesAttribute, Value: []byte{0, 1, 2}},
-							{Type: bccsp.IdemixHiddenAttribute},
+						Attributes: []types.IdemixAttribute{
+							{Type: types.IdemixBytesAttribute, Value: []byte{0}},
+							{Type: types.IdemixBytesAttribute, Value: []byte{0, 1}},
+							{Type: types.IdemixBytesAttribute, Value: []byte{2, 1, 0}},
+							{Type: types.IdemixBytesAttribute, Value: []byte{0, 1, 2}},
+							{Type: types.IdemixHiddenAttribute},
 						},
 					},
 				)
@@ -803,14 +803,14 @@ var _ = Describe("Idemix Bridge", func() {
 					UserKey,
 					credential,
 					nil,
-					&bccsp.IdemixCredentialSignerOpts{
+					&types.IdemixCredentialSignerOpts{
 						IssuerPK: IssuerPublicKey,
-						Attributes: []bccsp.IdemixAttribute{
-							{Type: bccsp.IdemixBytesAttribute, Value: []byte{1}},
-							{Type: bccsp.IdemixBytesAttribute, Value: []byte{0, 1}},
-							{Type: bccsp.IdemixIntAttribute, Value: 1},
-							{Type: bccsp.IdemixBytesAttribute, Value: []byte{0, 1, 2}},
-							{Type: bccsp.IdemixHiddenAttribute},
+						Attributes: []types.IdemixAttribute{
+							{Type: types.IdemixBytesAttribute, Value: []byte{1}},
+							{Type: types.IdemixBytesAttribute, Value: []byte{0, 1}},
+							{Type: types.IdemixIntAttribute, Value: 1},
+							{Type: types.IdemixBytesAttribute, Value: []byte{0, 1, 2}},
+							{Type: types.IdemixHiddenAttribute},
 						},
 					},
 				)
@@ -824,14 +824,14 @@ var _ = Describe("Idemix Bridge", func() {
 					UserKey,
 					credential,
 					nil,
-					&bccsp.IdemixCredentialSignerOpts{
+					&types.IdemixCredentialSignerOpts{
 						IssuerPK: IssuerPublicKey,
-						Attributes: []bccsp.IdemixAttribute{
-							{Type: bccsp.IdemixBytesAttribute, Value: []byte{0}},
-							{Type: bccsp.IdemixBytesAttribute, Value: []byte{0, 1}},
-							{Type: bccsp.IdemixIntAttribute, Value: 2},
-							{Type: bccsp.IdemixBytesAttribute, Value: []byte{0, 1, 2}},
-							{Type: bccsp.IdemixHiddenAttribute},
+						Attributes: []types.IdemixAttribute{
+							{Type: types.IdemixBytesAttribute, Value: []byte{0}},
+							{Type: types.IdemixBytesAttribute, Value: []byte{0, 1}},
+							{Type: types.IdemixIntAttribute, Value: 2},
+							{Type: types.IdemixBytesAttribute, Value: []byte{0, 1, 2}},
+							{Type: types.IdemixHiddenAttribute},
 						},
 					},
 				)
@@ -847,7 +847,7 @@ var _ = Describe("Idemix Bridge", func() {
 					RevocationPublicKey,
 					cri,
 					nil,
-					&bccsp.IdemixCRISignerOpts{},
+					&types.IdemixCRISignerOpts{},
 				)
 				Expect(err).To(MatchError("EpochPKSig invalid"))
 				Expect(valid).To(BeFalse())
@@ -860,7 +860,7 @@ var _ = Describe("Idemix Bridge", func() {
 				Context("duplicate attribute", func() {
 					It("returns an error", func() {
 						AttributeNames = []string{"A", "A"}
-						IssuerKey, err := IssuerKeyGen.KeyGen(&bccsp.IdemixIssuerKeyGenOpts{Temporary: true, AttributeNames: AttributeNames})
+						IssuerKey, err := IssuerKeyGen.KeyGen(&types.IdemixIssuerKeyGenOpts{Temporary: true, AttributeNames: AttributeNames})
 						Expect(err).To(MatchError("attribute A appears multiple times in AttributeNames"))
 						Expect(IssuerKey).To(BeNil())
 					})
@@ -871,12 +871,12 @@ var _ = Describe("Idemix Bridge", func() {
 
 		Describe("producing a signature with a nym eid", func() {
 			var (
-				SignatureScheme handlers.SignatureScheme
+				SignatureScheme types.SignatureScheme
 				Signer          *handlers.Signer
 				Verifier        *handlers.Verifier
 
 				digest     []byte
-				SignerOpts *bccsp.IdemixSignerOpts
+				SignerOpts *types.IdemixSignerOpts
 				signature  []byte
 			)
 
@@ -886,20 +886,20 @@ var _ = Describe("Idemix Bridge", func() {
 				Verifier = &handlers.Verifier{SignatureScheme: SignatureScheme}
 
 				digest = []byte("a digest")
-				SignerOpts = &bccsp.IdemixSignerOpts{
+				SignerOpts = &types.IdemixSignerOpts{
 					Credential: credential,
 					Nym:        NymKey,
 					IssuerPK:   IssuerPublicKey,
-					Attributes: []bccsp.IdemixAttribute{
-						{Type: bccsp.IdemixHiddenAttribute},
-						{Type: bccsp.IdemixHiddenAttribute},
-						{Type: bccsp.IdemixHiddenAttribute},
-						{Type: bccsp.IdemixHiddenAttribute},
-						{Type: bccsp.IdemixHiddenAttribute},
+					Attributes: []types.IdemixAttribute{
+						{Type: types.IdemixHiddenAttribute},
+						{Type: types.IdemixHiddenAttribute},
+						{Type: types.IdemixHiddenAttribute},
+						{Type: types.IdemixHiddenAttribute},
+						{Type: types.IdemixHiddenAttribute},
 					},
 					RhIndex:  2,
 					EidIndex: 3,
-					SigType:  bccsp.EidNym,
+					SigType:  types.EidNym,
 				}
 
 				var err error
@@ -908,36 +908,36 @@ var _ = Describe("Idemix Bridge", func() {
 			})
 
 			It("nym eid audit succeed", func() {
-				valid, err := Verifier.AuditNymEid(IssuerPublicKey, signature, digest, &bccsp.EidNymAuditOpts{
+				valid, err := Verifier.AuditNymEid(IssuerPublicKey, signature, digest, &types.EidNymAuditOpts{
 					EidIndex:              3,
 					RNymEid:               SignerOpts.Metadata.EidNymAuditData.Rand,
 					EnrollmentID:          string([]byte{0, 1, 2}),
-					AuditVerificationType: bccsp.AuditExpectSignature,
+					AuditVerificationType: types.AuditExpectSignature,
 				})
 				Expect(err).NotTo(HaveOccurred())
 				Expect(valid).To(BeTrue())
 
-				valid, err = Verifier.AuditNymEid(IssuerPublicKey, SignerOpts.Metadata.EidNymAuditData.Nym.Bytes(), digest, &bccsp.EidNymAuditOpts{
+				valid, err = Verifier.AuditNymEid(IssuerPublicKey, SignerOpts.Metadata.EidNymAuditData.Nym.Bytes(), digest, &types.EidNymAuditOpts{
 					EidIndex:              3,
 					RNymEid:               SignerOpts.Metadata.EidNymAuditData.Rand,
 					EnrollmentID:          string([]byte{0, 1, 2}),
-					AuditVerificationType: bccsp.AuditExpectEidNym,
+					AuditVerificationType: types.AuditExpectEidNym,
 				})
 				Expect(err).NotTo(HaveOccurred())
 				Expect(valid).To(BeTrue())
 
-				valid, err = Verifier.AuditNymEid(IssuerPublicKey, SignerOpts.Metadata.EidNymAuditData.Nym.Bytes(), digest, &bccsp.EidNymAuditOpts{
+				valid, err = Verifier.AuditNymEid(IssuerPublicKey, SignerOpts.Metadata.EidNymAuditData.Nym.Bytes(), digest, &types.EidNymAuditOpts{
 					EidIndex:              3,
 					RNymEid:               SignerOpts.Metadata.EidNymAuditData.Rand,
 					EnrollmentID:          string([]byte{0, 1, 2}),
-					AuditVerificationType: bccsp.AuditExpectEidNymRhNym,
+					AuditVerificationType: types.AuditExpectEidNymRhNym,
 				})
 				Expect(err).NotTo(HaveOccurred())
 				Expect(valid).To(BeTrue())
 			})
 
 			It("fails because it gets the wrong type of signature", func() {
-				valid, err := Verifier.AuditNymEid(IssuerPublicKey, []byte("To ride the storm, to an empire of the clouds"), digest, &bccsp.EidNymAuditOpts{
+				valid, err := Verifier.AuditNymEid(IssuerPublicKey, []byte("To ride the storm, to an empire of the clouds"), digest, &types.EidNymAuditOpts{
 					EidIndex:     3,
 					RNymEid:      SignerOpts.Metadata.EidNymAuditData.Rand,
 					EnrollmentID: string([]byte{0, 1, 2}),
@@ -949,12 +949,12 @@ var _ = Describe("Idemix Bridge", func() {
 
 		Describe("producing a signature with a nym eid and a nym rh", func() {
 			var (
-				SignatureScheme handlers.SignatureScheme
+				SignatureScheme types.SignatureScheme
 				Signer          *handlers.Signer
 				Verifier        *handlers.Verifier
 
 				digest     []byte
-				SignerOpts *bccsp.IdemixSignerOpts
+				SignerOpts *types.IdemixSignerOpts
 				signature  []byte
 			)
 
@@ -964,20 +964,20 @@ var _ = Describe("Idemix Bridge", func() {
 				Verifier = &handlers.Verifier{SignatureScheme: SignatureScheme}
 
 				digest = []byte("a digest")
-				SignerOpts = &bccsp.IdemixSignerOpts{
+				SignerOpts = &types.IdemixSignerOpts{
 					Credential: credential,
 					Nym:        NymKey,
 					IssuerPK:   IssuerPublicKey,
-					Attributes: []bccsp.IdemixAttribute{
-						{Type: bccsp.IdemixHiddenAttribute},
-						{Type: bccsp.IdemixHiddenAttribute},
-						{Type: bccsp.IdemixHiddenAttribute},
-						{Type: bccsp.IdemixHiddenAttribute},
-						{Type: bccsp.IdemixHiddenAttribute},
+					Attributes: []types.IdemixAttribute{
+						{Type: types.IdemixHiddenAttribute},
+						{Type: types.IdemixHiddenAttribute},
+						{Type: types.IdemixHiddenAttribute},
+						{Type: types.IdemixHiddenAttribute},
+						{Type: types.IdemixHiddenAttribute},
 					},
 					RhIndex:  2,
 					EidIndex: 3,
-					SigType:  bccsp.EidNymRhNym,
+					SigType:  types.EidNymRhNym,
 				}
 
 				var err error
@@ -986,7 +986,7 @@ var _ = Describe("Idemix Bridge", func() {
 			})
 
 			It("nym eid  and rh audit succeed", func() {
-				validNymEid, err := Verifier.AuditNymEid(IssuerPublicKey, signature, digest, &bccsp.EidNymAuditOpts{
+				validNymEid, err := Verifier.AuditNymEid(IssuerPublicKey, signature, digest, &types.EidNymAuditOpts{
 					EidIndex:     3,
 					RNymEid:      SignerOpts.Metadata.EidNymAuditData.Rand,
 					EnrollmentID: string([]byte{0, 1, 2}),
@@ -994,36 +994,36 @@ var _ = Describe("Idemix Bridge", func() {
 				Expect(err).NotTo(HaveOccurred())
 				Expect(validNymEid).To(BeTrue())
 
-				validNymRh, err := Verifier.AuditNymRh(IssuerPublicKey, signature, digest, &bccsp.RhNymAuditOpts{
+				validNymRh, err := Verifier.AuditNymRh(IssuerPublicKey, signature, digest, &types.RhNymAuditOpts{
 					RhIndex:               2,
 					RNymRh:                SignerOpts.Metadata.RhNymAuditData.Rand,
 					RevocationHandle:      string([]byte{2, 1, 0}),
-					AuditVerificationType: bccsp.AuditExpectSignature,
+					AuditVerificationType: types.AuditExpectSignature,
 				})
 				Expect(err).NotTo(HaveOccurred())
 				Expect(validNymRh).To(BeTrue())
 
-				validNymRh, err = Verifier.AuditNymRh(IssuerPublicKey, SignerOpts.Metadata.RhNymAuditData.Nym.Bytes(), digest, &bccsp.RhNymAuditOpts{
+				validNymRh, err = Verifier.AuditNymRh(IssuerPublicKey, SignerOpts.Metadata.RhNymAuditData.Nym.Bytes(), digest, &types.RhNymAuditOpts{
 					RhIndex:               2,
 					RNymRh:                SignerOpts.Metadata.RhNymAuditData.Rand,
 					RevocationHandle:      string([]byte{2, 1, 0}),
-					AuditVerificationType: bccsp.AuditExpectEidNymRhNym,
+					AuditVerificationType: types.AuditExpectEidNymRhNym,
 				})
 				Expect(err).NotTo(HaveOccurred())
 				Expect(validNymRh).To(BeTrue())
 
-				_, err = Verifier.AuditNymRh(IssuerPublicKey, SignerOpts.Metadata.RhNymAuditData.Nym.Bytes(), digest, &bccsp.RhNymAuditOpts{
+				_, err = Verifier.AuditNymRh(IssuerPublicKey, SignerOpts.Metadata.RhNymAuditData.Nym.Bytes(), digest, &types.RhNymAuditOpts{
 					RhIndex:               2,
 					RNymRh:                SignerOpts.Metadata.RhNymAuditData.Rand,
 					RevocationHandle:      string([]byte{2, 1, 0}),
-					AuditVerificationType: bccsp.AuditExpectEidNym,
+					AuditVerificationType: types.AuditExpectEidNym,
 				})
 				Expect(err).To(HaveOccurred())
 				Expect(err.Error()).To(ContainSubstring("invalid audit type [1]"))
 			})
 
 			It("fails because it gets the wrong type of signature", func() {
-				validNymEid, err := Verifier.AuditNymEid(IssuerPublicKey, []byte("To ride the storm, to an empire of the clouds"), digest, &bccsp.EidNymAuditOpts{
+				validNymEid, err := Verifier.AuditNymEid(IssuerPublicKey, []byte("To ride the storm, to an empire of the clouds"), digest, &types.EidNymAuditOpts{
 					EidIndex:     3,
 					RNymEid:      SignerOpts.Metadata.EidNymAuditData.Rand,
 					EnrollmentID: string([]byte{0, 1, 2}),
@@ -1031,7 +1031,7 @@ var _ = Describe("Idemix Bridge", func() {
 				Expect(err.Error()).To(ContainSubstring("cannot parse invalid wire-format data"))
 				Expect(validNymEid).To(BeFalse())
 
-				validNymRh, err := Verifier.AuditNymRh(IssuerPublicKey, []byte("To ride the storm, to an empire of the clouds"), digest, &bccsp.RhNymAuditOpts{
+				validNymRh, err := Verifier.AuditNymRh(IssuerPublicKey, []byte("To ride the storm, to an empire of the clouds"), digest, &types.RhNymAuditOpts{
 					RhIndex:          2,
 					RNymRh:           SignerOpts.Metadata.RhNymAuditData.Rand,
 					RevocationHandle: string([]byte{2, 1, 0}),
@@ -1043,14 +1043,14 @@ var _ = Describe("Idemix Bridge", func() {
 
 		Describe("producing and verifying idemix signature with different sets of attributes", func() {
 			var (
-				SignatureScheme handlers.SignatureScheme
+				SignatureScheme types.SignatureScheme
 				Signer          *handlers.Signer
 				Verifier        *handlers.Verifier
 				digest          []byte
 				signature       []byte
 
-				SignAttributes   []bccsp.IdemixAttribute
-				VerifyAttributes []bccsp.IdemixAttribute
+				SignAttributes   []types.IdemixAttribute
+				VerifyAttributes []types.IdemixAttribute
 				RhIndex          int
 				Epoch            int
 				errMessage       string
@@ -1070,24 +1070,24 @@ var _ = Describe("Idemix Bridge", func() {
 
 			It("the signature with no disclosed attributes is valid", func() {
 				validity = true
-				SignAttributes = []bccsp.IdemixAttribute{
-					{Type: bccsp.IdemixHiddenAttribute},
-					{Type: bccsp.IdemixHiddenAttribute},
-					{Type: bccsp.IdemixHiddenAttribute},
-					{Type: bccsp.IdemixHiddenAttribute},
-					{Type: bccsp.IdemixHiddenAttribute},
+				SignAttributes = []types.IdemixAttribute{
+					{Type: types.IdemixHiddenAttribute},
+					{Type: types.IdemixHiddenAttribute},
+					{Type: types.IdemixHiddenAttribute},
+					{Type: types.IdemixHiddenAttribute},
+					{Type: types.IdemixHiddenAttribute},
 				}
 				VerifyAttributes = SignAttributes
 			})
 
 			It("the signature with disclosed attributes is valid", func() {
 				validity = true
-				SignAttributes = []bccsp.IdemixAttribute{
-					{Type: bccsp.IdemixBytesAttribute, Value: []byte{0}},
-					{Type: bccsp.IdemixHiddenAttribute},
-					{Type: bccsp.IdemixHiddenAttribute},
-					{Type: bccsp.IdemixHiddenAttribute},
-					{Type: bccsp.IdemixHiddenAttribute},
+				SignAttributes = []types.IdemixAttribute{
+					{Type: types.IdemixBytesAttribute, Value: []byte{0}},
+					{Type: types.IdemixHiddenAttribute},
+					{Type: types.IdemixHiddenAttribute},
+					{Type: types.IdemixHiddenAttribute},
+					{Type: types.IdemixHiddenAttribute},
 				}
 				VerifyAttributes = SignAttributes
 			})
@@ -1095,38 +1095,38 @@ var _ = Describe("Idemix Bridge", func() {
 			It("the signature with different disclosed attributes is not valid", func() {
 				validity = false
 				errMessage = "signature invalid: zero-knowledge proof is invalid"
-				SignAttributes = []bccsp.IdemixAttribute{
-					{Type: bccsp.IdemixBytesAttribute},
-					{Type: bccsp.IdemixHiddenAttribute},
-					{Type: bccsp.IdemixIntAttribute},
-					{Type: bccsp.IdemixHiddenAttribute},
-					{Type: bccsp.IdemixHiddenAttribute},
+				SignAttributes = []types.IdemixAttribute{
+					{Type: types.IdemixBytesAttribute},
+					{Type: types.IdemixHiddenAttribute},
+					{Type: types.IdemixIntAttribute},
+					{Type: types.IdemixHiddenAttribute},
+					{Type: types.IdemixHiddenAttribute},
 				}
-				VerifyAttributes = []bccsp.IdemixAttribute{
-					{Type: bccsp.IdemixBytesAttribute, Value: []byte{1}},
-					{Type: bccsp.IdemixHiddenAttribute},
-					{Type: bccsp.IdemixIntAttribute, Value: 1},
-					{Type: bccsp.IdemixHiddenAttribute},
-					{Type: bccsp.IdemixHiddenAttribute},
+				VerifyAttributes = []types.IdemixAttribute{
+					{Type: types.IdemixBytesAttribute, Value: []byte{1}},
+					{Type: types.IdemixHiddenAttribute},
+					{Type: types.IdemixIntAttribute, Value: 1},
+					{Type: types.IdemixHiddenAttribute},
+					{Type: types.IdemixHiddenAttribute},
 				}
 			})
 
 			It("the signature with different disclosed attributes is not valid", func() {
 				validity = false
 				errMessage = "signature invalid: zero-knowledge proof is invalid"
-				SignAttributes = []bccsp.IdemixAttribute{
-					{Type: bccsp.IdemixBytesAttribute},
-					{Type: bccsp.IdemixHiddenAttribute},
-					{Type: bccsp.IdemixIntAttribute},
-					{Type: bccsp.IdemixHiddenAttribute},
-					{Type: bccsp.IdemixHiddenAttribute},
+				SignAttributes = []types.IdemixAttribute{
+					{Type: types.IdemixBytesAttribute},
+					{Type: types.IdemixHiddenAttribute},
+					{Type: types.IdemixIntAttribute},
+					{Type: types.IdemixHiddenAttribute},
+					{Type: types.IdemixHiddenAttribute},
 				}
-				VerifyAttributes = []bccsp.IdemixAttribute{
-					{Type: bccsp.IdemixBytesAttribute, Value: []byte{0}},
-					{Type: bccsp.IdemixHiddenAttribute},
-					{Type: bccsp.IdemixIntAttribute, Value: 10},
-					{Type: bccsp.IdemixHiddenAttribute},
-					{Type: bccsp.IdemixHiddenAttribute},
+				VerifyAttributes = []types.IdemixAttribute{
+					{Type: types.IdemixBytesAttribute, Value: []byte{0}},
+					{Type: types.IdemixHiddenAttribute},
+					{Type: types.IdemixIntAttribute, Value: 10},
+					{Type: types.IdemixHiddenAttribute},
+					{Type: types.IdemixHiddenAttribute},
 				}
 			})
 
@@ -1135,7 +1135,7 @@ var _ = Describe("Idemix Bridge", func() {
 				signature, err = Signer.Sign(
 					UserKey,
 					digest,
-					&bccsp.IdemixSignerOpts{
+					&types.IdemixSignerOpts{
 						Credential: credential,
 						Nym:        NymKey,
 						IssuerPK:   IssuerPublicKey,
@@ -1152,7 +1152,7 @@ var _ = Describe("Idemix Bridge", func() {
 					IssuerPublicKey,
 					signature,
 					digest,
-					&bccsp.IdemixSignerOpts{
+					&types.IdemixSignerOpts{
 						RevocationPublicKey: RevocationPublicKey,
 						Attributes:          VerifyAttributes,
 						RhIndex:             RhIndex,
@@ -1173,21 +1173,21 @@ var _ = Describe("Idemix Bridge", func() {
 
 		Context("producing an idemix signature", func() {
 			var (
-				SignatureScheme handlers.SignatureScheme
+				SignatureScheme types.SignatureScheme
 				Signer          *handlers.Signer
-				SignAttributes  []bccsp.IdemixAttribute
+				SignAttributes  []types.IdemixAttribute
 				Verifier        *handlers.Verifier
 			)
 
 			BeforeEach(func() {
 				SignatureScheme = &bridge.SignatureScheme{Idemix: &idemix.Idemix{Curve: math.Curves[math.FP256BN_AMCL]}, Translator: &amcl.Fp256bn{C: math.Curves[math.FP256BN_AMCL]}}
 				Signer = &handlers.Signer{SignatureScheme: SignatureScheme}
-				SignAttributes = []bccsp.IdemixAttribute{
-					{Type: bccsp.IdemixHiddenAttribute},
-					{Type: bccsp.IdemixHiddenAttribute},
-					{Type: bccsp.IdemixHiddenAttribute},
-					{Type: bccsp.IdemixHiddenAttribute},
-					{Type: bccsp.IdemixHiddenAttribute},
+				SignAttributes = []types.IdemixAttribute{
+					{Type: types.IdemixHiddenAttribute},
+					{Type: types.IdemixHiddenAttribute},
+					{Type: types.IdemixHiddenAttribute},
+					{Type: types.IdemixHiddenAttribute},
+					{Type: types.IdemixHiddenAttribute},
 				}
 				Verifier = &handlers.Verifier{SignatureScheme: SignatureScheme}
 			})
@@ -1196,7 +1196,7 @@ var _ = Describe("Idemix Bridge", func() {
 				signature, err := Signer.Sign(
 					UserKey,
 					[]byte("a message"),
-					&bccsp.IdemixSignerOpts{
+					&types.IdemixSignerOpts{
 						Credential: []byte{0, 1, 2, 3},
 						Nym:        NymKey,
 						IssuerPK:   IssuerPublicKey,
@@ -1215,7 +1215,7 @@ var _ = Describe("Idemix Bridge", func() {
 				signature, err := Signer.Sign(
 					UserKey,
 					[]byte("a message"),
-					&bccsp.IdemixSignerOpts{
+					&types.IdemixSignerOpts{
 						Credential: credential,
 						Nym:        NymKey,
 						IssuerPK:   IssuerPublicKey,
@@ -1234,7 +1234,7 @@ var _ = Describe("Idemix Bridge", func() {
 				signature, err := Signer.Sign(
 					UserKey,
 					[]byte("a message"),
-					&bccsp.IdemixSignerOpts{
+					&types.IdemixSignerOpts{
 						Credential: credential,
 						Nym:        NymKey,
 						IssuerPK:   IssuerPublicKey,
@@ -1259,7 +1259,7 @@ var _ = Describe("Idemix Bridge", func() {
 				signature, err := Signer.Sign(
 					UserKey,
 					[]byte("a message"),
-					&bccsp.IdemixSignerOpts{
+					&types.IdemixSignerOpts{
 						Credential: credential,
 						Nym:        NymKey,
 						IssuerPK:   IssuerPublicKey,
@@ -1277,7 +1277,7 @@ var _ = Describe("Idemix Bridge", func() {
 					IssuerPublicKey,
 					signature,
 					[]byte("a message"),
-					&bccsp.IdemixSignerOpts{
+					&types.IdemixSignerOpts{
 						RevocationPublicKey: RevocationPublicKey,
 						Attributes:          SignAttributes,
 						RhIndex:             0,
@@ -1295,7 +1295,7 @@ var _ = Describe("Idemix Bridge", func() {
 				signature, err := Signer.Sign(
 					UserKey,
 					[]byte("a message"),
-					&bccsp.IdemixSignerOpts{
+					&types.IdemixSignerOpts{
 						Credential: nil,
 						Nym:        NymKey,
 						IssuerPK:   IssuerPublicKey,
@@ -1331,7 +1331,7 @@ var _ = Describe("Idemix Bridge", func() {
 				signature, err = NymSigner.Sign(
 					UserKey,
 					digest,
-					&bccsp.IdemixNymSignerOpts{
+					&types.IdemixNymSignerOpts{
 						Nym:      NymKey,
 						IssuerPK: IssuerPublicKey,
 					},
@@ -1344,7 +1344,7 @@ var _ = Describe("Idemix Bridge", func() {
 					NymPublicKey,
 					signature,
 					digest,
-					&bccsp.IdemixNymSignerOpts{
+					&types.IdemixNymSignerOpts{
 						IssuerPK: IssuerPublicKey,
 					},
 				)
@@ -1369,7 +1369,7 @@ var _ = Describe("Idemix Bridge", func() {
 						NymPublicKey,
 						signature,
 						digest,
-						&bccsp.IdemixNymSignerOpts{
+						&types.IdemixNymSignerOpts{
 							IssuerPK: IssuerPublicKey,
 						},
 					)
@@ -1510,7 +1510,7 @@ var _ = Describe("Idemix Bridge", func() {
 			It("nym key import is successful", func() {
 				// User Nym Key
 				NymKeyDerivation = &handlers.NymKeyDerivation{User: User, Translator: &amcl.Fp256bn{C: math.Curves[math.FP256BN_AMCL]}}
-				NymKey, err := NymKeyDerivation.KeyDeriv(UserKey, &bccsp.IdemixNymKeyDerivationOpts{IssuerPK: IssuerPublicKey})
+				NymKey, err := NymKeyDerivation.KeyDeriv(UserKey, &types.IdemixNymKeyDerivationOpts{IssuerPK: IssuerPublicKey})
 				Expect(err).NotTo(HaveOccurred())
 				NymPublicKey, err = NymKey.PublicKey()
 				Expect(err).NotTo(HaveOccurred())
