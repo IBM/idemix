@@ -16,8 +16,8 @@ import (
 
 	idemix "github.com/IBM/idemix/bccsp"
 	"github.com/IBM/idemix/bccsp/keystore"
-	bccsp "github.com/IBM/idemix/bccsp/schemes"
 	"github.com/IBM/idemix/bccsp/schemes/dlog/crypto/translator/amcl"
+	bccsp "github.com/IBM/idemix/bccsp/types"
 	"github.com/IBM/idemix/common/flogging"
 	im "github.com/IBM/idemix/idemixmsp"
 	math "github.com/IBM/mathlib"

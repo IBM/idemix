@@ -8,7 +8,7 @@ package handlers
 import (
 	"github.com/pkg/errors"
 
-	bccsp "github.com/IBM/idemix/bccsp/schemes"
+	bccsp "github.com/IBM/idemix/bccsp/types"
 )
 
 type Signer struct {

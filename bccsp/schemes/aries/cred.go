@@ -9,7 +9,7 @@ import (
 	"fmt"
 
 	"github.com/IBM/idemix/bccsp/handlers"
-	bccsp "github.com/IBM/idemix/bccsp/schemes"
+	bccsp "github.com/IBM/idemix/bccsp/types"
 	math "github.com/IBM/mathlib"
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/aries-framework-go/component/kmscrypto/crypto/primitive/bbs12381g2pub"

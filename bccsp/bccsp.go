@@ -9,7 +9,7 @@ import (
 	"reflect"
 
 	"github.com/IBM/idemix/bccsp/handlers"
-	bccsp "github.com/IBM/idemix/bccsp/schemes"
+	bccsp "github.com/IBM/idemix/bccsp/types"
 	"github.com/IBM/idemix/bccsp/schemes/aries"
 	"github.com/IBM/idemix/bccsp/schemes/dlog/bridge"
 	idemix "github.com/IBM/idemix/bccsp/schemes/dlog/crypto"

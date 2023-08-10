@@ -8,7 +8,7 @@ package handlers
 import (
 	"crypto/sha256"
 
-	bccsp "github.com/IBM/idemix/bccsp/schemes"
+	bccsp "github.com/IBM/idemix/bccsp/types"
 	idemix "github.com/IBM/idemix/bccsp/schemes/dlog/crypto"
 	math "github.com/IBM/mathlib"
 	"github.com/pkg/errors"

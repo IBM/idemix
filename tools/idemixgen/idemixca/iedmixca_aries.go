@@ -10,8 +10,8 @@ import (
 	"crypto/ecdsa"
 
 	imsp "github.com/IBM/idemix"
-	bccsp "github.com/IBM/idemix/bccsp/schemes"
 	"github.com/IBM/idemix/bccsp/schemes/aries"
+	bccsp "github.com/IBM/idemix/bccsp/types"
 	im "github.com/IBM/idemix/idemixmsp"
 	math "github.com/IBM/mathlib"
 	"github.com/golang/protobuf/proto"

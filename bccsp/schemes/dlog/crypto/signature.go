@@ -12,7 +12,7 @@ import (
 	"io"
 	"sort"
 
-	opts "github.com/IBM/idemix/bccsp/schemes"
+	opts "github.com/IBM/idemix/bccsp/types"
 	math "github.com/IBM/mathlib"
 	"github.com/pkg/errors"
 )

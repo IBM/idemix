@@ -19,7 +19,7 @@ import (
 	"github.com/pkg/errors"
 
 	idemix "github.com/IBM/idemix/bccsp"
-	bccsp "github.com/IBM/idemix/bccsp/schemes"
+	bccsp "github.com/IBM/idemix/bccsp/types"
 	"github.com/IBM/idemix/bccsp/schemes/aries"
 	idemix1 "github.com/IBM/idemix/bccsp/schemes/dlog/crypto"
 	"github.com/IBM/idemix/bccsp/schemes/dlog/crypto/translator/amcl"

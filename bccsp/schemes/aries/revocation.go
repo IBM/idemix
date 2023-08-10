@@ -16,7 +16,7 @@ import (
 	"io"
 	"math/big"
 
-	bccsp "github.com/IBM/idemix/bccsp/schemes"
+	bccsp "github.com/IBM/idemix/bccsp/types"
 	weakbb "github.com/IBM/idemix/bccsp/schemes/weak-bb"
 	math "github.com/IBM/mathlib"
 	"github.com/golang/protobuf/proto"

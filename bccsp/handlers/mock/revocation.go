@@ -6,7 +6,7 @@ import (
 	"sync"
 
 	"github.com/IBM/idemix/bccsp/handlers"
-	idemix "github.com/IBM/idemix/bccsp/schemes"
+	idemix "github.com/IBM/idemix/bccsp/types"
 )
 
 type Revocation struct {
