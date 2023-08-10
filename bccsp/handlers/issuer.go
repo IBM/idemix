@@ -6,6 +6,7 @@ SPDX-License-Identifier: Apache-2.0
 package handlers
 
 import (
+	"github.com/IBM/idemix/bccsp/types"
 	bccsp "github.com/IBM/idemix/bccsp/types"
 	"github.com/pkg/errors"
 )
@@ -14,12 +15,12 @@ import (
 // and implements the bccsp.Key interface
 type issuerSecretKey struct {
 	// sk is the idemix reference to the issuer key
-	sk IssuerSecretKey
+	sk types.IssuerSecretKey
 	// exportable if true, sk can be exported via the Bytes function
 	exportable bool
 }
 
-func NewIssuerSecretKey(sk IssuerSecretKey, exportable bool) *issuerSecretKey {
+func NewIssuerSecretKey(sk types.IssuerSecretKey, exportable bool) *issuerSecretKey {
 	return &issuerSecretKey{sk: sk, exportable: exportable}
 }
 
@@ -55,10 +56,10 @@ func (k *issuerSecretKey) PublicKey() (bccsp.Key, error) {
 // issuerPublicKey contains the issuer public key
 // and implements the bccsp.Key interface
 type issuerPublicKey struct {
-	pk IssuerPublicKey
+	pk types.IssuerPublicKey
 }
 
-func NewIssuerPublicKey(pk IssuerPublicKey) *issuerPublicKey {
+func NewIssuerPublicKey(pk types.IssuerPublicKey) *issuerPublicKey {
 	return &issuerPublicKey{pk}
 }
 
@@ -88,7 +89,7 @@ type IssuerKeyGen struct {
 	// If a secret key is marked as exportable, its Bytes method will return the key's byte representation.
 	Exportable bool
 	// Issuer implements the underlying cryptographic algorithms
-	Issuer Issuer
+	Issuer types.Issuer
 }
 
 func (g *IssuerKeyGen) KeyGen(opts bccsp.KeyGenOpts) (k bccsp.Key, err error) {
@@ -109,7 +110,7 @@ func (g *IssuerKeyGen) KeyGen(opts bccsp.KeyGenOpts) (k bccsp.Key, err error) {
 // IssuerPublicKeyImporter imports issuer public keys
 type IssuerPublicKeyImporter struct {
 	// Issuer implements the underlying cryptographic algorithms
-	Issuer Issuer
+	Issuer types.Issuer
 }
 
 func (i *IssuerPublicKeyImporter) KeyImport(raw interface{}, opts bccsp.KeyImportOpts) (k bccsp.Key, err error) {
@@ -141,7 +142,7 @@ type IssuerKeyImporter struct {
 	// If a secret key is marked as exportable, its Bytes method will return the key's byte representation.
 	Exportable bool
 	// Issuer implements the underlying cryptographic algorithms
-	Issuer Issuer
+	Issuer types.Issuer
 }
 
 func (i *IssuerKeyImporter) KeyImport(raw interface{}, opts bccsp.KeyImportOpts) (k bccsp.Key, err error) {

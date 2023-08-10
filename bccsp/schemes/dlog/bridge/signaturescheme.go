@@ -9,9 +9,9 @@ package bridge
 import (
 	"crypto/ecdsa"
 
-	"github.com/IBM/idemix/bccsp/handlers"
-	bccsp "github.com/IBM/idemix/bccsp/types"
 	idemix "github.com/IBM/idemix/bccsp/schemes/dlog/crypto"
+	"github.com/IBM/idemix/bccsp/types"
+	bccsp "github.com/IBM/idemix/bccsp/types"
 	math "github.com/IBM/mathlib"
 	"github.com/golang/protobuf/proto"
 	"github.com/pkg/errors"
@@ -26,7 +26,7 @@ type SignatureScheme struct {
 // Sign produces an idemix-signature with the respect to the passed serialised credential (cred),
 // user secret key (sk), pseudonym public key (Nym) and secret key (RNym), issuer public key (ipk),
 // and attributes to be disclosed.
-func (s *SignatureScheme) Sign(cred []byte, sk *math.Zr, Nym *math.G1, RNym *math.Zr, ipk handlers.IssuerPublicKey, attributes []bccsp.IdemixAttribute,
+func (s *SignatureScheme) Sign(cred []byte, sk *math.Zr, Nym *math.G1, RNym *math.Zr, ipk types.IssuerPublicKey, attributes []bccsp.IdemixAttribute,
 	msg []byte, rhIndex, eidIndex int, criRaw []byte, sigType bccsp.SignatureType, metadata *bccsp.IdemixSignerMetadata) (res []byte, meta *bccsp.IdemixSignerMetadata, err error) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -91,7 +91,7 @@ func (s *SignatureScheme) Sign(cred []byte, sk *math.Zr, Nym *math.G1, RNym *mat
 
 // AuditNymEid Audits the pseudonymous enrollment id of a signature
 func (s *SignatureScheme) AuditNymEid(
-	ipk handlers.IssuerPublicKey,
+	ipk types.IssuerPublicKey,
 	eidIndex int,
 	signature []byte,
 	enrollmentID string,
@@ -147,7 +147,7 @@ func (s *SignatureScheme) AuditNymEid(
 
 // AuditNymRh Audits the pseudonymous revocation handle of a signature
 func (s *SignatureScheme) AuditNymRh(
-	ipk handlers.IssuerPublicKey,
+	ipk types.IssuerPublicKey,
 	rhIndex int,
 	signature []byte,
 	revocationHandle string,
@@ -202,7 +202,7 @@ func (s *SignatureScheme) AuditNymRh(
 // Verify checks that an idemix signature is valid with the respect to the passed issuer public key, digest, attributes,
 // revocation index (rhIndex), revocation public key, and epoch.
 func (s *SignatureScheme) Verify(
-	ipk handlers.IssuerPublicKey,
+	ipk types.IssuerPublicKey,
 	signature, digest []byte,
 	attributes []bccsp.IdemixAttribute,
 	rhIndex, eidIndex int,

@@ -7,12 +7,12 @@ SPDX-License-Identifier: Apache-2.0
 package aries
 
 import (
-	bccsp "github.com/IBM/idemix/bccsp/types"
+	"github.com/IBM/idemix/bccsp/types"
 	math "github.com/IBM/mathlib"
 	"github.com/hyperledger/aries-framework-go/component/kmscrypto/crypto/primitive/bbs12381g2pub"
 )
 
-func attributesToSignatureMessage(sk *math.Zr, attributes []bccsp.IdemixAttribute, curve *math.Curve) []*bbs12381g2pub.SignatureMessage {
+func attributesToSignatureMessage(sk *math.Zr, attributes []types.IdemixAttribute, curve *math.Curve) []*bbs12381g2pub.SignatureMessage {
 	var msgsZr []*bbs12381g2pub.SignatureMessage
 
 	if sk == nil {
@@ -27,17 +27,17 @@ func attributesToSignatureMessage(sk *math.Zr, attributes []bccsp.IdemixAttribut
 
 	for i, msg := range attributes {
 		switch msg.Type {
-		case bccsp.IdemixBytesAttribute:
+		case types.IdemixBytesAttribute:
 			msgsZr = append(msgsZr, &bbs12381g2pub.SignatureMessage{
 				FR:  bbs12381g2pub.FrFromOKM(msg.Value.([]byte)),
 				Idx: i + 1,
 			})
-		case bccsp.IdemixIntAttribute:
+		case types.IdemixIntAttribute:
 			msgsZr = append(msgsZr, &bbs12381g2pub.SignatureMessage{
 				FR:  curve.NewZrFromInt(int64(msg.Value.(int))),
 				Idx: i + 1,
 			})
-		case bccsp.IdemixHiddenAttribute:
+		case types.IdemixHiddenAttribute:
 			continue
 		}
 	}
@@ -45,11 +45,11 @@ func attributesToSignatureMessage(sk *math.Zr, attributes []bccsp.IdemixAttribut
 	return msgsZr
 }
 
-func revealedAttributesIndex(attributes []bccsp.IdemixAttribute) []int {
+func revealedAttributesIndex(attributes []types.IdemixAttribute) []int {
 	revealed := make([]int, 0, len(attributes))
 
 	for i, msg := range attributes {
-		if msg.Type != bccsp.IdemixHiddenAttribute {
+		if msg.Type != types.IdemixHiddenAttribute {
 			revealed = append(revealed, i+1)
 		}
 	}

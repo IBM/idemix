@@ -10,8 +10,7 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/IBM/idemix/bccsp/handlers"
-	bccsp "github.com/IBM/idemix/bccsp/types"
+	"github.com/IBM/idemix/bccsp/types"
 	math "github.com/IBM/mathlib"
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/aries-framework-go/component/kmscrypto/crypto/primitive/bbs12381g2pub"
@@ -34,7 +33,7 @@ type Signer struct {
 
 func (s *Signer) getPoKOfSignature(
 	credBytes []byte,
-	attributes []bccsp.IdemixAttribute,
+	attributes []types.IdemixAttribute,
 	sk *math.Zr,
 	ipk *bbs12381g2pub.PublicKeyWithGenerators,
 ) (*bbs12381g2pub.PoKOfSignature, []*bbs12381g2pub.SignatureMessage, error) {
@@ -66,17 +65,17 @@ func (s *Signer) getChallengeHash(
 	eid *attributeCommitment,
 	rh *attributeCommitment,
 	msg []byte,
-	sigType bccsp.SignatureType,
+	sigType types.SignatureType,
 ) (*math.Zr, *math.Zr) {
 
 	// hash the signature type first
 	var challengeBytes []byte
 	switch sigType {
-	case bccsp.Standard:
+	case types.Standard:
 		challengeBytes = []byte(signLabel)
-	case bccsp.EidNym:
+	case types.EidNym:
 		challengeBytes = []byte(signWithEidNymLabel)
-	case bccsp.EidNymRhNym:
+	case types.EidNymRhNym:
 		challengeBytes = []byte(signWithEidNymRhNymLabel)
 	default:
 		panic("programming error")
@@ -90,13 +89,13 @@ func (s *Signer) getChallengeHash(
 	challengeBytes = append(challengeBytes, commitNym.Bytes()...)
 
 	// hash the NymEid and t-value
-	if sigType == bccsp.EidNym || sigType == bccsp.EidNymRhNym {
+	if sigType == types.EidNym || sigType == types.EidNymRhNym {
 		challengeBytes = append(challengeBytes, eid.comm.Bytes()...)
 		challengeBytes = append(challengeBytes, eid.proof.Commitment.Bytes()...)
 	}
 
 	// hash the NymEid and t-value
-	if sigType == bccsp.EidNymRhNym {
+	if sigType == types.EidNymRhNym {
 		challengeBytes = append(challengeBytes, rh.comm.Bytes()...)
 		challengeBytes = append(challengeBytes, rh.proof.Commitment.Bytes()...)
 	}
@@ -117,7 +116,7 @@ func (s *Signer) getChallengeHash(
 }
 
 func (s *Signer) packageProof(
-	attributes []bccsp.IdemixAttribute,
+	attributes []types.IdemixAttribute,
 	Nym *math.G1,
 	proof *bbs12381g2pub.PoKOfSignatureProof,
 	proofNym *bbs12381g2pub.ProofG1,
@@ -193,7 +192,7 @@ type attributeCommitment struct {
 	r     *math.Zr
 }
 
-func safeRhNymAuditDataAccess(metadata *bccsp.IdemixSignerMetadata) *bccsp.AttrNymAuditData {
+func safeRhNymAuditDataAccess(metadata *types.IdemixSignerMetadata) *types.AttrNymAuditData {
 	if metadata == nil {
 		return nil
 	}
@@ -201,11 +200,11 @@ func safeRhNymAuditDataAccess(metadata *bccsp.IdemixSignerMetadata) *bccsp.AttrN
 	return metadata.RhNymAuditData
 }
 
-func rhAttrCommitmentEnabled(sigType bccsp.SignatureType) bool {
-	return sigType == bccsp.EidNymRhNym
+func rhAttrCommitmentEnabled(sigType types.SignatureType) bool {
+	return sigType == types.EidNymRhNym
 }
 
-func safeNymEidAuditDataAccess(metadata *bccsp.IdemixSignerMetadata) *bccsp.AttrNymAuditData {
+func safeNymEidAuditDataAccess(metadata *types.IdemixSignerMetadata) *types.AttrNymAuditData {
 	if metadata == nil {
 		return nil
 	}
@@ -213,8 +212,8 @@ func safeNymEidAuditDataAccess(metadata *bccsp.IdemixSignerMetadata) *bccsp.Attr
 	return metadata.EidNymAuditData
 }
 
-func nymEidAttrCommitmentEnabled(sigType bccsp.SignatureType) bool {
-	return sigType != bccsp.Standard
+func nymEidAttrCommitmentEnabled(sigType types.SignatureType) bool {
+	return sigType != types.Standard
 }
 
 func (s *Signer) getAttributeCommitment(
@@ -223,7 +222,7 @@ func (s *Signer) getAttributeCommitment(
 	attr *math.Zr,
 	idxInBases int,
 	enabled bool,
-	auditData *bccsp.AttrNymAuditData,
+	auditData *types.AttrNymAuditData,
 ) (*attributeCommitment, error) {
 
 	if !enabled {
@@ -301,27 +300,27 @@ func (s *Signer) Sign(
 	sk *math.Zr,
 	Nym *math.G1,
 	RNym *math.Zr,
-	key handlers.IssuerPublicKey,
-	attributes []bccsp.IdemixAttribute,
+	key types.IssuerPublicKey,
+	attributes []types.IdemixAttribute,
 	msg []byte,
 	rhIndex, eidIndex int,
 	criRaw []byte,
-	sigType bccsp.SignatureType,
-	metadata *bccsp.IdemixSignerMetadata,
-) ([]byte, *bccsp.IdemixSignerMetadata, error) {
+	sigType types.SignatureType,
+	metadata *types.IdemixSignerMetadata,
+) ([]byte, *types.IdemixSignerMetadata, error) {
 
 	///////////////
 	// arg check //
 	///////////////
 
-	if sigType == bccsp.EidNym &&
-		attributes[eidIndex].Type != bccsp.IdemixHiddenAttribute {
+	if sigType == types.EidNym &&
+		attributes[eidIndex].Type != types.IdemixHiddenAttribute {
 		return nil, nil, fmt.Errorf("cannot create idemix signature: disclosure of enrollment ID requested for EidNym signature")
 	}
 
-	if sigType == bccsp.EidNymRhNym &&
-		(attributes[eidIndex].Type != bccsp.IdemixHiddenAttribute ||
-			attributes[rhIndex].Type != bccsp.IdemixHiddenAttribute) {
+	if sigType == types.EidNymRhNym &&
+		(attributes[eidIndex].Type != types.IdemixHiddenAttribute ||
+			attributes[rhIndex].Type != types.IdemixHiddenAttribute) {
 		return nil, nil, fmt.Errorf("cannot create idemix signature: disclosure of enrollment ID or RH requested for EidNymRhNym signature")
 	}
 
@@ -341,7 +340,7 @@ func (s *Signer) Sign(
 	}
 
 	// if we add any other revocation algorithm, we need to change the challenge hash
-	if cri.RevocationAlg != int32(bccsp.AlgNoRevocation) {
+	if cri.RevocationAlg != int32(types.AlgNoRevocation) {
 		return nil, nil, fmt.Errorf("Unsupported revocation algorithm")
 	}
 
@@ -418,10 +417,10 @@ func (s *Signer) Sign(
 		return nil, nil, err
 	}
 
-	var m *bccsp.IdemixSignerMetadata
-	if sigType == bccsp.EidNym {
-		m = &bccsp.IdemixSignerMetadata{
-			EidNymAuditData: &bccsp.AttrNymAuditData{
+	var m *types.IdemixSignerMetadata
+	if sigType == types.EidNym {
+		m = &types.IdemixSignerMetadata{
+			EidNymAuditData: &types.AttrNymAuditData{
 				Nym:  nymEid.comm,
 				Rand: nymEid.r,
 				Attr: messagesFr[eidIndex].FR,
@@ -429,14 +428,14 @@ func (s *Signer) Sign(
 		}
 	}
 
-	if sigType == bccsp.EidNymRhNym {
-		m = &bccsp.IdemixSignerMetadata{
-			EidNymAuditData: &bccsp.AttrNymAuditData{
+	if sigType == types.EidNymRhNym {
+		m = &types.IdemixSignerMetadata{
+			EidNymAuditData: &types.AttrNymAuditData{
 				Nym:  nymEid.comm,
 				Rand: nymEid.r,
 				Attr: messagesFr[eidIndex].FR,
 			},
-			RhNymAuditData: &bccsp.AttrNymAuditData{
+			RhNymAuditData: &types.AttrNymAuditData{
 				Nym:  rhNym.comm,
 				Rand: rhNym.r,
 				Attr: messagesFr[rhIndex].FR,
@@ -449,14 +448,14 @@ func (s *Signer) Sign(
 
 // Verify verifies an idemix signature.
 func (s *Signer) Verify(
-	key handlers.IssuerPublicKey,
+	key types.IssuerPublicKey,
 	signature, msg []byte,
-	attributes []bccsp.IdemixAttribute,
+	attributes []types.IdemixAttribute,
 	rhIndex, eidIndex int,
 	_ *ecdsa.PublicKey,
 	_ int,
-	verType bccsp.VerificationType,
-	meta *bccsp.IdemixSignerMetadata,
+	verType types.VerificationType,
+	meta *types.IdemixSignerMetadata,
 ) error {
 	ipk, ok := key.(*IssuerPublicKey)
 	if !ok {
@@ -469,16 +468,16 @@ func (s *Signer) Verify(
 		return fmt.Errorf("proto.Unmarshal error: %w", err)
 	}
 
-	if sig.NonRevocationProof.RevocationAlg != int32(bccsp.AlgNoRevocation) {
+	if sig.NonRevocationProof.RevocationAlg != int32(types.AlgNoRevocation) {
 		return fmt.Errorf("unsupported revocation algorithm")
 	}
 
-	if verType == bccsp.ExpectEidNym &&
+	if verType == types.ExpectEidNym &&
 		(len(sig.NymEid) == 0 || len(sig.NymEidProof) == 0) {
 		return fmt.Errorf("no EidNym provided but ExpectEidNym required")
 	}
 
-	if verType == bccsp.ExpectEidNymRhNym {
+	if verType == types.ExpectEidNymRhNym {
 		if len(sig.NymEid) == 0 || len(sig.NymEidProof) == 0 {
 			return fmt.Errorf("no EidNym provided but ExpectEidNymRhNym required")
 		}
@@ -487,7 +486,7 @@ func (s *Signer) Verify(
 		}
 	}
 
-	if verType == bccsp.ExpectStandard {
+	if verType == types.ExpectStandard {
 		if len(sig.NymEid) != 0 || len(sig.NymEidProof) != 0 {
 			return fmt.Errorf("RhNym available but ExpectStandard required")
 		}
@@ -496,8 +495,8 @@ func (s *Signer) Verify(
 		}
 	}
 
-	verifyRHNym := (verType == bccsp.BestEffort && sig.NymRh != nil) || verType == bccsp.ExpectEidNymRhNym
-	verifyEIDNym := (verType == bccsp.BestEffort && sig.NymEid != nil) || verType == bccsp.ExpectEidNym || verType == bccsp.ExpectEidNymRhNym || verifyRHNym
+	verifyRHNym := (verType == types.BestEffort && sig.NymRh != nil) || verType == types.ExpectEidNymRhNym
+	verifyEIDNym := (verType == types.BestEffort && sig.NymEid != nil) || verType == types.ExpectEidNym || verType == types.ExpectEidNymRhNym || verifyRHNym
 
 	messages := attributesToSignatureMessage(nil, attributes, s.Curve)
 
@@ -678,12 +677,12 @@ func (s *Signer) Verify(
 
 // AuditNymEid permits the auditing of the nym eid generated by a signer
 func (s *Signer) AuditNymEid(
-	key handlers.IssuerPublicKey,
+	key types.IssuerPublicKey,
 	eidIndex int,
 	signature []byte,
 	enrollmentID string,
 	RNymEid *math.Zr,
-	verType bccsp.AuditVerificationType,
+	verType types.AuditVerificationType,
 ) error {
 	ipk, ok := key.(*IssuerPublicKey)
 	if !ok {
@@ -692,7 +691,7 @@ func (s *Signer) AuditNymEid(
 
 	var NymEid *math.G1
 	switch verType {
-	case bccsp.AuditExpectSignature:
+	case types.AuditExpectSignature:
 		sig := &Signature{}
 		err := proto.Unmarshal(signature, sig)
 		if err != nil {
@@ -703,9 +702,9 @@ func (s *Signer) AuditNymEid(
 		if err != nil {
 			return fmt.Errorf("parse nym commit: %w", err)
 		}
-	case bccsp.AuditExpectEidNymRhNym:
+	case types.AuditExpectEidNymRhNym:
 		fallthrough
-	case bccsp.AuditExpectEidNym:
+	case types.AuditExpectEidNym:
 		var err error
 		NymEid, err = s.Curve.NewG1FromBytes(signature)
 		if err != nil {
@@ -728,12 +727,12 @@ func (s *Signer) AuditNymEid(
 
 // AuditNymRh permits the auditing of the nym rh generated by a signer
 func (s *Signer) AuditNymRh(
-	key handlers.IssuerPublicKey,
+	key types.IssuerPublicKey,
 	rhIndex int,
 	signature []byte,
 	revocationHandle string,
 	RNymRh *math.Zr,
-	verType bccsp.AuditVerificationType,
+	verType types.AuditVerificationType,
 ) error {
 	ipk, ok := key.(*IssuerPublicKey)
 	if !ok {
@@ -742,7 +741,7 @@ func (s *Signer) AuditNymRh(
 
 	var RhNym *math.G1
 	switch verType {
-	case bccsp.AuditExpectSignature:
+	case types.AuditExpectSignature:
 		sig := &Signature{}
 		err := proto.Unmarshal(signature, sig)
 		if err != nil {
@@ -753,7 +752,7 @@ func (s *Signer) AuditNymRh(
 		if err != nil {
 			return fmt.Errorf("parse rh commit: %w", err)
 		}
-	case bccsp.AuditExpectEidNymRhNym:
+	case types.AuditExpectEidNymRhNym:
 		var err error
 		RhNym, err = s.Curve.NewG1FromBytes(signature)
 		if err != nil {

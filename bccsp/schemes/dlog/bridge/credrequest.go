@@ -8,8 +8,8 @@ package bridge
 import (
 	"bytes"
 
-	"github.com/IBM/idemix/bccsp/handlers"
 	idemix "github.com/IBM/idemix/bccsp/schemes/dlog/crypto"
+	"github.com/IBM/idemix/bccsp/types"
 	math "github.com/IBM/mathlib"
 	"github.com/golang/protobuf/proto"
 	"github.com/pkg/errors"
@@ -25,7 +25,7 @@ type CredRequest struct {
 
 // Sign produces an idemix credential request. It takes in input a user secret key and
 // an issuer public key.
-func (cr *CredRequest) Sign(sk *math.Zr, ipk handlers.IssuerPublicKey, nonce []byte) (res []byte, err error) {
+func (cr *CredRequest) Sign(sk *math.Zr, ipk types.IssuerPublicKey, nonce []byte) (res []byte, err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			res = nil
@@ -57,7 +57,7 @@ func (cr *CredRequest) Sign(sk *math.Zr, ipk handlers.IssuerPublicKey, nonce []b
 
 // Verify checks that the passed credential request is valid with the respect to the passed
 // issuer public key.
-func (cr *CredRequest) Verify(credentialRequest []byte, ipk handlers.IssuerPublicKey, nonce []byte) (err error) {
+func (cr *CredRequest) Verify(credentialRequest []byte, ipk types.IssuerPublicKey, nonce []byte) (err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			err = errors.Errorf("failure [%s]", r)

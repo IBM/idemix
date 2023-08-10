@@ -8,8 +8,9 @@ package handlers
 import (
 	"crypto/sha256"
 
-	bccsp "github.com/IBM/idemix/bccsp/types"
 	idemix "github.com/IBM/idemix/bccsp/schemes/dlog/crypto"
+	"github.com/IBM/idemix/bccsp/types"
+	bccsp "github.com/IBM/idemix/bccsp/types"
 	math "github.com/IBM/mathlib"
 	"github.com/pkg/errors"
 )
@@ -109,7 +110,7 @@ type NymKeyDerivation struct {
 	// If a secret key is marked as Exportable, its Bytes method will return the key's byte representation.
 	Exportable bool
 	// User implements the underlying cryptographic algorithms
-	User User
+	User types.User
 
 	Translator idemix.Translator
 }
@@ -142,7 +143,7 @@ func (kd *NymKeyDerivation) KeyDeriv(k bccsp.Key, opts bccsp.KeyDerivOpts) (dk b
 // NymPublicKeyImporter imports nym public keys
 type NymPublicKeyImporter struct {
 	// User implements the underlying cryptographic algorithms
-	User User
+	User types.User
 
 	Translator idemix.Translator
 }
@@ -169,7 +170,7 @@ func (i *NymPublicKeyImporter) KeyImport(raw interface{}, opts bccsp.KeyImportOp
 type NymKeyImporter struct {
 	Exportable bool
 	// User implements the underlying cryptographic algorithms
-	User User
+	User types.User
 
 	Translator idemix.Translator
 }

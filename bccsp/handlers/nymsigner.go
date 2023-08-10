@@ -6,12 +6,13 @@ SPDX-License-Identifier: Apache-2.0
 package handlers
 
 import (
+	"github.com/IBM/idemix/bccsp/types"
 	bccsp "github.com/IBM/idemix/bccsp/types"
 	"github.com/pkg/errors"
 )
 
 type NymSigner struct {
-	NymSignatureScheme NymSignatureScheme
+	NymSignatureScheme types.NymSignatureScheme
 }
 
 func (s *NymSigner) Sign(k bccsp.Key, digest []byte, opts bccsp.SignerOpts) ([]byte, error) {
@@ -56,7 +57,7 @@ func (s *NymSigner) Sign(k bccsp.Key, digest []byte, opts bccsp.SignerOpts) ([]b
 }
 
 type NymVerifier struct {
-	NymSignatureScheme NymSignatureScheme
+	NymSignatureScheme types.NymSignatureScheme
 }
 
 func (v *NymVerifier) Verify(k bccsp.Key, signature, digest []byte, opts bccsp.SignerOpts) (bool, error) {

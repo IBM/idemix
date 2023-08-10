@@ -4,18 +4,17 @@ package mock
 import (
 	"sync"
 
-	"github.com/IBM/idemix/bccsp/handlers"
-	idemix "github.com/IBM/idemix/bccsp/types"
+	"github.com/IBM/idemix/bccsp/types"
 	math "github.com/IBM/mathlib"
 )
 
 type Credential struct {
-	SignStub        func(handlers.IssuerSecretKey, []byte, []idemix.IdemixAttribute) ([]byte, error)
+	SignStub        func(types.IssuerSecretKey, []byte, []types.IdemixAttribute) ([]byte, error)
 	signMutex       sync.RWMutex
 	signArgsForCall []struct {
-		arg1 handlers.IssuerSecretKey
+		arg1 types.IssuerSecretKey
 		arg2 []byte
-		arg3 []idemix.IdemixAttribute
+		arg3 []types.IdemixAttribute
 	}
 	signReturns struct {
 		result1 []byte
@@ -25,13 +24,13 @@ type Credential struct {
 		result1 []byte
 		result2 error
 	}
-	VerifyStub        func(*math.Zr, handlers.IssuerPublicKey, []byte, []idemix.IdemixAttribute) error
+	VerifyStub        func(*math.Zr, types.IssuerPublicKey, []byte, []types.IdemixAttribute) error
 	verifyMutex       sync.RWMutex
 	verifyArgsForCall []struct {
 		arg1 *math.Zr
-		arg2 handlers.IssuerPublicKey
+		arg2 types.IssuerPublicKey
 		arg3 []byte
-		arg4 []idemix.IdemixAttribute
+		arg4 []types.IdemixAttribute
 	}
 	verifyReturns struct {
 		result1 error
@@ -43,23 +42,23 @@ type Credential struct {
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *Credential) Sign(arg1 handlers.IssuerSecretKey, arg2 []byte, arg3 []idemix.IdemixAttribute) ([]byte, error) {
+func (fake *Credential) Sign(arg1 types.IssuerSecretKey, arg2 []byte, arg3 []types.IdemixAttribute) ([]byte, error) {
 	var arg2Copy []byte
 	if arg2 != nil {
 		arg2Copy = make([]byte, len(arg2))
 		copy(arg2Copy, arg2)
 	}
-	var arg3Copy []idemix.IdemixAttribute
+	var arg3Copy []types.IdemixAttribute
 	if arg3 != nil {
-		arg3Copy = make([]idemix.IdemixAttribute, len(arg3))
+		arg3Copy = make([]types.IdemixAttribute, len(arg3))
 		copy(arg3Copy, arg3)
 	}
 	fake.signMutex.Lock()
 	ret, specificReturn := fake.signReturnsOnCall[len(fake.signArgsForCall)]
 	fake.signArgsForCall = append(fake.signArgsForCall, struct {
-		arg1 handlers.IssuerSecretKey
+		arg1 types.IssuerSecretKey
 		arg2 []byte
-		arg3 []idemix.IdemixAttribute
+		arg3 []types.IdemixAttribute
 	}{arg1, arg2Copy, arg3Copy})
 	stub := fake.SignStub
 	fakeReturns := fake.signReturns
@@ -80,13 +79,13 @@ func (fake *Credential) SignCallCount() int {
 	return len(fake.signArgsForCall)
 }
 
-func (fake *Credential) SignCalls(stub func(handlers.IssuerSecretKey, []byte, []idemix.IdemixAttribute) ([]byte, error)) {
+func (fake *Credential) SignCalls(stub func(types.IssuerSecretKey, []byte, []types.IdemixAttribute) ([]byte, error)) {
 	fake.signMutex.Lock()
 	defer fake.signMutex.Unlock()
 	fake.SignStub = stub
 }
 
-func (fake *Credential) SignArgsForCall(i int) (handlers.IssuerSecretKey, []byte, []idemix.IdemixAttribute) {
+func (fake *Credential) SignArgsForCall(i int) (types.IssuerSecretKey, []byte, []types.IdemixAttribute) {
 	fake.signMutex.RLock()
 	defer fake.signMutex.RUnlock()
 	argsForCall := fake.signArgsForCall[i]
@@ -119,24 +118,24 @@ func (fake *Credential) SignReturnsOnCall(i int, result1 []byte, result2 error) 
 	}{result1, result2}
 }
 
-func (fake *Credential) Verify(arg1 *math.Zr, arg2 handlers.IssuerPublicKey, arg3 []byte, arg4 []idemix.IdemixAttribute) error {
+func (fake *Credential) Verify(arg1 *math.Zr, arg2 types.IssuerPublicKey, arg3 []byte, arg4 []types.IdemixAttribute) error {
 	var arg3Copy []byte
 	if arg3 != nil {
 		arg3Copy = make([]byte, len(arg3))
 		copy(arg3Copy, arg3)
 	}
-	var arg4Copy []idemix.IdemixAttribute
+	var arg4Copy []types.IdemixAttribute
 	if arg4 != nil {
-		arg4Copy = make([]idemix.IdemixAttribute, len(arg4))
+		arg4Copy = make([]types.IdemixAttribute, len(arg4))
 		copy(arg4Copy, arg4)
 	}
 	fake.verifyMutex.Lock()
 	ret, specificReturn := fake.verifyReturnsOnCall[len(fake.verifyArgsForCall)]
 	fake.verifyArgsForCall = append(fake.verifyArgsForCall, struct {
 		arg1 *math.Zr
-		arg2 handlers.IssuerPublicKey
+		arg2 types.IssuerPublicKey
 		arg3 []byte
-		arg4 []idemix.IdemixAttribute
+		arg4 []types.IdemixAttribute
 	}{arg1, arg2, arg3Copy, arg4Copy})
 	stub := fake.VerifyStub
 	fakeReturns := fake.verifyReturns
@@ -157,13 +156,13 @@ func (fake *Credential) VerifyCallCount() int {
 	return len(fake.verifyArgsForCall)
 }
 
-func (fake *Credential) VerifyCalls(stub func(*math.Zr, handlers.IssuerPublicKey, []byte, []idemix.IdemixAttribute) error) {
+func (fake *Credential) VerifyCalls(stub func(*math.Zr, types.IssuerPublicKey, []byte, []types.IdemixAttribute) error) {
 	fake.verifyMutex.Lock()
 	defer fake.verifyMutex.Unlock()
 	fake.VerifyStub = stub
 }
 
-func (fake *Credential) VerifyArgsForCall(i int) (*math.Zr, handlers.IssuerPublicKey, []byte, []idemix.IdemixAttribute) {
+func (fake *Credential) VerifyArgsForCall(i int) (*math.Zr, types.IssuerPublicKey, []byte, []types.IdemixAttribute) {
 	fake.verifyMutex.RLock()
 	defer fake.verifyMutex.RUnlock()
 	argsForCall := fake.verifyArgsForCall[i]
@@ -219,4 +218,4 @@ func (fake *Credential) recordInvocation(key string, args []interface{}) {
 	fake.invocations[key] = append(fake.invocations[key], args)
 }
 
-var _ handlers.Credential = new(Credential)
+var _ types.Credential = new(Credential)

@@ -5,8 +5,7 @@ import (
 	"crypto/ecdsa"
 	"sync"
 
-	"github.com/IBM/idemix/bccsp/handlers"
-	idemix "github.com/IBM/idemix/bccsp/types"
+	"github.com/IBM/idemix/bccsp/types"
 )
 
 type Revocation struct {
@@ -35,13 +34,13 @@ type Revocation struct {
 		result1 *ecdsa.PrivateKey
 		result2 error
 	}
-	SignStub        func(*ecdsa.PrivateKey, [][]byte, int, idemix.RevocationAlgorithm) ([]byte, error)
+	SignStub        func(*ecdsa.PrivateKey, [][]byte, int, types.RevocationAlgorithm) ([]byte, error)
 	signMutex       sync.RWMutex
 	signArgsForCall []struct {
 		arg1 *ecdsa.PrivateKey
 		arg2 [][]byte
 		arg3 int
-		arg4 idemix.RevocationAlgorithm
+		arg4 types.RevocationAlgorithm
 	}
 	signReturns struct {
 		result1 []byte
@@ -51,13 +50,13 @@ type Revocation struct {
 		result1 []byte
 		result2 error
 	}
-	VerifyStub        func(*ecdsa.PublicKey, []byte, int, idemix.RevocationAlgorithm) error
+	VerifyStub        func(*ecdsa.PublicKey, []byte, int, types.RevocationAlgorithm) error
 	verifyMutex       sync.RWMutex
 	verifyArgsForCall []struct {
 		arg1 *ecdsa.PublicKey
 		arg2 []byte
 		arg3 int
-		arg4 idemix.RevocationAlgorithm
+		arg4 types.RevocationAlgorithm
 	}
 	verifyReturns struct {
 		result1 error
@@ -194,7 +193,7 @@ func (fake *Revocation) NewKeyFromBytesReturnsOnCall(i int, result1 *ecdsa.Priva
 	}{result1, result2}
 }
 
-func (fake *Revocation) Sign(arg1 *ecdsa.PrivateKey, arg2 [][]byte, arg3 int, arg4 idemix.RevocationAlgorithm) ([]byte, error) {
+func (fake *Revocation) Sign(arg1 *ecdsa.PrivateKey, arg2 [][]byte, arg3 int, arg4 types.RevocationAlgorithm) ([]byte, error) {
 	var arg2Copy [][]byte
 	if arg2 != nil {
 		arg2Copy = make([][]byte, len(arg2))
@@ -206,7 +205,7 @@ func (fake *Revocation) Sign(arg1 *ecdsa.PrivateKey, arg2 [][]byte, arg3 int, ar
 		arg1 *ecdsa.PrivateKey
 		arg2 [][]byte
 		arg3 int
-		arg4 idemix.RevocationAlgorithm
+		arg4 types.RevocationAlgorithm
 	}{arg1, arg2Copy, arg3, arg4})
 	stub := fake.SignStub
 	fakeReturns := fake.signReturns
@@ -227,13 +226,13 @@ func (fake *Revocation) SignCallCount() int {
 	return len(fake.signArgsForCall)
 }
 
-func (fake *Revocation) SignCalls(stub func(*ecdsa.PrivateKey, [][]byte, int, idemix.RevocationAlgorithm) ([]byte, error)) {
+func (fake *Revocation) SignCalls(stub func(*ecdsa.PrivateKey, [][]byte, int, types.RevocationAlgorithm) ([]byte, error)) {
 	fake.signMutex.Lock()
 	defer fake.signMutex.Unlock()
 	fake.SignStub = stub
 }
 
-func (fake *Revocation) SignArgsForCall(i int) (*ecdsa.PrivateKey, [][]byte, int, idemix.RevocationAlgorithm) {
+func (fake *Revocation) SignArgsForCall(i int) (*ecdsa.PrivateKey, [][]byte, int, types.RevocationAlgorithm) {
 	fake.signMutex.RLock()
 	defer fake.signMutex.RUnlock()
 	argsForCall := fake.signArgsForCall[i]
@@ -266,7 +265,7 @@ func (fake *Revocation) SignReturnsOnCall(i int, result1 []byte, result2 error) 
 	}{result1, result2}
 }
 
-func (fake *Revocation) Verify(arg1 *ecdsa.PublicKey, arg2 []byte, arg3 int, arg4 idemix.RevocationAlgorithm) error {
+func (fake *Revocation) Verify(arg1 *ecdsa.PublicKey, arg2 []byte, arg3 int, arg4 types.RevocationAlgorithm) error {
 	var arg2Copy []byte
 	if arg2 != nil {
 		arg2Copy = make([]byte, len(arg2))
@@ -278,7 +277,7 @@ func (fake *Revocation) Verify(arg1 *ecdsa.PublicKey, arg2 []byte, arg3 int, arg
 		arg1 *ecdsa.PublicKey
 		arg2 []byte
 		arg3 int
-		arg4 idemix.RevocationAlgorithm
+		arg4 types.RevocationAlgorithm
 	}{arg1, arg2Copy, arg3, arg4})
 	stub := fake.VerifyStub
 	fakeReturns := fake.verifyReturns
@@ -299,13 +298,13 @@ func (fake *Revocation) VerifyCallCount() int {
 	return len(fake.verifyArgsForCall)
 }
 
-func (fake *Revocation) VerifyCalls(stub func(*ecdsa.PublicKey, []byte, int, idemix.RevocationAlgorithm) error) {
+func (fake *Revocation) VerifyCalls(stub func(*ecdsa.PublicKey, []byte, int, types.RevocationAlgorithm) error) {
 	fake.verifyMutex.Lock()
 	defer fake.verifyMutex.Unlock()
 	fake.VerifyStub = stub
 }
 
-func (fake *Revocation) VerifyArgsForCall(i int) (*ecdsa.PublicKey, []byte, int, idemix.RevocationAlgorithm) {
+func (fake *Revocation) VerifyArgsForCall(i int) (*ecdsa.PublicKey, []byte, int, types.RevocationAlgorithm) {
 	fake.verifyMutex.RLock()
 	defer fake.verifyMutex.RUnlock()
 	argsForCall := fake.verifyArgsForCall[i]
@@ -365,4 +364,4 @@ func (fake *Revocation) recordInvocation(key string, args []interface{}) {
 	fake.invocations[key] = append(fake.invocations[key], args)
 }
 
-var _ handlers.Revocation = new(Revocation)
+var _ types.Revocation = new(Revocation)

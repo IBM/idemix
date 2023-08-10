@@ -8,11 +8,12 @@ package handlers
 import (
 	"github.com/pkg/errors"
 
+	"github.com/IBM/idemix/bccsp/types"
 	bccsp "github.com/IBM/idemix/bccsp/types"
 )
 
 type Signer struct {
-	SignatureScheme SignatureScheme
+	SignatureScheme types.SignatureScheme
 }
 
 func (s *Signer) Sign(k bccsp.Key, digest []byte, opts bccsp.SignerOpts) ([]byte, error) {
@@ -68,7 +69,7 @@ func (s *Signer) Sign(k bccsp.Key, digest []byte, opts bccsp.SignerOpts) ([]byte
 }
 
 type Verifier struct {
-	SignatureScheme SignatureScheme
+	SignatureScheme types.SignatureScheme
 }
 
 func (v *Verifier) AuditNymEid(k bccsp.Key, signature, digest []byte, opts bccsp.SignerOpts) (bool, error) {

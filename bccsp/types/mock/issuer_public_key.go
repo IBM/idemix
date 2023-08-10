@@ -4,7 +4,7 @@ package mock
 import (
 	"sync"
 
-	"github.com/IBM/idemix/bccsp/handlers"
+	"github.com/IBM/idemix/bccsp/types"
 )
 
 type IssuerPublicKey struct {
@@ -169,4 +169,4 @@ func (fake *IssuerPublicKey) recordInvocation(key string, args []interface{}) {
 	fake.invocations[key] = append(fake.invocations[key], args)
 }
 
-var _ handlers.IssuerPublicKey = new(IssuerPublicKey)
+var _ types.IssuerPublicKey = new(IssuerPublicKey)
