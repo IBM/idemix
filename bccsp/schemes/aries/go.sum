@@ -1,7 +1,7 @@
-github.com/IBM/idemix/bccsp/schemes/weak-bb v0.0.0-20230810173054-c991cc1e54ca h1:yzLkH3CGAvTHJiFgz+sHMz8HSQBahYney1LaoP/42CM=
-github.com/IBM/idemix/bccsp/schemes/weak-bb v0.0.0-20230810173054-c991cc1e54ca/go.mod h1:n86zzYREwJdjUybye3rerxmAFfgVJtPvNOrRX30CbrU=
-github.com/IBM/idemix/bccsp/types v0.0.0-20230810173054-c991cc1e54ca h1:d/RRnouZVXKQR/uLOgfy8fhRgN934oPbzH1xk3eoBtg=
-github.com/IBM/idemix/bccsp/types v0.0.0-20230810173054-c991cc1e54ca/go.mod h1:6ura+11RaC9RwTQ2SEq5KZ+2w6+c7BuArQOP1Ktrlq0=
+github.com/IBM/idemix/bccsp/schemes/weak-bb v0.0.0-20230817165407-7c02a2e52512 h1:RahCv0wKrBb9f5KhFSoMCeIeg5pIv5k1pJ6RCnK01wM=
+github.com/IBM/idemix/bccsp/schemes/weak-bb v0.0.0-20230817165407-7c02a2e52512/go.mod h1:n86zzYREwJdjUybye3rerxmAFfgVJtPvNOrRX30CbrU=
+github.com/IBM/idemix/bccsp/types v0.0.0-20230817165407-7c02a2e52512 h1:5UbXjoVT6t+ZApvIaiaNTSmue/ndTmnkWKlVIr63R5M=
+github.com/IBM/idemix/bccsp/types v0.0.0-20230817165407-7c02a2e52512/go.mod h1:6ura+11RaC9RwTQ2SEq5KZ+2w6+c7BuArQOP1Ktrlq0=
 github.com/IBM/mathlib v0.0.3-0.20230605104224-932ab92f2ce0 h1:V3ElfC3Xs8bxJyc7VPcBQ9th6vyBBX8u/5bIUOXljk4=
 github.com/IBM/mathlib v0.0.3-0.20230605104224-932ab92f2ce0/go.mod h1:k0NBSWMYVgaZ2keDuI8DSwdIEhUNhp8XnlVmm6Xwyuk=
 github.com/ale-linux/aries-framework-go/component/kmscrypto v0.0.0-20230817163708-4b3de6d91874 h1:O08ZCyb1f7UeyOmTeItAw7eSZOlyM0fBnrPgaYgKEiA=
