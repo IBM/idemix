@@ -14,8 +14,8 @@ import (
 	bccsp "github.com/IBM/idemix/bccsp/types"
 	im "github.com/IBM/idemix/idemixmsp"
 	math "github.com/IBM/mathlib"
-	"github.com/golang/protobuf/proto"
 	"github.com/ale-linux/aries-framework-go/component/kmscrypto/crypto/primitive/bbs12381g2pub"
+	"github.com/golang/protobuf/proto"
 	"github.com/pkg/errors"
 )
 
