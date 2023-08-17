@@ -7,10 +7,10 @@ require (
 	github.com/IBM/idemix/bccsp/schemes/weak-bb v0.0.0-20230810173054-c991cc1e54ca
 	github.com/IBM/idemix/bccsp/types v0.0.0-20230810173054-c991cc1e54ca
 	github.com/IBM/mathlib v0.0.3-0.20230605104224-932ab92f2ce0
+	github.com/ale-linux/aries-framework-go/component/kmscrypto v0.0.0-20230817163708-4b3de6d91874
 	github.com/alecthomas/template v0.0.0-20190718012654-fb15b899a751 // indirect
 	github.com/alecthomas/units v0.0.0-20210912230133-d1bdfacee922 // indirect
 	github.com/golang/protobuf v1.5.3
-	github.com/hyperledger/aries-framework-go/component/kmscrypto v0.0.0
 	github.com/hyperledger/fabric-protos-go v0.0.0-20210911123859-041d13f0980c
 	github.com/onsi/ginkgo v1.14.0
 	github.com/onsi/gomega v1.10.1
@@ -27,6 +27,7 @@ require (
 	github.com/consensys/gnark-crypto v0.9.1 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/fsnotify/fsnotify v1.4.9 // indirect
+	github.com/hyperledger/aries-framework-go/component/kmscrypto v0.0.0-20230810150537-71e132ba5968 // indirect
 	github.com/hyperledger/fabric-amcl v0.0.0-20230602173724-9e02669dceb2 // indirect
 	github.com/kilic/bls12-381 v0.1.0 // indirect
 	github.com/mmcloughlin/addchain v0.4.0 // indirect
@@ -47,5 +48,3 @@ require (
 )
 
 replace github.com/onsi/gomega => github.com/onsi/gomega v1.9.0
-
-replace github.com/hyperledger/aries-framework-go/component/kmscrypto => github.com/ale-linux/aries-framework-go/component/kmscrypto v0.0.0-20230630075813-b7e4c6a2156c

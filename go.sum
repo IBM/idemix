@@ -9,8 +9,8 @@ github.com/IBM/idemix/bccsp/types v0.0.0-20230810173054-c991cc1e54ca h1:d/RRnouZ
 github.com/IBM/idemix/bccsp/types v0.0.0-20230810173054-c991cc1e54ca/go.mod h1:6ura+11RaC9RwTQ2SEq5KZ+2w6+c7BuArQOP1Ktrlq0=
 github.com/IBM/mathlib v0.0.3-0.20230605104224-932ab92f2ce0 h1:V3ElfC3Xs8bxJyc7VPcBQ9th6vyBBX8u/5bIUOXljk4=
 github.com/IBM/mathlib v0.0.3-0.20230605104224-932ab92f2ce0/go.mod h1:k0NBSWMYVgaZ2keDuI8DSwdIEhUNhp8XnlVmm6Xwyuk=
-github.com/ale-linux/aries-framework-go/component/kmscrypto v0.0.0-20230630075813-b7e4c6a2156c h1:pIeW9nAHIHHa9LZboAn/+9DfsWVdhSJpdhr14c0SSmw=
-github.com/ale-linux/aries-framework-go/component/kmscrypto v0.0.0-20230630075813-b7e4c6a2156c/go.mod h1:+rH73XbcYcDOp0G22zMkPqMLEi/PCBOogCWKHd8HNYQ=
+github.com/ale-linux/aries-framework-go/component/kmscrypto v0.0.0-20230817163708-4b3de6d91874 h1:O08ZCyb1f7UeyOmTeItAw7eSZOlyM0fBnrPgaYgKEiA=
+github.com/ale-linux/aries-framework-go/component/kmscrypto v0.0.0-20230817163708-4b3de6d91874/go.mod h1:4sHtFlGI84SVjaSW7u1pCfC0bjijd9ZeqbKptU/Qljs=
 github.com/alecthomas/template v0.0.0-20190718012654-fb15b899a751 h1:JYp7IbQjafoB+tBA3gMyHYHrpOtNuDiK/uB5uXxq5wM=
 github.com/alecthomas/template v0.0.0-20190718012654-fb15b899a751/go.mod h1:LOuyumcjzFXgccqObfd/Ljyb9UuFJ6TxHnclSeseNhc=
 github.com/alecthomas/units v0.0.0-20210912230133-d1bdfacee922 h1:8ypNbf5sd3Sm3cKJ9waOGoQv6dKAFiFty9L6NP1AqJ4=
@@ -47,6 +47,8 @@ github.com/google/go-cmp v0.5.5/go.mod h1:v8dTdLbMG2kIc/vJvl+f65V22dbkXbowE6jgT/
 github.com/google/renameio v0.1.0/go.mod h1:KWCgfxg9yswjAJkECMjeO8J8rahYeXnNhOm40UhjYkI=
 github.com/google/subcommands v1.2.0/go.mod h1:ZjhPrFU+Olkh9WazFPsl27BQ4UPiG37m3yTrtFlrHVk=
 github.com/hpcloud/tail v1.0.0/go.mod h1:ab1qPbhIpdTxEkNHXyeSf5vhxWSCs/tWer42PpOxQnU=
+github.com/hyperledger/aries-framework-go/component/kmscrypto v0.0.0-20230810150537-71e132ba5968 h1:ZGi9n/A8YQ3lESexlhRuTUiRo9WkQV9xm5gpztRD2/M=
+github.com/hyperledger/aries-framework-go/component/kmscrypto v0.0.0-20230810150537-71e132ba5968/go.mod h1:nmT2WqhIs9Eyncdr9feYrUIy7ggf00bWnTzCN6/t8PY=
 github.com/hyperledger/fabric-amcl v0.0.0-20230602173724-9e02669dceb2 h1:B1Nt8hKb//KvgGRprk0h1t4lCnwhE9/ryb1WqfZbV+M=
 github.com/hyperledger/fabric-amcl v0.0.0-20230602173724-9e02669dceb2/go.mod h1:X+DIyUsaTmalOpmpQfIvFZjKHQedrURQ5t4YqquX7lE=
 github.com/hyperledger/fabric-protos-go v0.0.0-20210911123859-041d13f0980c h1:QPhSriw6EzMOj/d7gcGiKEvozVvQ5HLk9UWie4KAvSs=
