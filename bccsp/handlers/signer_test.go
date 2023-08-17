@@ -342,19 +342,6 @@ var _ = Describe("Signature", func() {
 				})
 			})
 
-			Context("and the option's revocation public key is empty", func() {
-				It("returns error", func() {
-					valid, err := Verifier.Verify(
-						handlers.NewIssuerPublicKey(nil),
-						[]byte("fake signature"),
-						nil,
-						&bccsp.IdemixSignerOpts{},
-					)
-					Expect(err).To(MatchError("invalid options, expected *revocationPublicKey"))
-					Expect(valid).To(BeFalse())
-				})
-			})
-
 			Context("and the option's revocation public key is not of type *revocationPublicKey", func() {
 				It("returns error", func() {
 					valid, err := Verifier.Verify(

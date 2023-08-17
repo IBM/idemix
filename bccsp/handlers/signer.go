@@ -6,6 +6,7 @@ SPDX-License-Identifier: Apache-2.0
 package handlers
 
 import (
+	"crypto/ecdsa"
 	"github.com/pkg/errors"
 
 	"github.com/IBM/idemix/bccsp/types"
@@ -143,9 +144,13 @@ func (v *Verifier) Verify(k bccsp.Key, signature, digest []byte, opts bccsp.Sign
 		return false, errors.New("invalid options, expected *IdemixSignerOpts")
 	}
 
-	rpk, ok := signerOpts.RevocationPublicKey.(*revocationPublicKey)
-	if !ok {
-		return false, errors.New("invalid options, expected *revocationPublicKey")
+	var rPK *ecdsa.PublicKey
+	if signerOpts.RevocationPublicKey != nil {
+		revocationPK, ok := signerOpts.RevocationPublicKey.(*revocationPublicKey)
+		if !ok {
+			return false, errors.New("invalid options, expected *revocationPublicKey")
+		}
+		rPK = revocationPK.pubKey
 	}
 
 	if len(signature) == 0 {
@@ -158,7 +163,7 @@ func (v *Verifier) Verify(k bccsp.Key, signature, digest []byte, opts bccsp.Sign
 		signerOpts.Attributes,
 		signerOpts.RhIndex,
 		signerOpts.EidIndex,
-		rpk.pubKey,
+		rPK,
 		signerOpts.Epoch,
 		signerOpts.VerificationType,
 		signerOpts.Metadata,
