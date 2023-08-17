@@ -12,7 +12,7 @@ import (
 	"fmt"
 
 	ml "github.com/IBM/mathlib"
-	"github.com/hyperledger/aries-framework-go/component/kmscrypto/crypto/primitive/bbs12381g2pub"
+	"github.com/ale-linux/aries-framework-go/component/kmscrypto/crypto/primitive/bbs12381g2pub"
 )
 
 // BlindedMessages represents a set of messages prepared

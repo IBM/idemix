@@ -14,7 +14,7 @@ import (
 	idemix "github.com/IBM/idemix/bccsp/schemes/dlog/crypto"
 	bccsp "github.com/IBM/idemix/bccsp/types"
 	math "github.com/IBM/mathlib"
-	"github.com/hyperledger/aries-framework-go/component/kmscrypto/crypto/primitive/bbs12381g2pub"
+	"github.com/ale-linux/aries-framework-go/component/kmscrypto/crypto/primitive/bbs12381g2pub"
 	"github.com/pkg/errors"
 )
 
