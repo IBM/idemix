@@ -816,7 +816,7 @@ func (sig *Signature) Ver(
 	meta *opts.IdemixSignerMetadata,
 ) error {
 	// Validate inputs
-	if ipk == nil || revPk == nil {
+	if ipk == nil {
 		return errors.Errorf("cannot verify idemix signature: received nil input")
 	}
 
