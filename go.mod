@@ -47,3 +47,5 @@ require (
 )
 
 replace github.com/onsi/gomega => github.com/onsi/gomega v1.9.0
+
+replace github.com/IBM/idemix/bccsp/schemes/aries => ./bccsp/schemes/aries
