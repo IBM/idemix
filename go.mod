@@ -3,9 +3,9 @@ module github.com/IBM/idemix
 go 1.19
 
 require (
-	github.com/IBM/idemix/bccsp/schemes/aries v0.0.0-20230818072020-350c832d4e75
-	github.com/IBM/idemix/bccsp/schemes/weak-bb v0.0.0-20230818072020-350c832d4e75
-	github.com/IBM/idemix/bccsp/types v0.0.0-20230818072020-350c832d4e75
+	github.com/IBM/idemix/bccsp/schemes/aries v0.0.0-20230818093228-308e96f529c9
+	github.com/IBM/idemix/bccsp/schemes/weak-bb v0.0.0-20230818093228-308e96f529c9
+	github.com/IBM/idemix/bccsp/types v0.0.0-20230818093228-308e96f529c9
 	github.com/IBM/mathlib v0.0.3-0.20230605104224-932ab92f2ce0
 	github.com/ale-linux/aries-framework-go/component/kmscrypto v0.0.0-20230817163708-4b3de6d91874
 	github.com/alecthomas/template v0.0.0-20190718012654-fb15b899a751 // indirect
