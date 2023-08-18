@@ -487,10 +487,10 @@ func (s *Signer) Verify(
 	}
 
 	if verType == types.ExpectStandard {
-		if len(sig.NymEid) != 0 || len(sig.NymEidProof) != 0 {
+		if len(sig.NymRh) != 0 || len(sig.NymRhProof) != 0 {
 			return fmt.Errorf("RhNym available but ExpectStandard required")
 		}
-		if len(sig.NymRh) != 0 || len(sig.NymRhProof) != 0 {
+		if len(sig.NymEid) != 0 || len(sig.NymEidProof) != 0 {
 			return fmt.Errorf("EidNym available but ExpectStandard required")
 		}
 	}
