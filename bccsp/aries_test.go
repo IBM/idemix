@@ -552,6 +552,108 @@ func testAries() {
 				Expect(valid).To(BeTrue())
 			})
 
+			It("the signature is valid when we expect an eid nym", func() {
+				valid, err := CSP.Verify(
+					IssuerPublicKey,
+					signature,
+					digest,
+					&bccsp.IdemixSignerOpts{
+						RevocationPublicKey: RevocationPublicKey,
+						Attributes: []bccsp.IdemixAttribute{
+							{Type: bccsp.IdemixHiddenAttribute},
+							{Type: bccsp.IdemixHiddenAttribute},
+							{Type: bccsp.IdemixHiddenAttribute},
+							{Type: bccsp.IdemixHiddenAttribute},
+							{Type: bccsp.IdemixHiddenAttribute},
+						},
+						RhIndex:          4,
+						EidIndex:         3,
+						Epoch:            0,
+						VerificationType: bccsp.ExpectEidNym,
+					},
+				)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(valid).To(BeTrue())
+			})
+
+			It("the signature is valid when we expect an eid nym and request auditing of the eid nym", func() {
+				valid, err := CSP.Verify(
+					IssuerPublicKey,
+					signature,
+					digest,
+					&bccsp.IdemixSignerOpts{
+						RevocationPublicKey: RevocationPublicKey,
+						Attributes: []bccsp.IdemixAttribute{
+							{Type: bccsp.IdemixHiddenAttribute},
+							{Type: bccsp.IdemixHiddenAttribute},
+							{Type: bccsp.IdemixHiddenAttribute},
+							{Type: bccsp.IdemixHiddenAttribute},
+							{Type: bccsp.IdemixHiddenAttribute},
+						},
+						RhIndex:          4,
+						EidIndex:         3,
+						Epoch:            0,
+						VerificationType: bccsp.ExpectEidNym,
+						Metadata:         signOpts.Metadata,
+					},
+				)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(valid).To(BeTrue())
+			})
+
+			It("the signature is not valid when we expect an eid nym and request auditing of the eid nym with a wrong randomness", func() {
+				signOpts.Metadata.EidNymAuditData.Rand = signOpts.Metadata.EidNymAuditData.Attr
+
+				valid, err := CSP.Verify(
+					IssuerPublicKey,
+					signature,
+					digest,
+					&bccsp.IdemixSignerOpts{
+						RevocationPublicKey: RevocationPublicKey,
+						Attributes: []bccsp.IdemixAttribute{
+							{Type: bccsp.IdemixHiddenAttribute},
+							{Type: bccsp.IdemixHiddenAttribute},
+							{Type: bccsp.IdemixHiddenAttribute},
+							{Type: bccsp.IdemixHiddenAttribute},
+							{Type: bccsp.IdemixHiddenAttribute},
+						},
+						RhIndex:          4,
+						EidIndex:         3,
+						Epoch:            0,
+						VerificationType: bccsp.ExpectEidNym,
+						Metadata:         signOpts.Metadata,
+					},
+				)
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(ContainSubstring("signature invalid: nym eid validation failed"))
+				Expect(valid).To(BeFalse())
+			})
+
+			It("the signature is not valid when we expect a standard signature", func() {
+				valid, err := CSP.Verify(
+					IssuerPublicKey,
+					signature,
+					digest,
+					&bccsp.IdemixSignerOpts{
+						RevocationPublicKey: RevocationPublicKey,
+						Attributes: []bccsp.IdemixAttribute{
+							{Type: bccsp.IdemixHiddenAttribute},
+							{Type: bccsp.IdemixHiddenAttribute},
+							{Type: bccsp.IdemixHiddenAttribute},
+							{Type: bccsp.IdemixHiddenAttribute},
+							{Type: bccsp.IdemixHiddenAttribute},
+						},
+						RhIndex:          4,
+						EidIndex:         3,
+						Epoch:            0,
+						VerificationType: bccsp.ExpectStandard,
+					},
+				)
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(ContainSubstring("EidNym available but ExpectStandard required"))
+				Expect(valid).To(BeFalse())
+			})
+
 			It("nym eid auditing with the right enrollment ID succeeds", func() {
 				valid, err := CSP.Verify(
 					IssuerPublicKey,
@@ -689,6 +791,7 @@ func testAries() {
 				Expect(err).NotTo(HaveOccurred())
 				Expect(valid).To(BeTrue())
 			})
+
 		})
 
 		Describe("producing an idemix signature with an eid nym and rh nym", func() {
@@ -1113,6 +1216,7 @@ func testAries() {
 			})
 
 		})
+
 		Describe("producing an idemix signature with disclosed attributes", func() {
 			var (
 				digest    []byte
@@ -1171,6 +1275,7 @@ func testAries() {
 			})
 
 		})
+
 		Describe("producing an idemix nym signature", func() {
 			var (
 				digest    []byte
@@ -1207,6 +1312,7 @@ func testAries() {
 			})
 
 		})
+
 		Describe("Idemix Bridge Load", func() {
 
 			Describe("setting up the environment with one issuer and one user", func() {
