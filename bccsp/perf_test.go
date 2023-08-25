@@ -7,6 +7,10 @@ package idemix_test
 
 import (
 	"crypto/rand"
+	"fmt"
+	"reflect"
+	"runtime"
+	"strings"
 	"testing"
 
 	imsp "github.com/IBM/idemix"
@@ -18,177 +22,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func Benchmark_Legacy(b *testing.B) {
-	curve := math.Curves[math.BLS12_381_BBS]
-	translator := &amcl.Gurvy{C: curve}
-
-	CSP, err := idemix.New(NewDummyKeyStore(), curve, translator, true)
-	assert.NoError(b, err)
-
-	AttributeNames := []string{imsp.AttributeNameOU, imsp.AttributeNameRole, imsp.AttributeNameEnrollmentId, imsp.AttributeNameRevocationHandle}
-	IssuerKey, err := CSP.KeyGen(&bccsp.IdemixIssuerKeyGenOpts{Temporary: true, AttributeNames: AttributeNames})
-	assert.NoError(b, err)
-	IssuerPublicKey, err := IssuerKey.PublicKey()
-	assert.NoError(b, err)
-
-	UserKey, err := CSP.KeyGen(&bccsp.IdemixUserSecretKeyGenOpts{Temporary: true})
-	assert.NoError(b, err)
-
-	IssuerNonce := make([]byte, curve.ScalarByteSize)
-	n, err := rand.Read(IssuerNonce)
-	assert.NoError(b, err)
-	assert.Equal(b, curve.ScalarByteSize, n)
-
-	// Credential Request for User
-	credRequest, err := CSP.Sign(
-		UserKey,
-		nil,
-		&bccsp.IdemixCredentialRequestSignerOpts{IssuerPK: IssuerPublicKey, IssuerNonce: IssuerNonce},
-	)
-	assert.NoError(b, err)
-
-	// Credential
-	credential, err := CSP.Sign(
-		IssuerKey,
-		credRequest,
-		&bccsp.IdemixCredentialSignerOpts{
-			Attributes: []bccsp.IdemixAttribute{
-				{Type: bccsp.IdemixBytesAttribute, Value: []byte{0}},
-				{Type: bccsp.IdemixBytesAttribute, Value: []byte{0, 1}},
-				{Type: bccsp.IdemixIntAttribute, Value: 1},
-				{Type: bccsp.IdemixBytesAttribute, Value: []byte{0, 1, 2}},
-			},
-		},
-	)
-	assert.NoError(b, err)
-
-	valid, err := CSP.Verify(
-		IssuerPublicKey,
-		credRequest,
-		nil,
-		&bccsp.IdemixCredentialRequestSignerOpts{IssuerNonce: IssuerNonce},
-	)
-	assert.NoError(b, err)
-	assert.True(b, valid)
-
-	valid, err = CSP.Verify(
-		UserKey,
-		credential,
-		nil,
-		&bccsp.IdemixCredentialSignerOpts{
-			IssuerPK: IssuerPublicKey,
-			Attributes: []bccsp.IdemixAttribute{
-				{Type: bccsp.IdemixBytesAttribute, Value: []byte{0}},
-				{Type: bccsp.IdemixBytesAttribute, Value: []byte{0, 1}},
-				{Type: bccsp.IdemixIntAttribute, Value: 1},
-				{Type: bccsp.IdemixBytesAttribute, Value: []byte{0, 1, 2}},
-			},
-		},
-	)
-	assert.NoError(b, err)
-	assert.True(b, valid)
-
-	NymKey, err := CSP.KeyDeriv(UserKey, &bccsp.IdemixNymKeyDerivationOpts{Temporary: true, IssuerPK: IssuerPublicKey})
-	assert.NoError(b, err)
-
-	b.ResetTimer()
-
-	b.Run("sign", func(b *testing.B) {
-		b.RunParallel(func(pb *testing.PB) {
-			for pb.Next() {
-				signOpts := &bccsp.IdemixSignerOpts{
-					Credential: credential,
-					Nym:        NymKey,
-					IssuerPK:   IssuerPublicKey,
-					Attributes: []bccsp.IdemixAttribute{
-						{Type: bccsp.IdemixHiddenAttribute},
-						{Type: bccsp.IdemixHiddenAttribute},
-						{Type: bccsp.IdemixHiddenAttribute},
-						{Type: bccsp.IdemixHiddenAttribute},
-					},
-					RhIndex:  3,
-					EidIndex: 2,
-					Epoch:    0,
-					SigType:  bccsp.EidNymRhNym,
-				}
-
-				signature, err := CSP.Sign(
-					UserKey,
-					nil,
-					signOpts,
-				)
-				assert.NoError(b, err)
-
-				_ = signature
-			}
-		})
-	})
-
-	RevocationKey, err := CSP.KeyGen(&bccsp.IdemixRevocationKeyGenOpts{Temporary: true})
-	assert.NoError(b, err)
-
-	cri, err := CSP.Sign(
-		RevocationKey,
-		nil,
-		&bccsp.IdemixCRISignerOpts{},
-	)
-	assert.NoError(b, err)
-
-	signOpts := &bccsp.IdemixSignerOpts{
-		Credential: credential,
-		Nym:        NymKey,
-		IssuerPK:   IssuerPublicKey,
-		Attributes: []bccsp.IdemixAttribute{
-			{Type: bccsp.IdemixHiddenAttribute},
-			{Type: bccsp.IdemixHiddenAttribute},
-			{Type: bccsp.IdemixHiddenAttribute},
-			{Type: bccsp.IdemixHiddenAttribute},
-		},
-		RhIndex:  3,
-		EidIndex: 2,
-		Epoch:    0,
-		SigType:  bccsp.EidNymRhNym,
-		CRI:      cri,
-	}
-
-	signature, err := CSP.Sign(
-		UserKey,
-		nil,
-		signOpts,
-	)
-	assert.NoError(b, err)
-
-	b.ResetTimer()
-
-	b.Run("verify", func(b *testing.B) {
-		b.RunParallel(func(pb *testing.PB) {
-			for pb.Next() {
-				valid, err = CSP.Verify(
-					IssuerPublicKey,
-					signature,
-					nil,
-					&bccsp.IdemixSignerOpts{
-						Attributes: []bccsp.IdemixAttribute{
-							{Type: bccsp.IdemixHiddenAttribute},
-							{Type: bccsp.IdemixHiddenAttribute},
-							{Type: bccsp.IdemixHiddenAttribute},
-							{Type: bccsp.IdemixHiddenAttribute},
-						},
-						RhIndex:          3,
-						EidIndex:         2,
-						Epoch:            0,
-						VerificationType: bccsp.ExpectEidNymRhNym,
-						Metadata:         signOpts.Metadata,
-					},
-				)
-				assert.NoError(b, err)
-				assert.True(b, valid)
-			}
-		})
-	})
-}
-
-func Benchmark_Aries(b *testing.B) {
+func setupAries(b *testing.B) (bccsp.BCCSP, bccsp.Key, bccsp.Key, bccsp.Key, []byte) {
 	curve := math.Curves[math.BLS12_381_BBS]
 	translator := &amcl.Gurvy{C: curve}
 
@@ -267,99 +101,202 @@ func Benchmark_Aries(b *testing.B) {
 	NymKey, err := CSP.KeyDeriv(UserKey, &bccsp.IdemixNymKeyDerivationOpts{Temporary: true, IssuerPK: IssuerPublicKey})
 	assert.NoError(b, err)
 
-	b.ResetTimer()
+	return CSP, IssuerPublicKey, UserKey, NymKey, credential
+}
 
-	b.Run("sign", func(b *testing.B) {
-		b.RunParallel(func(pb *testing.PB) {
-			for pb.Next() {
-				signOpts := &bccsp.IdemixSignerOpts{
-					Credential: credential,
-					Nym:        NymKey,
-					IssuerPK:   IssuerPublicKey,
-					Attributes: []bccsp.IdemixAttribute{
-						{Type: bccsp.IdemixHiddenAttribute},
-						{Type: bccsp.IdemixHiddenAttribute},
-						{Type: bccsp.IdemixHiddenAttribute},
-						{Type: bccsp.IdemixHiddenAttribute},
-					},
-					RhIndex:  3,
-					EidIndex: 2,
-					Epoch:    0,
-					SigType:  bccsp.EidNymRhNym,
-				}
+func setupLegacy(b *testing.B) (bccsp.BCCSP, bccsp.Key, bccsp.Key, bccsp.Key, []byte) {
+	curve := math.Curves[math.BLS12_381_BBS]
+	translator := &amcl.Gurvy{C: curve}
 
-				signature, err := CSP.Sign(
-					UserKey,
-					nil,
-					signOpts,
-				)
-				assert.NoError(b, err)
-
-				_ = signature
-			}
-		})
-	})
-
-	RevocationKey, err := CSP.KeyGen(&bccsp.IdemixRevocationKeyGenOpts{Temporary: true})
+	CSP, err := idemix.New(NewDummyKeyStore(), curve, translator, true)
 	assert.NoError(b, err)
 
-	cri, err := CSP.Sign(
-		RevocationKey,
-		nil,
-		&bccsp.IdemixCRISignerOpts{},
-	)
+	AttributeNames := []string{imsp.AttributeNameOU, imsp.AttributeNameRole, imsp.AttributeNameEnrollmentId, imsp.AttributeNameRevocationHandle}
+	IssuerKey, err := CSP.KeyGen(&bccsp.IdemixIssuerKeyGenOpts{Temporary: true, AttributeNames: AttributeNames})
+	assert.NoError(b, err)
+	IssuerPublicKey, err := IssuerKey.PublicKey()
 	assert.NoError(b, err)
 
-	signOpts := &bccsp.IdemixSignerOpts{
-		Credential: credential,
-		Nym:        NymKey,
-		IssuerPK:   IssuerPublicKey,
-		Attributes: []bccsp.IdemixAttribute{
-			{Type: bccsp.IdemixHiddenAttribute},
-			{Type: bccsp.IdemixHiddenAttribute},
-			{Type: bccsp.IdemixHiddenAttribute},
-			{Type: bccsp.IdemixHiddenAttribute},
-		},
-		RhIndex:  3,
-		EidIndex: 2,
-		Epoch:    0,
-		SigType:  bccsp.EidNymRhNym,
-		CRI:      cri,
-	}
+	UserKey, err := CSP.KeyGen(&bccsp.IdemixUserSecretKeyGenOpts{Temporary: true})
+	assert.NoError(b, err)
 
-	signature, err := CSP.Sign(
+	IssuerNonce := make([]byte, curve.ScalarByteSize)
+	n, err := rand.Read(IssuerNonce)
+	assert.NoError(b, err)
+	assert.Equal(b, curve.ScalarByteSize, n)
+
+	// Credential Request for User
+	credRequest, err := CSP.Sign(
 		UserKey,
 		nil,
-		signOpts,
+		&bccsp.IdemixCredentialRequestSignerOpts{IssuerPK: IssuerPublicKey, IssuerNonce: IssuerNonce},
 	)
 	assert.NoError(b, err)
 
-	b.ResetTimer()
+	// Credential
+	credential, err := CSP.Sign(
+		IssuerKey,
+		credRequest,
+		&bccsp.IdemixCredentialSignerOpts{
+			Attributes: []bccsp.IdemixAttribute{
+				{Type: bccsp.IdemixBytesAttribute, Value: []byte{0}},
+				{Type: bccsp.IdemixBytesAttribute, Value: []byte{0, 1}},
+				{Type: bccsp.IdemixIntAttribute, Value: 1},
+				{Type: bccsp.IdemixBytesAttribute, Value: []byte{0, 1, 2}},
+			},
+		},
+	)
+	assert.NoError(b, err)
 
-	b.Run("verify", func(b *testing.B) {
-		b.RunParallel(func(pb *testing.PB) {
-			for pb.Next() {
-				valid, err = CSP.Verify(
-					IssuerPublicKey,
-					signature,
-					nil,
-					&bccsp.IdemixSignerOpts{
+	valid, err := CSP.Verify(
+		IssuerPublicKey,
+		credRequest,
+		nil,
+		&bccsp.IdemixCredentialRequestSignerOpts{IssuerNonce: IssuerNonce},
+	)
+	assert.NoError(b, err)
+	assert.True(b, valid)
+
+	valid, err = CSP.Verify(
+		UserKey,
+		credential,
+		nil,
+		&bccsp.IdemixCredentialSignerOpts{
+			IssuerPK: IssuerPublicKey,
+			Attributes: []bccsp.IdemixAttribute{
+				{Type: bccsp.IdemixBytesAttribute, Value: []byte{0}},
+				{Type: bccsp.IdemixBytesAttribute, Value: []byte{0, 1}},
+				{Type: bccsp.IdemixIntAttribute, Value: 1},
+				{Type: bccsp.IdemixBytesAttribute, Value: []byte{0, 1, 2}},
+			},
+		},
+	)
+	assert.NoError(b, err)
+	assert.True(b, valid)
+
+	NymKey, err := CSP.KeyDeriv(UserKey, &bccsp.IdemixNymKeyDerivationOpts{Temporary: true, IssuerPK: IssuerPublicKey})
+	assert.NoError(b, err)
+
+	return CSP, IssuerPublicKey, UserKey, NymKey, credential
+}
+
+func stackNameFromSetupFnName(fname string) string {
+	if strings.Contains(fname, "Aries") {
+		return "aries"
+	}
+
+	if strings.Contains(fname, "Legacy") {
+		return "legacy"
+	}
+
+	panic("programming error")
+}
+
+func Benchmark_SignVerify(b *testing.B) {
+
+	setups := []func(b *testing.B) (bccsp.BCCSP, bccsp.Key, bccsp.Key, bccsp.Key, []byte){
+		setupLegacy,
+		setupAries,
+	}
+
+	for _, setupFn := range setups {
+
+		CSP, IssuerPublicKey, UserKey, NymKey, credential := setupFn(b)
+
+		b.ResetTimer()
+
+		b.Run(fmt.Sprintf("sign-%s", stackNameFromSetupFnName(runtime.FuncForPC(reflect.ValueOf(setupFn).Pointer()).Name())), func(b *testing.B) {
+			b.RunParallel(func(pb *testing.PB) {
+				for pb.Next() {
+					signOpts := &bccsp.IdemixSignerOpts{
+						Credential: credential,
+						Nym:        NymKey,
+						IssuerPK:   IssuerPublicKey,
 						Attributes: []bccsp.IdemixAttribute{
 							{Type: bccsp.IdemixHiddenAttribute},
 							{Type: bccsp.IdemixHiddenAttribute},
 							{Type: bccsp.IdemixHiddenAttribute},
 							{Type: bccsp.IdemixHiddenAttribute},
 						},
-						RhIndex:          3,
-						EidIndex:         2,
-						Epoch:            0,
-						VerificationType: bccsp.ExpectEidNymRhNym,
-						Metadata:         signOpts.Metadata,
-					},
-				)
-				assert.NoError(b, err)
-				assert.True(b, valid)
-			}
+						RhIndex:  3,
+						EidIndex: 2,
+						Epoch:    0,
+						SigType:  bccsp.EidNymRhNym,
+					}
+
+					signature, err := CSP.Sign(
+						UserKey,
+						nil,
+						signOpts,
+					)
+					assert.NoError(b, err)
+
+					_ = signature
+				}
+			})
 		})
-	})
+
+		RevocationKey, err := CSP.KeyGen(&bccsp.IdemixRevocationKeyGenOpts{Temporary: true})
+		assert.NoError(b, err)
+
+		cri, err := CSP.Sign(
+			RevocationKey,
+			nil,
+			&bccsp.IdemixCRISignerOpts{},
+		)
+		assert.NoError(b, err)
+
+		signOpts := &bccsp.IdemixSignerOpts{
+			Credential: credential,
+			Nym:        NymKey,
+			IssuerPK:   IssuerPublicKey,
+			Attributes: []bccsp.IdemixAttribute{
+				{Type: bccsp.IdemixHiddenAttribute},
+				{Type: bccsp.IdemixHiddenAttribute},
+				{Type: bccsp.IdemixHiddenAttribute},
+				{Type: bccsp.IdemixHiddenAttribute},
+			},
+			RhIndex:  3,
+			EidIndex: 2,
+			Epoch:    0,
+			SigType:  bccsp.EidNymRhNym,
+			CRI:      cri,
+		}
+
+		signature, err := CSP.Sign(
+			UserKey,
+			nil,
+			signOpts,
+		)
+		assert.NoError(b, err)
+
+		b.ResetTimer()
+
+		b.Run(fmt.Sprintf("verify-%s", stackNameFromSetupFnName(runtime.FuncForPC(reflect.ValueOf(setupFn).Pointer()).Name())), func(b *testing.B) {
+			b.RunParallel(func(pb *testing.PB) {
+				for pb.Next() {
+					valid, err := CSP.Verify(
+						IssuerPublicKey,
+						signature,
+						nil,
+						&bccsp.IdemixSignerOpts{
+							Attributes: []bccsp.IdemixAttribute{
+								{Type: bccsp.IdemixHiddenAttribute},
+								{Type: bccsp.IdemixHiddenAttribute},
+								{Type: bccsp.IdemixHiddenAttribute},
+								{Type: bccsp.IdemixHiddenAttribute},
+							},
+							RhIndex:          3,
+							EidIndex:         2,
+							Epoch:            0,
+							VerificationType: bccsp.ExpectEidNymRhNym,
+							Metadata:         signOpts.Metadata,
+						},
+					)
+					assert.NoError(b, err)
+					assert.True(b, valid)
+				}
+			})
+		})
+	}
 }
