@@ -6,7 +6,7 @@ require (
 	github.com/IBM/idemix/bccsp/schemes/aries v0.0.0-20230818093228-308e96f529c9
 	github.com/IBM/idemix/bccsp/schemes/weak-bb v0.0.0-20230818093228-308e96f529c9
 	github.com/IBM/idemix/bccsp/types v0.0.0-20230818093228-308e96f529c9
-	github.com/IBM/mathlib v0.0.3-0.20230605104224-932ab92f2ce0
+	github.com/IBM/mathlib v0.0.3-0.20230831091907-c532c4d3b65c
 	github.com/ale-linux/aries-framework-go/component/kmscrypto v0.0.0-20230817163708-4b3de6d91874
 	github.com/alecthomas/template v0.0.0-20190718012654-fb15b899a751 // indirect
 	github.com/alecthomas/units v0.0.0-20210912230133-d1bdfacee922 // indirect

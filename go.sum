@@ -7,8 +7,8 @@ github.com/IBM/idemix/bccsp/schemes/weak-bb v0.0.0-20230818093228-308e96f529c9 h
 github.com/IBM/idemix/bccsp/schemes/weak-bb v0.0.0-20230818093228-308e96f529c9/go.mod h1:n86zzYREwJdjUybye3rerxmAFfgVJtPvNOrRX30CbrU=
 github.com/IBM/idemix/bccsp/types v0.0.0-20230818093228-308e96f529c9 h1:jPq34Lrk/AC87CYTT3UhThWozccWzbQJXCIlZmoZtus=
 github.com/IBM/idemix/bccsp/types v0.0.0-20230818093228-308e96f529c9/go.mod h1:6ura+11RaC9RwTQ2SEq5KZ+2w6+c7BuArQOP1Ktrlq0=
-github.com/IBM/mathlib v0.0.3-0.20230605104224-932ab92f2ce0 h1:V3ElfC3Xs8bxJyc7VPcBQ9th6vyBBX8u/5bIUOXljk4=
-github.com/IBM/mathlib v0.0.3-0.20230605104224-932ab92f2ce0/go.mod h1:k0NBSWMYVgaZ2keDuI8DSwdIEhUNhp8XnlVmm6Xwyuk=
+github.com/IBM/mathlib v0.0.3-0.20230831091907-c532c4d3b65c h1:QVrlfdfx7MslApfSdSLiLIOFmYlLhP6wY4LyRBVed4I=
+github.com/IBM/mathlib v0.0.3-0.20230831091907-c532c4d3b65c/go.mod h1:k0NBSWMYVgaZ2keDuI8DSwdIEhUNhp8XnlVmm6Xwyuk=
 github.com/ale-linux/aries-framework-go/component/kmscrypto v0.0.0-20230817163708-4b3de6d91874 h1:O08ZCyb1f7UeyOmTeItAw7eSZOlyM0fBnrPgaYgKEiA=
 github.com/ale-linux/aries-framework-go/component/kmscrypto v0.0.0-20230817163708-4b3de6d91874/go.mod h1:4sHtFlGI84SVjaSW7u1pCfC0bjijd9ZeqbKptU/Qljs=
 github.com/alecthomas/template v0.0.0-20190718012654-fb15b899a751 h1:JYp7IbQjafoB+tBA3gMyHYHrpOtNuDiK/uB5uXxq5wM=
