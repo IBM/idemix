@@ -131,6 +131,7 @@ func New(keyStore bccsp.KeyStore, curve *math.Curve, translator idemix.Translato
 	// importers
 	base.AddWrapper(reflect.TypeOf(&bccsp.IdemixUserSecretKeyImportOpts{}),
 		&handlers.UserKeyImporter{
+			Exportable: exportable,
 			User: &bridge.User{
 				Idemix: idmx, Translator: translator,
 			},
@@ -143,6 +144,7 @@ func New(keyStore bccsp.KeyStore, curve *math.Curve, translator idemix.Translato
 		})
 	base.AddWrapper(reflect.TypeOf(&bccsp.IdemixIssuerKeyImportOpts{}),
 		&handlers.IssuerKeyImporter{
+			Exportable: exportable,
 			Issuer: &bridge.Issuer{
 				Idemix: idmx, Translator: translator,
 			},
@@ -156,6 +158,7 @@ func New(keyStore bccsp.KeyStore, curve *math.Curve, translator idemix.Translato
 		})
 	base.AddWrapper(reflect.TypeOf(&bccsp.IdemixNymKeyImportOpts{}),
 		&handlers.NymKeyImporter{
+			Exportable: exportable,
 			User: &bridge.User{
 				Idemix: idmx, Translator: translator,
 			},
@@ -165,6 +168,7 @@ func New(keyStore bccsp.KeyStore, curve *math.Curve, translator idemix.Translato
 		&handlers.RevocationPublicKeyImporter{})
 	base.AddWrapper(reflect.TypeOf(&bccsp.IdemixRevocationKeyImportOpts{}),
 		&handlers.RevocationKeyImporter{
+			Exportable: exportable,
 			Revocation: &bridge.Revocation{
 				Idemix: idmx, Translator: translator,
 			},
@@ -293,6 +297,7 @@ func NewAries(keyStore bccsp.KeyStore, curve *math.Curve, _translator idemix.Tra
 	// importers
 	base.AddWrapper(reflect.TypeOf(&bccsp.IdemixUserSecretKeyImportOpts{}),
 		&handlers.UserKeyImporter{
+			Exportable: exportable,
 			User: &aries.User{
 				Curve: curve,
 				Rng:   rng,
@@ -304,7 +309,8 @@ func NewAries(keyStore bccsp.KeyStore, curve *math.Curve, _translator idemix.Tra
 		})
 	base.AddWrapper(reflect.TypeOf(&bccsp.IdemixIssuerKeyImportOpts{}),
 		&handlers.IssuerKeyImporter{
-			Issuer: &aries.Issuer{},
+			Exportable: exportable,
+			Issuer:     &aries.Issuer{},
 		})
 	base.AddWrapper(reflect.TypeOf(&bccsp.IdemixNymPublicKeyImportOpts{}),
 		&handlers.NymPublicKeyImporter{
@@ -316,6 +322,7 @@ func NewAries(keyStore bccsp.KeyStore, curve *math.Curve, _translator idemix.Tra
 		})
 	base.AddWrapper(reflect.TypeOf(&bccsp.IdemixNymKeyImportOpts{}),
 		&handlers.NymKeyImporter{
+			Exportable: exportable,
 			User: &aries.User{
 				Curve: curve,
 				Rng:   rng,
@@ -326,6 +333,7 @@ func NewAries(keyStore bccsp.KeyStore, curve *math.Curve, _translator idemix.Tra
 		&handlers.RevocationPublicKeyImporter{})
 	base.AddWrapper(reflect.TypeOf(&bccsp.IdemixRevocationKeyImportOpts{}),
 		&handlers.RevocationKeyImporter{
+			Exportable: exportable,
 			Revocation: &aries.RevocationAuthority{
 				Curve: curve,
 				Rng:   rng,
