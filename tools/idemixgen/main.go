@@ -21,6 +21,7 @@ import (
 	"path/filepath"
 
 	math "github.com/IBM/mathlib"
+	"github.com/ale-linux/aries-framework-go/component/kmscrypto/crypto/primitive/bbs12381g2pub"
 	"github.com/pkg/errors"
 	"gopkg.in/alecthomas/kingpin.v2"
 
@@ -107,6 +108,7 @@ func main() {
 
 	if *useAries {
 		curve = math.Curves[math.BLS12_381_BBS]
+		bbs12381g2pub.SetCurve(curve)
 	}
 
 	switch command {

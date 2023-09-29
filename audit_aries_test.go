@@ -11,9 +11,16 @@ import (
 
 	bccsp "github.com/IBM/idemix/bccsp/types"
 	im "github.com/IBM/idemix/idemixmsp"
+	math "github.com/IBM/mathlib"
+	"github.com/ale-linux/aries-framework-go/component/kmscrypto/crypto/primitive/bbs12381g2pub"
 	"github.com/golang/protobuf/proto"
 	"github.com/stretchr/testify/assert"
 )
+
+func TestMain(m *testing.M) {
+	bbs12381g2pub.SetCurve(math.Curves[math.BLS12_381_BBS])
+	m.Run()
+}
 
 func TestAuditAries(t *testing.T) {
 	msp, err := NewIdemixMspAries(MSPv1_3)

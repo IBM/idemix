@@ -178,6 +178,8 @@ func New(keyStore bccsp.KeyStore, curve *math.Curve, translator idemix.Translato
 }
 
 func NewAries(keyStore bccsp.KeyStore, curve *math.Curve, _translator idemix.Translator, exportable bool) (*csp, error) {
+	bbs12381g2pub.SetCurve(math.Curves[math.BLS12_381_BBS])
+
 	base, err := NewImpl(keyStore)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed instantiating base bccsp")
