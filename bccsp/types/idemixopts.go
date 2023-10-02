@@ -433,6 +433,8 @@ const (
 	EidNym
 	// EidNymRhNym adds a hiding and binding commitment to both the enrollment id and the revocation handle and proves each of their correctness
 	EidNymRhNym
+	// Smartcard has a separate component do the nym signing
+	Smartcard
 )
 
 // VerificationType describes the type of verification that is required
@@ -449,6 +451,8 @@ const (
 	ExpectEidNym
 	// ExpectEidNymRhNym expects a SignatureType of EidNymRhNym
 	ExpectEidNymRhNym
+	// Smartcard has a separate component do the nym signing
+	ExpectSmartcard
 )
 
 // AuditVerificationType describes the type of audit verification that is required
