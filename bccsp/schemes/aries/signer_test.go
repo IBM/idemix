@@ -196,6 +196,24 @@ func TestSigner(t *testing.T) {
 	assert.EqualError(t, err, "signature invalid: nym eid validation failed, does not match regenerated nym eid")
 
 	meta = &types.IdemixSignerMetadata{
+		EidNym: curve.GenG1.Bytes(),
+	}
+
+	// supply wrong metadata for verification
+	err = signer.Verify(ipk, sig, []byte("silliness"), idemixAttrs,
+		rhIndex, eidIndex, nil, 0, types.ExpectEidNym, meta)
+	assert.EqualError(t, err, "signature invalid: nym eid validation failed, signature nym eid does not match metadata")
+
+	meta = &types.IdemixSignerMetadata{
+		EidNym: []byte("garbage"),
+	}
+
+	// supply wrong metadata for verification
+	err = signer.Verify(ipk, sig, []byte("silliness"), idemixAttrs,
+		rhIndex, eidIndex, nil, 0, types.ExpectEidNym, meta)
+	assert.EqualError(t, err, "signature invalid: nym eid validation failed, failed to unmarshal meta nym eid")
+
+	meta = &types.IdemixSignerMetadata{
 		EidNym: nym.Bytes(),
 		EidNymAuditData: &types.AttrNymAuditData{
 			Nym:  curve.GenG1.Mul(curve.NewRandomZr(rand)),
@@ -330,6 +348,22 @@ func TestSigner(t *testing.T) {
 	// supply wrong metadata for verification
 	err = signer.Verify(ipk, sig, []byte("silliness"), idemixAttrs, rhIndex, eidIndex, nil, 0, types.ExpectEidNymRhNym, meta)
 	assert.EqualError(t, err, "signature invalid: nym rh validation failed, does not match regenerated nym rh")
+
+	meta = &types.IdemixSignerMetadata{
+		RhNym: curve.GenG1.Bytes(),
+	}
+
+	// supply wrong metadata for verification
+	err = signer.Verify(ipk, sig, []byte("silliness"), idemixAttrs, rhIndex, eidIndex, nil, 0, types.ExpectEidNymRhNym, meta)
+	assert.EqualError(t, err, "signature invalid: rh nym validation failed, signature rh nym does not match metadata")
+
+	meta = &types.IdemixSignerMetadata{
+		RhNym: []byte("garbage"),
+	}
+
+	// supply wrong metadata for verification
+	err = signer.Verify(ipk, sig, []byte("silliness"), idemixAttrs, rhIndex, eidIndex, nil, 0, types.ExpectEidNymRhNym, meta)
+	assert.EqualError(t, err, "signature invalid: rh nym validation failed, failed to unmarshal meta rh nym")
 
 	meta = &types.IdemixSignerMetadata{
 		RhNym: nym.Bytes(),

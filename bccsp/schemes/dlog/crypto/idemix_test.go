@@ -259,7 +259,7 @@ func testIdemix(t *testing.T, curve *math.Curve, tr Translator) {
 	require.NoError(t, err)
 	meta2.EidNym = []byte{0, 1, 2}
 	err = sig.Ver(disclosure, key.Ipk, msg, attrs, rhindex, 2, &revocationKey.PublicKey, epoch, idmx.Curve, tr, opts.ExpectEidNym, meta2)
-	require.Equal(t, "signature invalid: nym eid validation failed, failed to unmarshal meta nym ied", err.Error())
+	require.Equal(t, "signature invalid: nym eid validation failed, failed to unmarshal meta nym eid", err.Error())
 	meta2.EidNym = meta2.EidNymAuditData.Nym.Mul(curve.NewZrFromInt(2)).Bytes()
 	err = sig.Ver(disclosure, key.Ipk, msg, attrs, rhindex, 2, &revocationKey.PublicKey, epoch, idmx.Curve, tr, opts.ExpectEidNym, meta2)
 	require.Equal(t, "signature invalid: nym eid validation failed, signature nym eid does not match metadata", err.Error())

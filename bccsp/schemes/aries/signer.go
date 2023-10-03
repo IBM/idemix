@@ -614,6 +614,16 @@ func (s *Signer) Verify(
 				return fmt.Errorf("signature invalid: nym eid validation failed, does not match metadata")
 			}
 		}
+
+		if len(meta.EidNym) != 0 {
+			NymEID_, err := s.Curve.NewG1FromBytes(meta.EidNym)
+			if err != nil {
+				return fmt.Errorf("signature invalid: nym eid validation failed, failed to unmarshal meta nym eid")
+			}
+			if !NymEID_.Equals(NymEid) {
+				return fmt.Errorf("signature invalid: nym eid validation failed, signature nym eid does not match metadata")
+			}
+		}
 	}
 
 	// audit rh nym if data provided and verification requested
@@ -630,6 +640,16 @@ func (s *Signer) Verify(
 
 			if meta.RhNymAuditData.Nym != nil && !RhNym.Equals(meta.RhNymAuditData.Nym) {
 				return fmt.Errorf("signature invalid: nym rh validation failed, does not match metadata")
+			}
+		}
+
+		if len(meta.RhNym) != 0 {
+			RhNym_, err := s.Curve.NewG1FromBytes(meta.RhNym)
+			if err != nil {
+				return fmt.Errorf("signature invalid: rh nym validation failed, failed to unmarshal meta rh nym")
+			}
+			if !RhNym_.Equals(RhNym) {
+				return fmt.Errorf("signature invalid: rh nym validation failed, signature rh nym does not match metadata")
 			}
 		}
 	}

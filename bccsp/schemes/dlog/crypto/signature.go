@@ -1100,7 +1100,7 @@ func (sig *Signature) Ver(
 		if len(meta.EidNym) != 0 {
 			NymEID, err := curve.NewG1FromBytes(meta.EidNym)
 			if err != nil {
-				return errors.Errorf("signature invalid: nym eid validation failed, failed to unmarshal meta nym ied")
+				return errors.Errorf("signature invalid: nym eid validation failed, failed to unmarshal meta nym eid")
 			}
 			if !NymEID.Equals(EidNym) {
 				return errors.Errorf("signature invalid: nym eid validation failed, signature nym eid does not match metadata")
@@ -1133,7 +1133,7 @@ func (sig *Signature) Ver(
 		if len(meta.RhNym) != 0 {
 			NymRH, err := curve.NewG1FromBytes(meta.RhNym)
 			if err != nil {
-				return errors.Errorf("signature invalid: nym rh validation failed, failed to unmarshal meta nym ied")
+				return errors.Errorf("signature invalid: nym rh validation failed, failed to unmarshal meta nym rh")
 			}
 			if !NymRH.Equals(RhNym) {
 				return errors.Errorf("signature invalid: nym rh validation failed, signature nym rh does not match metadata")
