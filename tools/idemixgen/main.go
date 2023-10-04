@@ -107,7 +107,6 @@ func main() {
 	}
 
 	if *useAries {
-		curve = math.Curves[math.BLS12_381_BBS]
 		bbs12381g2pub.SetCurve(curve)
 	}
 
