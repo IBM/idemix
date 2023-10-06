@@ -6,10 +6,12 @@ SPDX-License-Identifier: Apache-2.0
 package bridge
 
 import (
+	"fmt"
 	idemix "github.com/IBM/idemix/bccsp/schemes/dlog/crypto"
 	"github.com/IBM/idemix/bccsp/schemes/dlog/handlers"
 	math "github.com/IBM/mathlib"
 	"github.com/pkg/errors"
+	"runtime/debug"
 )
 
 // User encapsulates the idemix algorithms to generate user secret keys and pseudonym.
@@ -23,6 +25,7 @@ func (u *User) NewKey() (res *math.Zr, err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			res = nil
+			fmt.Printf("caught a panic [%s]: %s\n", r, debug.Stack())
 			err = errors.Errorf("failure [%s]", r)
 		}
 	}()

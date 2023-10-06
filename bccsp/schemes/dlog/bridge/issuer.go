@@ -7,6 +7,7 @@ package bridge
 
 import (
 	"fmt"
+	"runtime/debug"
 
 	bccsp "github.com/IBM/idemix/bccsp/schemes"
 	idemix "github.com/IBM/idemix/bccsp/schemes/dlog/crypto"
@@ -52,6 +53,7 @@ func (i *Issuer) NewKey(attributeNames []string) (res handlers.IssuerSecretKey, 
 	defer func() {
 		if r := recover(); r != nil {
 			res = nil
+			fmt.Printf("caught a panic [%s]: %s\n", r, debug.Stack())
 			err = errors.Errorf("failure [%s]", r)
 		}
 	}()
@@ -70,6 +72,7 @@ func (i *Issuer) NewKeyFromBytes(raw []byte, attributes []string) (res handlers.
 	defer func() {
 		if r := recover(); r != nil {
 			res = nil
+			fmt.Printf("caught a panic [%s]: %s\n", r, debug.Stack())
 			err = errors.Errorf("failure [%s]", r)
 		}
 	}()
@@ -88,6 +91,7 @@ func (i *Issuer) NewPublicKeyFromBytes(raw []byte, attributes []string) (res han
 	defer func() {
 		if r := recover(); r != nil {
 			res = nil
+			fmt.Printf("caught a panic [%s]: %s\n", r, debug.Stack())
 			err = errors.Errorf("failure [%s]", r)
 		}
 	}()

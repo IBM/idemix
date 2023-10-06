@@ -7,6 +7,8 @@ package bridge
 
 import (
 	"bytes"
+	"fmt"
+	"runtime/debug"
 
 	bccsp "github.com/IBM/idemix/bccsp/schemes"
 	idemix "github.com/IBM/idemix/bccsp/schemes/dlog/crypto"
@@ -32,6 +34,7 @@ func (c *Credential) Sign(key handlers.IssuerSecretKey, credentialRequest []byte
 	defer func() {
 		if r := recover(); r != nil {
 			res = nil
+			fmt.Printf("caught a panic [%s]: %s\n", r, debug.Stack())
 			err = errors.Errorf("failure [%s]", r)
 		}
 	}()
@@ -82,6 +85,7 @@ func (c *Credential) Sign(key handlers.IssuerSecretKey, credentialRequest []byte
 func (c *Credential) Verify(sk *math.Zr, ipk handlers.IssuerPublicKey, credential []byte, attributes []bccsp.IdemixAttribute) (err error) {
 	defer func() {
 		if r := recover(); r != nil {
+			fmt.Printf("caught a panic [%s]: %s\n", r, debug.Stack())
 			err = errors.Errorf("failure [%s]", r)
 		}
 	}()

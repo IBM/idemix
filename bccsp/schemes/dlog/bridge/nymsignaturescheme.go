@@ -6,9 +6,11 @@ SPDX-License-Identifier: Apache-2.0
 package bridge
 
 import (
+	"fmt"
 	idemix "github.com/IBM/idemix/bccsp/schemes/dlog/crypto"
 	"github.com/IBM/idemix/bccsp/schemes/dlog/handlers"
 	math "github.com/IBM/mathlib"
+	"runtime/debug"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/pkg/errors"
@@ -27,6 +29,7 @@ func (n *NymSignatureScheme) Sign(sk *math.Zr, Nym *math.G1, RNym *math.Zr, ipk 
 	defer func() {
 		if r := recover(); r != nil {
 			res = nil
+			fmt.Printf("caught a panic [%s]: %s\n", r, debug.Stack())
 			err = errors.Errorf("failure [%s]", r)
 		}
 	}()
@@ -56,6 +59,7 @@ func (n *NymSignatureScheme) Sign(sk *math.Zr, Nym *math.G1, RNym *math.Zr, ipk 
 func (n *NymSignatureScheme) Verify(ipk handlers.IssuerPublicKey, Nym *math.G1, signature, digest []byte) (err error) {
 	defer func() {
 		if r := recover(); r != nil {
+			fmt.Printf("caught a panic [%s]: %s\n", r, debug.Stack())
 			err = errors.Errorf("failure [%s]", r)
 		}
 	}()

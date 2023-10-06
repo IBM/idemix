@@ -7,6 +7,8 @@ package bridge
 
 import (
 	"crypto/ecdsa"
+	"fmt"
+	"runtime/debug"
 
 	bccsp "github.com/IBM/idemix/bccsp/schemes"
 	idemix "github.com/IBM/idemix/bccsp/schemes/dlog/crypto"
@@ -30,6 +32,7 @@ func (s *SignatureScheme) Sign(cred []byte, sk *math.Zr, Nym *math.G1, RNym *mat
 	defer func() {
 		if r := recover(); r != nil {
 			res = nil
+			fmt.Printf("caught a panic [%s]: %s\n", r, debug.Stack())
 			err = errors.Errorf("failure [%s]", r)
 		}
 	}()
@@ -94,6 +97,7 @@ func (s *SignatureScheme) AuditNymEid(
 ) (err error) {
 	defer func() {
 		if r := recover(); r != nil {
+			fmt.Printf("caught a panic [%s]: %s\n", r, debug.Stack())
 			err = errors.Errorf("failure [%s]", r)
 		}
 	}()
@@ -135,6 +139,7 @@ func (s *SignatureScheme) Verify(
 ) (err error) {
 	defer func() {
 		if r := recover(); r != nil {
+			fmt.Printf("caught a panic [%s]: %s\n", r, debug.Stack())
 			err = errors.Errorf("failure [%s]", r)
 		}
 	}()

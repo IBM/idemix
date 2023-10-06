@@ -7,6 +7,8 @@ package bridge
 
 import (
 	"bytes"
+	"fmt"
+	"runtime/debug"
 
 	idemix "github.com/IBM/idemix/bccsp/schemes/dlog/crypto"
 	"github.com/IBM/idemix/bccsp/schemes/dlog/handlers"
@@ -29,6 +31,7 @@ func (cr *CredRequest) Sign(sk *math.Zr, ipk handlers.IssuerPublicKey, nonce []b
 	defer func() {
 		if r := recover(); r != nil {
 			res = nil
+			fmt.Printf("caught a panic [%s]: %s\n", r, debug.Stack())
 			err = errors.Errorf("failure [%s]", r)
 		}
 	}()
@@ -60,6 +63,7 @@ func (cr *CredRequest) Sign(sk *math.Zr, ipk handlers.IssuerPublicKey, nonce []b
 func (cr *CredRequest) Verify(credentialRequest []byte, ipk handlers.IssuerPublicKey, nonce []byte) (err error) {
 	defer func() {
 		if r := recover(); r != nil {
+			fmt.Printf("caught a panic [%s]: %s\n", r, debug.Stack())
 			err = errors.Errorf("failure [%s]", r)
 		}
 	}()
