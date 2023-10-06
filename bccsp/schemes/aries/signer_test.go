@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package aries_test
 
 import (
+	"os"
 	"testing"
 
 	"github.com/IBM/idemix/bccsp/schemes/aries"
@@ -179,6 +180,169 @@ func TestSmartcardSigner(t *testing.T) {
 
 	err = signer.Verify(isk.Public(), sig, []byte("silliness"), idemixAttrs, rhIndex, eidIndex, nil, 0, types.ExpectSmartcard, meta)
 	assert.NoError(t, err)
+}
+
+func readFile(t *testing.T, name string) []byte {
+	bytes, err := os.ReadFile(name)
+	assert.NoError(t, err)
+
+	return bytes
+}
+
+/*
+
+Test fixtures generated with
+
+idemixgen ca-keygen --curve="FP256BN_AMCL_MIRACL" --aries --output="./testdata/idemix/"
+idemixgen signerconfig --curve="FP256BN_AMCL_MIRACL" --aries --output="./testdata/idemix/" --ca-input="./testdata/idemix/" --enrollmentId=my-enrollment-id --revocationHandle=my-revocation-handle --org-unit=my-ou
+
+*/
+
+func TestSmartcardSigner1(t *testing.T) {
+	sc, curve := getSmartcard(t)
+	defer func() {
+		// reset the curve to the one other tests use
+		bbs12381g2pub.SetCurve(math.Curves[math.BLS12_381_BBS])
+	}()
+
+	rng, err := curve.Rand()
+	assert.NoError(t, err)
+
+	issuer := &aries.Issuer{}
+
+	verifier := &aries.Signer{
+		Curve: curve,
+		Rng:   rng,
+	}
+
+	ipk, err := issuer.NewPublicKeyFromBytes(readFile(t, "testdata/idemix/msp/IssuerPublicKey"), []string{"", "", "", ""})
+	assert.NoError(t, err)
+
+	conf := &IdemixMSPSignerConfig{}
+	err = proto.Unmarshal(readFile(t, "testdata/idemix/user/SignerConfig"), conf)
+	assert.NoError(t, err)
+
+	eid := conf.EnrollmentId
+	ou := conf.OrganizationalUnitIdentifier
+	role := int(conf.Role)
+
+	// set the idemix bases, the eid and the secret key in the card
+
+	sc.H0 = ipk.(*aries.IssuerPublicKey).PKwG.H0
+	sc.H1 = ipk.(*aries.IssuerPublicKey).PKwG.H[0]
+	sc.H2 = ipk.(*aries.IssuerPublicKey).PKwG.H[3]
+	sc.EID = bbs12381g2pub.FrFromOKM([]byte(eid))
+	sc.Uid_sk = curve.NewZrFromBytes(conf.Sk)
+
+	// make nym eid
+	rNymEid, NymEid := sc.Receive()
+
+	msg, tau := []byte("tx"), []byte("tau (output of Bob's receive)")
+
+	/*****************/
+	// nym signature //
+	/*****************/
+
+	// make nym signature
+	nymSig, err := sc.Spend(msg, tau /*, NymEid*/)
+	assert.NoError(t, err)
+
+	// verify nym signature
+	err = sc.Verify(nymSig, NymEid.Bytes(), tau, msg)
+	assert.NoError(t, err)
+
+	/**********************/
+	// standard signature //
+	/**********************/
+
+	// make idemix signature
+	sig, err := idemixScSign(nymSig, conf.Cred, ipk, sc, NymEid, rNymEid, ou, role, eid)
+	assert.NoError(t, err)
+
+	// verify idemix signature
+	err = verifier.Verify(ipk, sig, nil, []types.IdemixAttribute{
+		{
+			Type:  types.IdemixBytesAttribute,
+			Value: []byte(ou),
+		},
+		{
+			Type:  types.IdemixIntAttribute,
+			Value: role,
+		},
+		{
+			Type: types.IdemixHiddenAttribute,
+		},
+		{
+			Type: types.IdemixHiddenAttribute,
+		},
+	}, 3, 2, nil, -1, types.ExpectSmartcard, &types.IdemixSignerMetadata{EidNym: NymEid.Bytes()})
+	assert.NoError(t, err)
+}
+
+func idemixScSign(
+	nymSig []byte,
+	cred []byte,
+	ipk types.IssuerPublicKey,
+	sc *aries.Smartcard,
+	NymEid *math.G1,
+	rNymEid *math.Zr,
+	ou string,
+	role int,
+	eid string,
+) ([]byte, error) {
+
+	seed := nymSig[0:16]
+
+	rNym := sc.PRF(seed, sc.PRF_K1)
+	nym, err := sc.Curve.NewG1FromBytes(nymSig[16 : 16+sc.Curve.G1ByteSize])
+	if err != nil {
+		return nil, err
+	}
+
+	rhIndex, eidIndex := 3, 2
+
+	idemixAttrs := []types.IdemixAttribute{
+		{
+			Type:  types.IdemixBytesAttribute,
+			Value: []byte(ou),
+		},
+		{
+			Type:  types.IdemixIntAttribute,
+			Value: role,
+		},
+		{
+			Type: types.IdemixHiddenAttribute,
+		},
+		{
+			Type: types.IdemixHiddenAttribute,
+		},
+	}
+
+	meta := &types.IdemixSignerMetadata{
+		EidNym: NymEid.Bytes(),
+		EidNymAuditData: &types.AttrNymAuditData{
+			Nym:  NymEid,
+			Rand: rNymEid,
+			Attr: bbs12381g2pub.FrFromOKM([]byte(eid)),
+		},
+	}
+
+	rand, err := sc.Curve.Rand()
+	if err != nil {
+		return nil, err
+	}
+
+	signer := &aries.Signer{
+		Curve: sc.Curve,
+		Rng:   rand,
+	}
+
+	sig, _, err := signer.Sign(cred, nil, nym, rNym, ipk, idemixAttrs, nil, rhIndex, eidIndex, nil, types.Smartcard, meta)
+	if err != nil {
+		return nil, err
+	}
+
+	return sig, nil
 }
 
 func TestSigner(t *testing.T) {

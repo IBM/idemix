@@ -414,7 +414,7 @@ func TestVerifyFromCard(t *testing.T) {
 	tau, err := hex.DecodeString("a622f6dc87e125705980c7185f2b5b7766ec3cb6a21d78108e01865bf02ea9ddc449793856bf9a7ea7c3e6ce39cae9c4c3d5c39a1e37e436d60ccf2cdd8339ea")
 	assert.NoError(t, err)
 
-	err = sc.Verify(proof, tau0.Bytes()[1:], tau, nonce)
+	err = sc.Verify(proof, tau0.Bytes(), tau, nonce)
 	assert.NoError(t, err)
 }
 
@@ -438,6 +438,6 @@ func TestSmartcard(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Len(t, pi, 16+2*curve.G1ByteSize+2*curve.ScalarByteSize)
 
-	err = sc.Verify(pi, tau0.Bytes()[1:], tau, nonce)
+	err = sc.Verify(pi, tau0.Bytes(), tau, nonce)
 	assert.NoError(t, err)
 }

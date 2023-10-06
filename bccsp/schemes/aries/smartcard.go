@@ -141,7 +141,7 @@ func (sc *Smartcard) Verify(proofBytes, tau0, tau, nonce []byte) error {
 	challengeBytes = append(challengeBytes, sc.H2.Bytes()[1:]...)
 	challengeBytes = append(challengeBytes, B.Bytes()[1:]...)
 	challengeBytes = append(challengeBytes, B_.Bytes()[1:]...)
-	challengeBytes = append(challengeBytes, tau0...)
+	challengeBytes = append(challengeBytes, tau0[1:]...)
 	challengeBytes = append(challengeBytes, tau...)
 	challengeBytes = append(challengeBytes, nonce...)
 
