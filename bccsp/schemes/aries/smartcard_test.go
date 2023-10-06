@@ -177,7 +177,7 @@ func TestAll(t *testing.T) {
 	C.Sub(sc.H0.Mul(r))
 	assert.True(t, C.Equals(sc.H1.Mul(sc.Uid_sk)))
 
-	pok_, err = bbs12381g2pub.NewPoKOfSignatureExt(sig, messagesFr[1:], []int{1, 2}, pkwg, B, r, C)
+	pok_, err = bbs12381g2pub.NewPoKOfSignatureExt(sig, messagesFr[1:], []int{0, 1}, pkwg, B, r, C)
 	assert.NoError(t, err)
 
 	c = curve.NewRandomZr(rand.Reader)

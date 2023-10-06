@@ -159,6 +159,71 @@ func TestSmartcardSigner(t *testing.T) {
 	err = signer.Verify(isk.Public(), sig, []byte("silliness"), idemixAttrs, rhIndex, eidIndex, nil, 0, types.ExpectSmartcard, nil)
 	assert.NoError(t, err)
 
+	idemixAttrs = []types.IdemixAttribute{
+		{
+			Type: types.IdemixHiddenAttribute,
+		},
+		{
+			Type:  types.IdemixIntAttribute,
+			Value: role,
+		},
+		{
+			Type: types.IdemixHiddenAttribute,
+		},
+		{
+			Type: types.IdemixHiddenAttribute,
+		},
+	}
+
+	sig, _, err = signer.Sign(credBytes, nil, B, r, isk.Public(), idemixAttrs, []byte("silliness"), rhIndex, eidIndex, nil, types.Smartcard, nil)
+	assert.NoError(t, err)
+
+	err = signer.Verify(isk.Public(), sig, []byte("silliness"), idemixAttrs, rhIndex, eidIndex, nil, 0, types.ExpectSmartcard, nil)
+	assert.NoError(t, err)
+
+	idemixAttrs = []types.IdemixAttribute{
+		{
+			Type:  types.IdemixBytesAttribute,
+			Value: []byte(ou),
+		},
+		{
+			Type: types.IdemixHiddenAttribute,
+		},
+		{
+			Type: types.IdemixHiddenAttribute,
+		},
+		{
+			Type: types.IdemixHiddenAttribute,
+		},
+	}
+
+	sig, _, err = signer.Sign(credBytes, nil, B, r, isk.Public(), idemixAttrs, []byte("silliness"), rhIndex, eidIndex, nil, types.Smartcard, nil)
+	assert.NoError(t, err)
+
+	err = signer.Verify(isk.Public(), sig, []byte("silliness"), idemixAttrs, rhIndex, eidIndex, nil, 0, types.ExpectSmartcard, nil)
+	assert.NoError(t, err)
+
+	idemixAttrs = []types.IdemixAttribute{
+		{
+			Type: types.IdemixHiddenAttribute,
+		},
+		{
+			Type: types.IdemixHiddenAttribute,
+		},
+		{
+			Type: types.IdemixHiddenAttribute,
+		},
+		{
+			Type: types.IdemixHiddenAttribute,
+		},
+	}
+
+	sig, _, err = signer.Sign(credBytes, nil, B, r, isk.Public(), idemixAttrs, []byte("silliness"), rhIndex, eidIndex, nil, types.Smartcard, nil)
+	assert.NoError(t, err)
+
+	err = signer.Verify(isk.Public(), sig, []byte("silliness"), idemixAttrs, rhIndex, eidIndex, nil, 0, types.ExpectSmartcard, nil)
+	assert.NoError(t, err)
+
 	/**************************************************/
 
 	// supply as eid nym the one received from the smartcard

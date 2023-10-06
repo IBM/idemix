@@ -45,6 +45,18 @@ func attributesToSignatureMessage(sk *math.Zr, attributes []types.IdemixAttribut
 	return msgsZr
 }
 
+func revealedAttributesIndexNoSk(attributes []types.IdemixAttribute) []int {
+	revealed := make([]int, 0, len(attributes))
+
+	for i, msg := range attributes {
+		if msg.Type != types.IdemixHiddenAttribute {
+			revealed = append(revealed, i)
+		}
+	}
+
+	return revealed
+}
+
 func revealedAttributesIndex(attributes []types.IdemixAttribute) []int {
 	revealed := make([]int, 0, len(attributes))
 
