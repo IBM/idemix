@@ -67,7 +67,7 @@ func TestSmartcardSigner(t *testing.T) {
 	sc.H2 = pkwg.H[3]
 	sc.EID = bbs12381g2pub.FrFromOKM([]byte(eid))
 
-	proofBytes, err := sc.Spend(nil, nil)
+	proofBytes, err := sc.NymSign(nil)
 	assert.NoError(t, err)
 
 	seed := proofBytes[0:16]
@@ -163,7 +163,7 @@ func TestSmartcardSigner(t *testing.T) {
 
 	// supply as eid nym the one received from the smartcard
 
-	rNymEid, NymEid := sc.Receive()
+	rNymEid, NymEid := sc.NymEid()
 	assert.True(t, NymEid.Equals(sc.H0.Mul2(rNymEid, sc.H2, bbs12381g2pub.FrFromOKM([]byte(eid)))))
 
 	meta := &types.IdemixSignerMetadata{
@@ -235,7 +235,7 @@ func TestSmartcardSigner1(t *testing.T) {
 	sc.Uid_sk = curve.NewZrFromBytes(conf.Sk)
 
 	// make nym eid
-	rNymEid, NymEid := sc.Receive()
+	rNymEid, NymEid := sc.NymEid()
 
 	msg, tau := []byte("tx"), []byte("tau (output of Bob's receive)")
 
@@ -244,11 +244,11 @@ func TestSmartcardSigner1(t *testing.T) {
 	/*****************/
 
 	// make nym signature
-	nymSig, err := sc.Spend(msg, tau /*, NymEid*/)
+	nymSig, err := sc.NymSign(append(append([]byte{}, tau...), msg...))
 	assert.NoError(t, err)
 
 	// verify nym signature
-	err = sc.Verify(nymSig, NymEid.Bytes(), tau, msg)
+	err = sc.NymVerify(nymSig, NymEid, append(append([]byte{}, tau...), msg...))
 	assert.NoError(t, err)
 
 	/**********************/

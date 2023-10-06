@@ -92,7 +92,7 @@ func TestAll(t *testing.T) {
 	sc.H1 = pkwg.H[0]
 	sc.H2 = pkwg.H[3]
 
-	proofBytes, err := sc.Spend(nil, nil)
+	proofBytes, err := sc.NymSign(nil)
 	assert.NoError(t, err)
 
 	seed := proofBytes[0:16]
@@ -403,7 +403,7 @@ func TestVerifyFromCard(t *testing.T) {
 		bbs12381g2pub.SetCurve(math.Curves[math.BLS12_381_BBS])
 	}()
 
-	_, tau0 := sc.Receive()
+	_, tau0 := sc.NymEid()
 
 	proof, err := hex.DecodeString("751A2CB0ECE86ACCCA5846E578DA045E04C10FE2D02FED20CED167BB12C94B52C82C3269AB423BC977B1052D9A891E78321BCDB9AAD44A79922611DEA4832F1DD310F18FAA24B01A273C6BCFE2044FF11804B00567E220E1E8C0E76E2EA7DBAEE8F9ABCF8B7CACB562086D827345A02D76F83BB7DFD533745D57E4AD618D4CE8DF031F437B6220EE97C19B78B2DBFCCBFC69C0733191905FC5550BCC4D0F5DCE10780558E99DA037155CCE0452EC298390D186DAC6BA386550952467A45C366175E8A5465B8FBD30AC64885630309F9E73BD9000")
 	assert.NoError(t, err)
@@ -414,7 +414,7 @@ func TestVerifyFromCard(t *testing.T) {
 	tau, err := hex.DecodeString("a622f6dc87e125705980c7185f2b5b7766ec3cb6a21d78108e01865bf02ea9ddc449793856bf9a7ea7c3e6ce39cae9c4c3d5c39a1e37e436d60ccf2cdd8339ea")
 	assert.NoError(t, err)
 
-	err = sc.Verify(proof, tau0.Bytes(), tau, nonce)
+	err = sc.NymVerify(proof, tau0, append(append([]byte{}, tau...), nonce...))
 	assert.NoError(t, err)
 }
 
@@ -425,19 +425,19 @@ func TestSmartcard(t *testing.T) {
 		bbs12381g2pub.SetCurve(math.Curves[math.BLS12_381_BBS])
 	}()
 
-	_, tau0 := sc.Receive()
+	_, nymEid := sc.NymEid()
 
 	tau0Expected, err := hex.DecodeString("049a82e7816bc68a24ffb9331158c5112473f60cb3c738f8bcf9eca9b2a914d1cc519e3b3c1792cc1447a7c5c1edb6d8ae0b40c49dec4b6f40ccfbc39df31e01cd")
 	assert.NoError(t, err)
-	assert.Equal(t, tau0Expected, tau0.Bytes())
+	assert.Equal(t, tau0Expected, nymEid.Bytes())
 
 	nonce := []byte("nonce")
 	tau := []byte("tau")
 
-	pi, err := sc.Spend(nonce, tau)
+	pi, err := sc.NymSign(append(append([]byte{}, tau...), nonce...))
 	assert.NoError(t, err)
 	assert.Len(t, pi, 16+2*curve.G1ByteSize+2*curve.ScalarByteSize)
 
-	err = sc.Verify(pi, tau0.Bytes(), tau, nonce)
+	err = sc.NymVerify(pi, nymEid, append(append([]byte{}, tau...), nonce...))
 	assert.NoError(t, err)
 }
