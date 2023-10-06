@@ -13,6 +13,7 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/IBM/idemix/bccsp/types"
 	math "github.com/IBM/mathlib"
 )
 
@@ -155,4 +156,43 @@ func (sc *Smartcard) NymVerify(proofBytes []byte, nymEid *math.G1, msg []byte) e
 	}
 
 	return fmt.Errorf("invalid proof")
+}
+
+type SmartcardIdemixBackend struct {
+	Curve *math.Curve
+}
+
+// Sign creates a new idemix pseudonym signature
+func (s *SmartcardIdemixBackend) Sign(isc interface{}, ipk types.IssuerPublicKey, digest []byte) ([]byte, *math.G1, *math.Zr, error) {
+	sc, ok := isc.(*Smartcard)
+	if !ok {
+		return nil, nil, nil, fmt.Errorf("invalid interface conversion for %T to *Smartcard", isc)
+	}
+
+	sig, err := sc.NymSign(digest)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+
+	seed := sig[0:16]
+
+	rNym := sc.PRF(seed, sc.PRF_K1)
+	nym, err := sc.Curve.NewG1FromBytes(sig[16 : 16+sc.Curve.G1ByteSize])
+	if err != nil {
+		return nil, nil, nil, err
+	}
+
+	return sig, nym, rNym, err
+}
+
+// Verify verifies an idemix NymSignature
+func (s *SmartcardIdemixBackend) Verify(ipk types.IssuerPublicKey, Nym *math.G1, signature, digest []byte) error {
+	sc := &Smartcard{}
+
+	sc.H0 = ipk.(*IssuerPublicKey).PKwG.H0
+	sc.H1 = ipk.(*IssuerPublicKey).PKwG.H[0]
+	sc.H2 = ipk.(*IssuerPublicKey).PKwG.H[3]
+	sc.Curve = s.Curve
+
+	return sc.NymVerify(signature, Nym, digest)
 }

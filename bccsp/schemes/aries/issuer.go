@@ -39,7 +39,7 @@ func (i *IssuerPublicKey) Hash() []byte {
 	return i.PK.PointG2.Compressed()
 }
 
-// IssuerPublicKey is the issuer secret key
+// IssuerSecretKey is the issuer secret key
 type IssuerSecretKey struct {
 	IssuerPublicKey
 	SK *bbs12381g2pub.PrivateKey

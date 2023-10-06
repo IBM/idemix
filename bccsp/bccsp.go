@@ -235,6 +235,9 @@ func NewAries(keyStore bccsp.KeyStore, curve *math.Curve, _translator idemix.Tra
 					Rng:   rng,
 				}},
 			nymSigner: &handlers.NymSigner{
+				SmartcardNymSignatureScheme: &aries.SmartcardIdemixBackend{
+					Curve: curve,
+				},
 				NymSignatureScheme: &aries.NymSigner{
 					Curve: curve,
 					Rng:   rng,
@@ -276,6 +279,9 @@ func NewAries(keyStore bccsp.KeyStore, curve *math.Curve, _translator idemix.Tra
 		})
 	base.AddWrapper(reflect.TypeOf(handlers.NewNymPublicKey(nil, _translator)),
 		&handlers.NymVerifier{
+			SmartcardNymSignatureScheme: &aries.SmartcardIdemixBackend{
+				Curve: curve,
+			},
 			NymSignatureScheme: &aries.NymSigner{
 				Curve: curve,
 				Rng:   rng,
