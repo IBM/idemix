@@ -8,6 +8,7 @@ package idemix_test
 
 import (
 	"crypto/aes"
+	"crypto/rand"
 	"encoding/hex"
 	"os"
 	"testing"
@@ -85,7 +86,135 @@ func readFile(t *testing.T, name string) []byte {
 	return bytes
 }
 
-func TestSmartcard(t *testing.T) {
+func TestSmartcardHybrid(t *testing.T) {
+	sc, curve := getSmartcard(t)
+	translator := &amcl.Gurvy{C: curve}
+	defer func() {
+		// reset the curve to the one other tests use
+		bbs12381g2pub.SetCurve(math.Curves[math.BLS12_381_BBS])
+	}()
+
+	/*******************************************************************************/
+	/****************************read out idemix config*****************************/
+	/*******************************************************************************/
+
+	issuer := &aries.Issuer{}
+
+	_ipk, err := issuer.NewPublicKeyFromBytes(readFile(t, "testdata/idemix/msp/IssuerPublicKey"), []string{"", "", "", ""})
+	assert.NoError(t, err)
+
+	conf := &idemixmsp.IdemixMSPSignerConfig{}
+	err = proto.Unmarshal(readFile(t, "testdata/idemix/user/SignerConfig"), conf)
+	assert.NoError(t, err)
+
+	/*******************************************************************************/
+	/*****************instantiate an idemix bccsp and import ipk********************/
+	/*******************************************************************************/
+
+	CSP, err := idemix.NewAries(NewDummyKeyStore(), curve, translator, true)
+	assert.NoError(t, err)
+
+	IssuerPublicKey, err := CSP.KeyImport(readFile(t, "testdata/idemix/msp/IssuerPublicKey"), &types.IdemixIssuerPublicKeyImportOpts{Temporary: true, AttributeNames: []string{"", "", "", ""}})
+	assert.NoError(t, err)
+
+	/*******************************************************************************/
+	/**************configure the smartcard to work with these creds*****************/
+	/*******************************************************************************/
+
+	ipk := _ipk.(*aries.IssuerPublicKey)
+	sc.H0 = ipk.PKwG.H0
+	sc.H1 = ipk.PKwG.H[0]
+	sc.H2 = ipk.PKwG.H[3]
+	sc.EID = bbs12381g2pub.FrFromOKM([]byte(conf.EnrollmentId))
+	sc.Uid_sk = curve.NewZrFromBytes(conf.Sk)
+
+	/*******************************************************************************/
+	/**************************NYM SIGNATURE****************************************/
+	/*******************************************************************************/
+
+	scIdmx := &aries.SmartcardIdemixBackend{Curve: curve}
+
+	msg := []byte("msg")
+	rNymEid, nymEid := sc.NymEid()
+
+	/*****sign low-level*****/
+
+	sig, nym, rNym, err := scIdmx.Sign(sc, ipk, msg)
+	assert.NoError(t, err)
+
+	/*****verify with csp*****/
+
+	valid, err := CSP.Verify(handlers.NewNymPublicKey(nil, nil), sig, msg, &types.IdemixNymSignerOpts{
+		IssuerPK:    IssuerPublicKey,
+		IsSmartcard: true,
+		NymEid:      nymEid,
+	})
+	assert.NoError(t, err)
+	assert.True(t, valid)
+
+	/*******************************************************************************/
+	/**************************IDEMIX SIGNATURE*************************************/
+	/*******************************************************************************/
+
+	rhIndex, eidIndex := 3, 2
+
+	idemixAttrs := []types.IdemixAttribute{
+		{
+			Type:  types.IdemixBytesAttribute,
+			Value: []byte(conf.OrganizationalUnitIdentifier),
+		},
+		{
+			Type:  types.IdemixIntAttribute,
+			Value: int(conf.Role),
+		},
+		{
+			Type: types.IdemixHiddenAttribute,
+		},
+		{
+			Type: types.IdemixHiddenAttribute,
+		},
+	}
+
+	meta := &types.IdemixSignerMetadata{
+		EidNym: nymEid.Bytes(),
+		EidNymAuditData: &types.AttrNymAuditData{
+			Nym:  nymEid,
+			Rand: rNymEid,
+			Attr: bbs12381g2pub.FrFromOKM([]byte(conf.EnrollmentId)),
+		},
+	}
+
+	signer := &aries.Signer{
+		Curve: sc.Curve,
+		Rng:   rand.Reader,
+	}
+
+	/*****sign low-level*****/
+
+	sig, _, err = signer.Sign(conf.Cred, nil, nym, rNym, ipk, idemixAttrs, nil, rhIndex, eidIndex, nil, types.Smartcard, meta)
+	assert.NoError(t, err)
+
+	/*****verify with csp*****/
+
+	valid, err = CSP.Verify(
+		IssuerPublicKey,
+		sig,
+		nil,
+		&types.IdemixSignerOpts{
+			Attributes:       idemixAttrs,
+			RhIndex:          3,
+			EidIndex:         2,
+			VerificationType: types.ExpectSmartcard,
+			Metadata: &types.IdemixSignerMetadata{
+				EidNym: nymEid.Bytes(),
+			},
+		},
+	)
+	assert.NoError(t, err)
+	assert.True(t, valid)
+}
+
+func TestSmartcardCSP(t *testing.T) {
 	sc, curve := getSmartcard(t)
 	translator := &amcl.Gurvy{C: curve}
 	defer func() {
@@ -161,73 +290,6 @@ func TestSmartcard(t *testing.T) {
 
 	/*****sign*****/
 
-	/*******************************************************************************/
-	/*******************************************************************************/
-	rhIndex, eidIndex := 3, 2
-
-	idemixAttrs := []types.IdemixAttribute{
-		{
-			Type: types.IdemixHiddenAttribute,
-		},
-		{
-			Type:  types.IdemixIntAttribute,
-			Value: int(conf.Role),
-		},
-		{
-			Type: types.IdemixHiddenAttribute,
-		},
-		{
-			Type: types.IdemixHiddenAttribute,
-		},
-	}
-
-	meta := &types.IdemixSignerMetadata{
-		EidNym: nymEid.Bytes(),
-		EidNymAuditData: &types.AttrNymAuditData{
-			Nym:  nymEid,
-			Rand: rNymEid,
-			Attr: bbs12381g2pub.FrFromOKM([]byte(conf.EnrollmentId)),
-		},
-	}
-
-	rand, err := sc.Curve.Rand()
-	assert.NoError(t, err)
-
-	signer := &aries.Signer{
-		Curve: sc.Curve,
-		Rng:   rand,
-	}
-
-	sig, _, err = signer.Sign(conf.Cred, nil, opts.NymG1, opts.RNym, ipk, idemixAttrs, nil, rhIndex, eidIndex, nil, types.Smartcard, meta)
-	assert.NoError(t, err)
-
-	rng, err := curve.Rand()
-	assert.NoError(t, err)
-
-	verifier := &aries.Signer{
-		Curve: curve,
-		Rng:   rng,
-	}
-	err = verifier.Verify(ipk, sig, nil, []types.IdemixAttribute{
-		{
-			Type: types.IdemixHiddenAttribute,
-		},
-		{
-			Type:  types.IdemixIntAttribute,
-			Value: int(conf.Role),
-		},
-		{
-			Type: types.IdemixHiddenAttribute,
-		},
-		{
-			Type: types.IdemixHiddenAttribute,
-		},
-	}, 3, 2, nil, -1, types.ExpectSmartcard, &types.IdemixSignerMetadata{EidNym: nymEid.Bytes()})
-	assert.NoError(t, err)
-
-	/*******************************************************************************/
-	/*******************************************************************************/
-
 	nymsk, err := handlers.NewNymSecretKey(opts.RNym, opts.NymG1, translator, true)
 	assert.NoError(t, err)
 
@@ -298,7 +360,8 @@ func TestSmartcard(t *testing.T) {
 	assert.True(t, valid)
 
 	/*******************************************************************************/
-	/*******************************************************************************/
+
+	/*****sign*****/
 
 	nymsk, err = handlers.NewNymSecretKey(opts.RNym, opts.NymG1, translator, true)
 	assert.NoError(t, err)
@@ -356,4 +419,77 @@ func TestSmartcard(t *testing.T) {
 	)
 	assert.NoError(t, err)
 	assert.True(t, valid)
+
+	/*******************************************************************************/
+	/***********************low-level invocation************************************/
+	/*******************************************************************************/
+
+	rhIndex, eidIndex := 3, 2
+
+	idemixAttrs := []types.IdemixAttribute{
+		{
+			Type: types.IdemixHiddenAttribute,
+		},
+		{
+			Type:  types.IdemixIntAttribute,
+			Value: int(conf.Role),
+		},
+		{
+			Type: types.IdemixHiddenAttribute,
+		},
+		{
+			Type: types.IdemixHiddenAttribute,
+		},
+	}
+
+	meta := &types.IdemixSignerMetadata{
+		EidNym: nymEid.Bytes(),
+		EidNymAuditData: &types.AttrNymAuditData{
+			Nym:  nymEid,
+			Rand: rNymEid,
+			Attr: bbs12381g2pub.FrFromOKM([]byte(conf.EnrollmentId)),
+		},
+	}
+
+	rand, err := sc.Curve.Rand()
+	assert.NoError(t, err)
+
+	signer := &aries.Signer{
+		Curve: sc.Curve,
+		Rng:   rand,
+	}
+
+	/*****sign*****/
+
+	sig, _, err = signer.Sign(conf.Cred, nil, opts.NymG1, opts.RNym, ipk, idemixAttrs, nil, rhIndex, eidIndex, nil, types.Smartcard, meta)
+	assert.NoError(t, err)
+
+	rng, err := curve.Rand()
+	assert.NoError(t, err)
+
+	/*****verify*****/
+
+	verifier := &aries.Signer{
+		Curve: curve,
+		Rng:   rng,
+	}
+	err = verifier.Verify(ipk, sig, nil, []types.IdemixAttribute{
+		{
+			Type: types.IdemixHiddenAttribute,
+		},
+		{
+			Type:  types.IdemixIntAttribute,
+			Value: int(conf.Role),
+		},
+		{
+			Type: types.IdemixHiddenAttribute,
+		},
+		{
+			Type: types.IdemixHiddenAttribute,
+		},
+	}, 3, 2, nil, -1, types.ExpectSmartcard, &types.IdemixSignerMetadata{EidNym: nymEid.Bytes()})
+	assert.NoError(t, err)
+
+	/*******************************************************************************/
+	/*******************************************************************************/
 }
