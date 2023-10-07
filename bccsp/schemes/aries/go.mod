@@ -3,8 +3,8 @@ module github.com/IBM/idemix/bccsp/schemes/aries
 go 1.19
 
 require (
-	github.com/IBM/idemix/bccsp/schemes/weak-bb v0.0.0-20231003090616-bdc7034e988b
-	github.com/IBM/idemix/bccsp/types v0.0.0-20231003090616-bdc7034e988b
+	github.com/IBM/idemix/bccsp/schemes/weak-bb v0.0.0-20231007073542-19fc3525a5e6
+	github.com/IBM/idemix/bccsp/types v0.0.0-20231007073542-19fc3525a5e6
 	github.com/IBM/mathlib v0.0.3-0.20230831091907-c532c4d3b65c
 	github.com/ale-linux/aries-framework-go/component/kmscrypto v0.0.0-20231006211028-5cc268fcecb6
 	github.com/golang/protobuf v1.5.3
