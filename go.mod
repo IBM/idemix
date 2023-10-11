@@ -6,8 +6,8 @@ require (
 	github.com/IBM/idemix/bccsp/schemes/aries v0.0.0-20231007073542-19fc3525a5e6
 	github.com/IBM/idemix/bccsp/schemes/weak-bb v0.0.0-20231007073542-19fc3525a5e6
 	github.com/IBM/idemix/bccsp/types v0.0.0-20231007073542-19fc3525a5e6
-	github.com/IBM/mathlib v0.0.3-0.20230831091907-c532c4d3b65c
-	github.com/ale-linux/aries-framework-go/component/kmscrypto v0.0.0-20231006211028-5cc268fcecb6
+	github.com/IBM/mathlib v0.0.3-0.20231011094432-44ee0eb539da
+	github.com/ale-linux/aries-framework-go/component/kmscrypto v0.0.0-20231011102509-6729c6e86d00
 	github.com/alecthomas/template v0.0.0-20190718012654-fb15b899a751 // indirect
 	github.com/alecthomas/units v0.0.0-20210912230133-d1bdfacee922 // indirect
 	github.com/golang/protobuf v1.5.3
@@ -33,10 +33,10 @@ require (
 	github.com/mmcloughlin/addchain v0.4.0 // indirect
 	github.com/nxadm/tail v1.4.4 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
-	github.com/rogpeppe/go-internal v1.11.0 // indirect
 	go.uber.org/atomic v1.6.0 // indirect
 	go.uber.org/multierr v1.5.0 // indirect
 	golang.org/x/crypto v0.10.0 // indirect
+	golang.org/x/mod v0.9.0 // indirect
 	golang.org/x/net v0.10.0 // indirect
 	golang.org/x/sys v0.9.0 // indirect
 	golang.org/x/text v0.10.0 // indirect

@@ -2,10 +2,10 @@ github.com/IBM/idemix/bccsp/schemes/weak-bb v0.0.0-20231007073542-19fc3525a5e6 h
 github.com/IBM/idemix/bccsp/schemes/weak-bb v0.0.0-20231007073542-19fc3525a5e6/go.mod h1:EPAfwEciT+Yke9xTooqJUcEuf2R8pmIA0QjPG6df1xM=
 github.com/IBM/idemix/bccsp/types v0.0.0-20231007073542-19fc3525a5e6 h1:oL2OYBjdBiSAlnhDXQfhzEydBUSE0pvk4PD3DhtFGiM=
 github.com/IBM/idemix/bccsp/types v0.0.0-20231007073542-19fc3525a5e6/go.mod h1:2lO6nmsoSH3WDJdat4kIicU+WTs4qDntGZkF8XdgHm8=
-github.com/IBM/mathlib v0.0.3-0.20230831091907-c532c4d3b65c h1:QVrlfdfx7MslApfSdSLiLIOFmYlLhP6wY4LyRBVed4I=
-github.com/IBM/mathlib v0.0.3-0.20230831091907-c532c4d3b65c/go.mod h1:k0NBSWMYVgaZ2keDuI8DSwdIEhUNhp8XnlVmm6Xwyuk=
-github.com/ale-linux/aries-framework-go/component/kmscrypto v0.0.0-20231006211028-5cc268fcecb6 h1:iePU9ACkbv6sViPqzpc+vZV2eEXAwWM9q02idrhTDfE=
-github.com/ale-linux/aries-framework-go/component/kmscrypto v0.0.0-20231006211028-5cc268fcecb6/go.mod h1:4sHtFlGI84SVjaSW7u1pCfC0bjijd9ZeqbKptU/Qljs=
+github.com/IBM/mathlib v0.0.3-0.20231011094432-44ee0eb539da h1:qqGozq4tF6EOVnWoTgBoJGudRKKZXSAYnEtDggzTnsw=
+github.com/IBM/mathlib v0.0.3-0.20231011094432-44ee0eb539da/go.mod h1:Tco9QzE3fQzjMS7nPbHDeFfydAzctStf1Pa8hsh6Hjs=
+github.com/ale-linux/aries-framework-go/component/kmscrypto v0.0.0-20231011102509-6729c6e86d00 h1:XhkmQd3Qe6Zx6JzaJ6MpgA31vVv6IPheJTvd+uG5SUU=
+github.com/ale-linux/aries-framework-go/component/kmscrypto v0.0.0-20231011102509-6729c6e86d00/go.mod h1:z5xq4Ji1RQojJLZzKeZH5+LKCVZxgQRZpQ4xAJWi8r0=
 github.com/bits-and-blooms/bitset v1.7.0 h1:YjAGVd3XmtK9ktAbX8Zg2g2PwLIMjGREZJHlV4j7NEo=
 github.com/bits-and-blooms/bitset v1.7.0/go.mod h1:gIdJ4wp64HaoK2YrL1Q5/N7Y16edYb8uY+O0FJTyyDA=
 github.com/btcsuite/btcutil v1.0.3-0.20201208143702-a53e38424cce h1:YtWJF7RHm2pYCvA5t0RPmAaLUhREsKuKd+SLhxFbFeQ=
@@ -13,7 +13,6 @@ github.com/consensys/bavard v0.1.13 h1:oLhMLOFGTLdlda/kma4VOJazblc7IM5y5QPd2A/Yj
 github.com/consensys/bavard v0.1.13/go.mod h1:9ItSMtA/dXMAiL7BG6bqW2m3NdSEObYWoH223nGHukI=
 github.com/consensys/gnark-crypto v0.12.1 h1:lHH39WuuFgVHONRl3J0LRBtuYdQTumFSDtJF7HpyG8M=
 github.com/consensys/gnark-crypto v0.12.1/go.mod h1:v2Gy7L/4ZRosZ7Ivs+9SfUDr0f5UlG+EM5t7MPHiLuY=
-github.com/creack/pty v1.1.9/go.mod h1:oKZEueFk5CKHvIhNR5MUki03XCEU+Q6VDXinZuGJ33E=
 github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/golang/protobuf v1.5.0/go.mod h1:FsONVRAS9T7sI+LIUmWTfcYkHO4aIWwzhcaSAoJOfIk=
@@ -28,7 +27,6 @@ github.com/kilic/bls12-381 v0.1.0 h1:encrdjqKMEvabVQ7qYOKu1OvhqpK4s47wDYtNiPtlp4
 github.com/kilic/bls12-381 v0.1.0/go.mod h1:vDTTHJONJ6G+P2R74EhnyotQDTliQDnFEwhdmfzw1ig=
 github.com/kr/pretty v0.3.1 h1:flRD4NNwYAUpkphVc1HcthR4KEIFJ65n8Mw5qdRn3LE=
 github.com/kr/text v0.2.0 h1:5Nx0Ya0ZqY2ygV366QzturHI13Jq95ApcVaJBhpS+AY=
-github.com/kr/text v0.2.0/go.mod h1:eLer722TekiGuMkidMxC/pM04lWEeraHUUmBw8l2grE=
 github.com/leanovate/gopter v0.2.9 h1:fQjYxZaynp97ozCzfOyOuAGOU4aU/z37zf/tOujFk7c=
 github.com/mmcloughlin/addchain v0.4.0 h1:SobOdjm2xLj1KkXN5/n0xTIWyZA2+s99UCY1iPfkHRY=
 github.com/mmcloughlin/addchain v0.4.0/go.mod h1:A86O+tHqZLMNO4w6ZZ4FlVQEadcoqkyU72HC5wJ4RlU=
@@ -38,7 +36,6 @@ github.com/pkg/errors v0.9.1/go.mod h1:bwawxfHBFNV+L2hUp1rHADufV3IMtnDRdf1r5NINE
 github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZbAQM=
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
 github.com/rogpeppe/go-internal v1.11.0 h1:cWPaGQEPrBb5/AsnsZesgZZ9yb1OQ+GOISoDNXVBh4M=
-github.com/rogpeppe/go-internal v1.11.0/go.mod h1:ddIwULY96R17DhadqLgMfk9H9tvdUzkipdSkR5nkCZA=
 github.com/stretchr/testify v1.8.4 h1:CcVxjf3Q8PM0mHUKJCdn+eZZtm5yQwehR5yeSVQQcUk=
 github.com/stretchr/testify v1.8.4/go.mod h1:sz/lmYIOXD/1dqDmKjjqLyZ2RngseejIcXlSw2iwfAo=
 golang.org/x/crypto v0.10.0 h1:LKqV2xt9+kDzSTfOhx4FrkEBcMrAgHSYgzywV9zcGmM=
