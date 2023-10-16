@@ -43,6 +43,8 @@ const (
 	BLS12_377_GURVY     = "BLS12_377_GURVY"
 	BLS12_381_GURVY     = "BLS12_381_GURVY"
 	BLS12_381           = "BLS12_381"
+	BLS12_381_BBS       = "BLS12_381_BBS"
+	BLS12_381_BBS_GURVY = "BLS12_381_BBS_GURVY"
 )
 
 // command line flags
@@ -50,8 +52,16 @@ var (
 	app = kingpin.New("idemixgen", "Utility for generating key material to be used with the Identity Mixer MSP in Hyperledger Fabric")
 
 	outputDir = app.Flag("output", "The output directory in which to place artifacts").Default("idemix-config").String()
-	curveID   = app.Flag("curve", "The curve to use to generate the crypto material").Short('c').Default(FP256BN_AMCL).Enum(FP256BN_AMCL, BN254, FP256BN_AMCL_MIRACL, BLS12_377_GURVY, BLS12_381_GURVY, BLS12_381)
-	useAries  = app.Flag("aries", "Use the aries-backed implementation").Bool()
+	curveID   = app.Flag("curve", "The curve to use to generate the crypto material").Short('c').Default(FP256BN_AMCL).
+			Enum(FP256BN_AMCL,
+			BN254,
+			FP256BN_AMCL_MIRACL,
+			BLS12_377_GURVY,
+			BLS12_381_GURVY,
+			BLS12_381,
+			BLS12_381_BBS,
+			BLS12_381_BBS_GURVY)
+	useAries = app.Flag("aries", "Use the aries-backed implementation").Bool()
 
 	genIssuerKey            = app.Command("ca-keygen", "Generate CA key material")
 	genSignerConfig         = app.Command("signerconfig", "Generate a default signer for this Idemix MSP")
@@ -97,6 +107,12 @@ func main() {
 		tr = &amcl.Gurvy{C: curve}
 	case BLS12_381:
 		curve = math.Curves[math.BLS12_381]
+		tr = &amcl.Gurvy{C: curve}
+	case BLS12_381_BBS:
+		curve = math.Curves[math.BLS12_381_BBS]
+		tr = &amcl.Gurvy{C: curve}
+	case BLS12_381_BBS_GURVY:
+		curve = math.Curves[math.BLS12_381_BBS_GURVY]
 		tr = &amcl.Gurvy{C: curve}
 	default:
 		handleError(fmt.Errorf("invalid curve [%s]", *curveID))
