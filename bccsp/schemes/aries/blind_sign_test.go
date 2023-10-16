@@ -19,7 +19,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func generateKeyPairRandom() (*bbs12381g2pub.PublicKey, *bbs12381g2pub.PrivateKey, error) {
+func generateKeyPairRandom(curve *math.Curve) (*bbs12381g2pub.PublicKey, *bbs12381g2pub.PrivateKey, error) {
 	seed := make([]byte, 32)
 
 	_, err := rand.Read(seed)
@@ -27,13 +27,13 @@ func generateKeyPairRandom() (*bbs12381g2pub.PublicKey, *bbs12381g2pub.PrivateKe
 		panic(err)
 	}
 
-	return bbs12381g2pub.GenerateKeyPair(sha256.New, seed)
+	return bbs12381g2pub.NewBBSLib(curve).GenerateKeyPair(sha256.New, seed)
 }
 
 func TestBlindSignMessages(t *testing.T) {
 	curve := math.Curves[math.BLS12_381_BBS]
 
-	pubKey, privKey, err := generateKeyPairRandom()
+	pubKey, privKey, err := generateKeyPairRandom(curve)
 	require.NoError(t, err)
 
 	pubKeyBytes, err := pubKey.Marshal()
@@ -57,11 +57,11 @@ func TestBlindSignMessages(t *testing.T) {
 
 	msgToSign := []*bbs12381g2pub.SignatureMessage{
 		{
-			FR:  bbs12381g2pub.FrFromOKM([]byte("message2")),
+			FR:  bbs12381g2pub.FrFromOKM([]byte("message2"), curve),
 			Idx: 1,
 		},
 		{
-			FR:  bbs12381g2pub.FrFromOKM([]byte("message3")),
+			FR:  bbs12381g2pub.FrFromOKM([]byte("message3"), curve),
 			Idx: 2,
 		},
 	}
@@ -82,15 +82,15 @@ func TestBlindSignMessages(t *testing.T) {
 	bm, err = aries.ParseBlindedMessages(bmBytes, curve)
 	assert.NoError(t, err)
 
-	err = aries.VerifyBlinding(blindedMessagesBitmap, bm.C, bm.PoK, pubKey, []byte("nonce578"))
+	err = aries.VerifyBlinding(blindedMessagesBitmap, bm.C, bm.PoK, pubKey, []byte("nonce578"), curve)
 	assert.NoError(t, err)
 
-	bls := bbs12381g2pub.New()
+	bls := bbs12381g2pub.New(curve)
 
 	privKeyBytes, err := privKey.Marshal()
 	require.NoError(t, err)
 
-	signatureBytes, err := aries.BlindSign(msgToSign, 4, bm.C, privKeyBytes)
+	signatureBytes, err := aries.BlindSign(msgToSign, 4, bm.C, privKeyBytes, curve)
 	require.NoError(t, err)
 	require.NoError(t, err)
 	require.NotEmpty(t, signatureBytes)
@@ -108,7 +108,7 @@ func TestBlindSignMessages(t *testing.T) {
 func TestBlindSignZr(t *testing.T) {
 	curve := math.Curves[math.BLS12_381_BBS]
 
-	pubKey, privKey, err := generateKeyPairRandom()
+	pubKey, privKey, err := generateKeyPairRandom(curve)
 	require.NoError(t, err)
 
 	blindMsgCount := 1
@@ -124,7 +124,7 @@ func TestBlindSignZr(t *testing.T) {
 
 	msgToSign := []*bbs12381g2pub.SignatureMessage{
 		{
-			FR:  bbs12381g2pub.FrFromOKM([]byte("message2")),
+			FR:  bbs12381g2pub.FrFromOKM([]byte("message2"), curve),
 			Idx: 1,
 		},
 	}
@@ -137,13 +137,13 @@ func TestBlindSignZr(t *testing.T) {
 	bm, err := aries.BlindMessagesZr(blindedMessagesZr, pubKey, blindMsgCount, []byte("nonce23423"), curve)
 	assert.NoError(t, err)
 
-	err = aries.VerifyBlinding(blindedMessagesBitmap, bm.C, bm.PoK, pubKey, []byte("nonce23423"))
+	err = aries.VerifyBlinding(blindedMessagesBitmap, bm.C, bm.PoK, pubKey, []byte("nonce23423"), curve)
 	assert.NoError(t, err)
 
 	privKeyBytes, err := privKey.Marshal()
 	require.NoError(t, err)
 
-	signatureBytes, err := aries.BlindSign(msgToSign, 2, bm.C, privKeyBytes)
+	signatureBytes, err := aries.BlindSign(msgToSign, 2, bm.C, privKeyBytes, curve)
 	require.NoError(t, err)
 	require.NoError(t, err)
 	require.NotEmpty(t, signatureBytes)
@@ -155,7 +155,7 @@ func TestBlindSignZr(t *testing.T) {
 	require.NotEmpty(t, signatureBytes)
 	require.Len(t, signatureBytes, 112)
 
-	signature, err := bbs12381g2pub.ParseSignature(signatureBytes)
+	signature, err := bbs12381g2pub.NewBBSLib(curve).ParseSignature(signatureBytes)
 	require.NoError(t, err)
 
 	messagesCount := 2

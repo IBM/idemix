@@ -52,7 +52,7 @@ func (c *CredRequest) BlindVerify(credRequest []byte, key types.IssuerPublicKey,
 		return fmt.Errorf("ParseBlindedMessages failed [%w]", err)
 	}
 
-	return VerifyBlinding(bitmap, blindedMsg.C, blindedMsg.PoK, ipk.PK, nonce)
+	return VerifyBlinding(bitmap, blindedMsg.C, blindedMsg.PoK, ipk.PK, nonce, c.Curve)
 }
 
 // Unblind takes a blinded signature and a blinding and produces a standard signature
