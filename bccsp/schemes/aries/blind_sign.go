@@ -11,6 +11,7 @@ import (
 	"errors"
 	"fmt"
 
+	math "github.com/IBM/mathlib"
 	ml "github.com/IBM/mathlib"
 	"github.com/ale-linux/aries-framework-go/component/kmscrypto/crypto/primitive/bbs12381g2pub"
 )
@@ -51,7 +52,7 @@ func ParseBlindedMessages(bytes []byte, curve *ml.Curve) (*BlindedMessages, erro
 
 	offset += curve.CompressedG1ByteSize
 
-	proof, err := bbs12381g2pub.ParseProofG1(bytes[offset:])
+	proof, err := bbs12381g2pub.NewBBSLib(curve).ParseProofG1(bytes[offset:])
 	if err != nil {
 		return nil, fmt.Errorf("parse G1 proof: %w", err)
 	}
@@ -101,12 +102,12 @@ func (b *POKOfBlindedMessages) VerifyProof(messages []bool, commitment *ml.G1, c
 
 // VerifyBlinding verifies that `msgCommit` is a valid
 // commitment of a set of messages against the appropriate bases.
-func VerifyBlinding(messageBitmap []bool, msgCommit *ml.G1, bmProof *POKOfBlindedMessages, PK *bbs12381g2pub.PublicKey, nonce []byte) error {
+func VerifyBlinding(messageBitmap []bool, msgCommit *ml.G1, bmProof *POKOfBlindedMessages, PK *bbs12381g2pub.PublicKey, nonce []byte, curve *math.Curve) error {
 	challengeBytes := msgCommit.Bytes()
 	challengeBytes = append(challengeBytes, bmProof.C.Bytes()...)
 	challengeBytes = append(challengeBytes, nonce...)
 
-	return bmProof.VerifyProof(messageBitmap, msgCommit, bbs12381g2pub.FrFromOKM(challengeBytes), PK)
+	return bmProof.VerifyProof(messageBitmap, msgCommit, bbs12381g2pub.FrFromOKM(challengeBytes, curve), PK)
 }
 
 // BlindMessages constructs a commitment to a set of messages
@@ -120,7 +121,7 @@ func BlindMessages(messages [][]byte, PK *bbs12381g2pub.PublicKey, blindedMsgCou
 			continue
 		}
 
-		zrs[i] = bbs12381g2pub.FrFromOKM(msg)
+		zrs[i] = bbs12381g2pub.FrFromOKM(msg, curve)
 	}
 
 	return BlindMessagesZr(zrs, PK, blindedMsgCount, nonce, curve)
@@ -135,7 +136,7 @@ func BlindMessagesZr(zrs []*ml.Zr, PK *bbs12381g2pub.PublicKey, blindedMsgCount 
 		return nil, fmt.Errorf("build generators from public key: %w", err)
 	}
 
-	commit := bbs12381g2pub.NewProverCommittingG1()
+	commit := bbs12381g2pub.NewBBSLib(curve).NewProverCommittingG1()
 	cb := bbs12381g2pub.NewCommitmentBuilder(blindedMsgCount + 1)
 	secrets := make([]*ml.Zr, 0, blindedMsgCount+1)
 
@@ -168,14 +169,14 @@ func BlindMessagesZr(zrs []*ml.Zr, PK *bbs12381g2pub.PublicKey, blindedMsgCount 
 		C:  C,
 		PoK: &POKOfBlindedMessages{
 			C:      U.Commitment,
-			ProofC: U.GenerateProof(bbs12381g2pub.FrFromOKM(challengeBytes), secrets),
+			ProofC: U.GenerateProof(bbs12381g2pub.FrFromOKM(challengeBytes, curve), secrets),
 		},
 	}, nil
 }
 
 // BlindSign signs disclosed and blinded messages using private key in compressed form.
-func BlindSign(messages []*bbs12381g2pub.SignatureMessage, msgCount int, commitment *ml.G1, privKeyBytes []byte) ([]byte, error) {
-	privKey, err := bbs12381g2pub.UnmarshalPrivateKey(privKeyBytes)
+func BlindSign(messages []*bbs12381g2pub.SignatureMessage, msgCount int, commitment *ml.G1, privKeyBytes []byte, curve *math.Curve) ([]byte, error) {
+	privKey, err := bbs12381g2pub.NewBBSLib(curve).UnmarshalPrivateKey(privKeyBytes)
 	if err != nil {
 		return nil, fmt.Errorf("unmarshal private key: %w", err)
 	}
@@ -184,14 +185,14 @@ func BlindSign(messages []*bbs12381g2pub.SignatureMessage, msgCount int, commitm
 		return nil, errors.New("messages are not defined")
 	}
 
-	bbs := bbs12381g2pub.New()
+	bbs := bbs12381g2pub.New(curve)
 
 	return bbs.SignWithKeyFr(messages, msgCount, commitment, privKey)
 }
 
 // UnblindSign converts a signature over some blind messages into a standard signature.
 func UnblindSign(sigBytes []byte, S *ml.Zr, curve *ml.Curve) ([]byte, error) {
-	signature, err := bbs12381g2pub.ParseSignature(sigBytes)
+	signature, err := bbs12381g2pub.NewBBSLib(curve).ParseSignature(sigBytes)
 	if err != nil {
 		return nil, fmt.Errorf("parse signature: %w", err)
 	}

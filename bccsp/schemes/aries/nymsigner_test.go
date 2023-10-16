@@ -19,7 +19,7 @@ func TestNymSigner(t *testing.T) {
 	rand, err := curve.Rand()
 	assert.NoError(t, err)
 
-	issuerProto := &aries.Issuer{}
+	issuerProto := &aries.Issuer{curve}
 
 	attrs := []string{
 		"attr1",

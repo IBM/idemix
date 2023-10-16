@@ -18,10 +18,10 @@ import (
 
 func TestCredRequest(t *testing.T) {
 	credProto := &aries.Cred{
-		Bls:   bbs12381g2pub.New(),
+		Bls:   bbs12381g2pub.New(math.Curves[math.BLS12_381_BBS]),
 		Curve: math.Curves[math.BLS12_381_BBS],
 	}
-	issuerProto := &aries.Issuer{}
+	issuerProto := &aries.Issuer{math.Curves[math.BLS12_381_BBS]}
 
 	attrs := []string{
 		"attr1",

@@ -10,11 +10,12 @@ import (
 	"testing"
 
 	"github.com/IBM/idemix/bccsp/schemes/aries"
+	math "github.com/IBM/mathlib"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestIssuer(t *testing.T) {
-	issuer := &aries.Issuer{}
+	issuer := &aries.Issuer{math.Curves[math.BLS12_381_BBS]}
 
 	attrs := []string{
 		"attr1",
@@ -46,7 +47,8 @@ func TestIssuer(t *testing.T) {
 	ipk1, err := issuer.NewPublicKeyFromBytes(ipkBytes, attrs)
 	assert.NoError(t, err)
 	assert.NotNil(t, ipk1)
-	assert.Equal(t, ipk, ipk1)
+	assert.True(t, ipk.(*aries.IssuerPublicKey).PK.PointG2.Equals(ipk1.(*aries.IssuerPublicKey).PK.PointG2))
+	assert.Equal(t, ipk.(*aries.IssuerPublicKey).N, ipk1.(*aries.IssuerPublicKey).N)
 
 	_, err = issuer.NewKeyFromBytes([]byte("resistance is futile"), attrs)
 	assert.EqualError(t, err, "UnmarshalPrivateKey failed [invalid size of private key]")
