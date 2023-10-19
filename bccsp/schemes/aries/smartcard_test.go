@@ -10,13 +10,83 @@ import (
 	"crypto/aes"
 	"crypto/rand"
 	"encoding/hex"
+	"os"
 	"testing"
 
 	"github.com/IBM/idemix/bccsp/schemes/aries"
 	math "github.com/IBM/mathlib"
 	"github.com/ale-linux/aries-framework-go/component/kmscrypto/crypto/primitive/bbs12381g2pub"
+	"github.com/golang/protobuf/proto"
 	"github.com/stretchr/testify/assert"
 )
+
+const (
+	// AttributeNameOU is the attribute name of the Organization Unit attribute
+	AttributeNameOU = "OU"
+
+	// AttributeNameRole is the attribute name of the Role attribute
+	AttributeNameRole = "Role"
+
+	// AttributeNameEnrollmentId is the attribute name of the Enrollment ID attribute
+	AttributeNameEnrollmentId = "EnrollmentID"
+
+	// AttributeNameRevocationHandle is the attribute name of the revocation handle attribute
+	AttributeNameRevocationHandle = "RevocationHandle"
+)
+
+var AttributeNames = []string{AttributeNameOU, AttributeNameRole, AttributeNameEnrollmentId, AttributeNameRevocationHandle}
+
+func getSmartcardFromFile(ipkFileName, signerFileName string, t *testing.T) (*aries.Smartcard, *math.Curve) {
+	bbs12381g2pub.SetCurve(math.Curves[math.FP256BN_AMCL_MIRACL])
+
+	c := math.Curves[math.FP256BN_AMCL_MIRACL]
+
+	rng, err := c.Rand()
+	assert.NoError(t, err)
+
+	k0, err := hex.DecodeString("4669650c993c43ef45742c3aa8aeb842")
+	assert.NoError(t, err)
+	k1, err := hex.DecodeString("358abd275e6a945d680d40474f5f16c7")
+	assert.NoError(t, err)
+
+	ciph0, err := aes.NewCipher(k0)
+	assert.NoError(t, err)
+	ciph1, err := aes.NewCipher(k1)
+	assert.NoError(t, err)
+
+	ipkBytes, err := os.ReadFile(ipkFileName)
+	assert.NoError(t, err)
+	issuer := &aries.Issuer{}
+	_ipk, err := issuer.NewPublicKeyFromBytes(ipkBytes, AttributeNames)
+	assert.NoError(t, err)
+	ipk := _ipk.(*aries.IssuerPublicKey)
+
+	h0 := ipk.PKwG.H0
+	h1 := ipk.PKwG.H[0]
+	h2 := ipk.PKwG.H[3]
+
+	signerBytes, err := os.ReadFile(signerFileName)
+	assert.NoError(t, err)
+	signerConfig := &IdemixMSPSignerConfig{}
+	err = proto.Unmarshal(signerBytes, signerConfig)
+	assert.NoError(t, err)
+
+	eid := bbs12381g2pub.FrFromOKM([]byte(signerConfig.EnrollmentId))
+
+	sk := c.NewZrFromBytes(signerConfig.Sk)
+
+	return &aries.Smartcard{
+		H0:     h0,
+		H1:     h1,
+		H2:     h2,
+		Uid_sk: sk,
+		EID:    eid,
+		PRF_K0: ciph0,
+		PRF_K1: ciph1,
+		Curve:  c,
+		Rng:    rng,
+	}, c
+}
 
 func getSmartcard(t *testing.T) (*aries.Smartcard, *math.Curve) {
 	bbs12381g2pub.SetCurve(math.Curves[math.FP256BN_AMCL_MIRACL])
@@ -396,8 +466,20 @@ func TestPRF(t *testing.T) {
 	assert.Equal(t, rExpected, r.Bytes())
 }
 
+/*
+
+CARD CONFIGURATION:
+
+80230000c100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000003fffffffffffcf0cd46e5f25eee71a49f0cdc65fb12980a82d3292ddbaed33013fffffffffffcf0cd46e5f25eee71a49e0cdc65fb1299921af62d536cd10b500d0400000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000002
+80240000c304f474278832b9840a14b158b2c322bf668d8a85b4830a5277799f828b7f1672d56d5d973a48b09f95f600a8deb560c5c84e3414411d816437a5da6ad395cd466504b8d4256d91a065f1a17ed5a7a166e55e299aee8e4dad370df5fa84c4d447b138dda55ee816f2b9fc9223c14fa814be007514ecbade7f70e6f97f666f5a0471c604fd3cfacec96d76af0506fb44237c2b5f8b2536e73c8b571c4451d0f9c96aae66cf5554a92a84d23e6f2cbca4c9ab1ac21d4399dfc33af983d62c454d8cc05082
+80250000202e8f42b0b247ddbca1a7296b098114cb83b76d00c53d98fad980f40769c2c761
+8026000020b05f96d5582f87fc8584fa7eb11d4018012e59adf945cd8034ebcb4ee41b0586
+80270000204669650c993c43ef45742c3aa8aeb842358abd275e6a945d680d40474f5f16c7
+
+*/
+
 func TestVerifyFromCard(t *testing.T) {
-	sc, _ := getSmartcard(t)
+	sc, _ := getSmartcardFromFile("/home/aso/tmp/sc/IssuerPublicKey", "/home/aso/tmp/sc/SignerConfig", t)
 	defer func() {
 		// reset the curve to the one other tests use
 		bbs12381g2pub.SetCurve(math.Curves[math.BLS12_381_BBS])
@@ -405,7 +487,7 @@ func TestVerifyFromCard(t *testing.T) {
 
 	_, tau0 := sc.NymEid()
 
-	proof, err := hex.DecodeString("751A2CB0ECE86ACCCA5846E578DA045E04C10FE2D02FED20CED167BB12C94B52C82C3269AB423BC977B1052D9A891E78321BCDB9AAD44A79922611DEA4832F1DD310F18FAA24B01A273C6BCFE2044FF11804B00567E220E1E8C0E76E2EA7DBAEE8F9ABCF8B7CACB562086D827345A02D76F83BB7DFD533745D57E4AD618D4CE8DF031F437B6220EE97C19B78B2DBFCCBFC69C0733191905FC5550BCC4D0F5DCE10780558E99DA037155CCE0452EC298390D186DAC6BA386550952467A45C366175E8A5465B8FBD30AC64885630309F9E73BD9000")
+	proof, err := hex.DecodeString("65BF43AD2CEDB58A93CF529A57010FA0045388CA7A99FAAACBD40D3CB09E65CC654EA3D74E96CBA603C4F34C2E5FA5D9AB4F5357D45BE9B5C443CB2EC1048C67379D2FD88132D94899D85C1635F5E583E2047FEE197F82EA3824A1FD1815E6CFB6C0B8126F3B0E8884B98F6DFE4092E19E0504E6A54E9DF81911FC760761E87D0D9A729EE5CE9825DB0BB70B7CF0D0A238FF88CAB6ED1F66D4F9FD05257354752863ADDAF684443A402280D4FFED7DCE6CD53B66C0D50E160D32EC566D85A087D3CD53686ABB5D8931BA8E53DDD345FC9F3A9000")
 	assert.NoError(t, err)
 
 	nonce, err := hex.DecodeString("00e7a59abb5692a91b3e41d483af1279216b0f855ff9f688335a7d2cd92f877d")
