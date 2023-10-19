@@ -54,7 +54,7 @@ func (sc *Smartcard) getNymEid() (*math.Zr, *math.G1) {
 
 func (sc *Smartcard) NymEid() (*math.Zr, *math.G1) {
 	// increment counter
-	sc.ctr++
+	// sc.ctr++
 
 	return sc.getNymEid()
 }
