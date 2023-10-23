@@ -20,18 +20,12 @@ import (
 	idemix "github.com/IBM/idemix/bccsp/schemes/dlog/crypto"
 	amclt "github.com/IBM/idemix/bccsp/schemes/dlog/crypto/translator/amcl"
 	math "github.com/IBM/mathlib"
-	"github.com/ale-linux/aries-framework-go/component/kmscrypto/crypto/primitive/bbs12381g2pub"
 	"github.com/golang/protobuf/proto"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/require"
 )
 
 var testDir = filepath.Join(os.TempDir(), "idemixca-test")
-
-func TestMain(m *testing.M) {
-	bbs12381g2pub.SetCurve(math.Curves[math.BLS12_381_BBS])
-	m.Run()
-}
 
 func TestIdemixCaAries(t *testing.T) {
 	cleanup()
@@ -48,7 +42,7 @@ func TestIdemixCaAries(t *testing.T) {
 		Rng:   rng,
 	}
 
-	issuer := &aries.Issuer{}
+	issuer := &aries.Issuer{Curve: curve}
 
 	revocationkey, err := revAuth.NewKey()
 	require.NoError(t, err)

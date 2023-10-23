@@ -178,8 +178,6 @@ func New(keyStore bccsp.KeyStore, curve *math.Curve, translator idemix.Translato
 }
 
 func NewAries(keyStore bccsp.KeyStore, curve *math.Curve, _translator idemix.Translator, exportable bool) (*csp, error) {
-	bbs12381g2pub.SetCurve(curve)
-
 	base, err := NewImpl(keyStore)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed instantiating base bccsp")
@@ -196,7 +194,9 @@ func NewAries(keyStore bccsp.KeyStore, curve *math.Curve, _translator idemix.Tra
 	base.AddWrapper(reflect.TypeOf(&bccsp.IdemixIssuerKeyGenOpts{}),
 		&handlers.IssuerKeyGen{
 			Exportable: exportable,
-			Issuer:     &aries.Issuer{},
+			Issuer: &aries.Issuer{
+				Curve: curve,
+			},
 		})
 	base.AddWrapper(reflect.TypeOf(&bccsp.IdemixUserSecretKeyGenOpts{}),
 		&handlers.UserKeyGen{
@@ -252,7 +252,7 @@ func NewAries(keyStore bccsp.KeyStore, curve *math.Curve, _translator idemix.Tra
 		&handlers.CredentialSigner{
 			Credential: &aries.Cred{
 				Curve: curve,
-				Bls:   bbs12381g2pub.New(),
+				Bls:   bbs12381g2pub.New(curve),
 			},
 		})
 	base.AddWrapper(reflect.TypeOf(handlers.NewRevocationSecretKey(nil, true)),
@@ -291,7 +291,7 @@ func NewAries(keyStore bccsp.KeyStore, curve *math.Curve, _translator idemix.Tra
 		&handlers.CredentialVerifier{
 			Credential: &aries.Cred{
 				Curve: curve,
-				Bls:   bbs12381g2pub.New(),
+				Bls:   bbs12381g2pub.New(curve),
 			},
 		})
 	base.AddWrapper(reflect.TypeOf(handlers.NewRevocationPublicKey(nil)),
@@ -313,12 +313,16 @@ func NewAries(keyStore bccsp.KeyStore, curve *math.Curve, _translator idemix.Tra
 		})
 	base.AddWrapper(reflect.TypeOf(&bccsp.IdemixIssuerPublicKeyImportOpts{}),
 		&handlers.IssuerPublicKeyImporter{
-			Issuer: &aries.Issuer{},
+			Issuer: &aries.Issuer{
+				Curve: curve,
+			},
 		})
 	base.AddWrapper(reflect.TypeOf(&bccsp.IdemixIssuerKeyImportOpts{}),
 		&handlers.IssuerKeyImporter{
 			Exportable: exportable,
-			Issuer:     &aries.Issuer{},
+			Issuer: &aries.Issuer{
+				Curve: curve,
+			},
 		})
 	base.AddWrapper(reflect.TypeOf(&bccsp.IdemixNymPublicKeyImportOpts{}),
 		&handlers.NymPublicKeyImporter{

@@ -1,8 +1,8 @@
 cloud.google.com/go v0.26.0/go.mod h1:aQUYkXzVsufM+DwF1aE+0xfcU+56JwCaLick0ClmMTw=
 github.com/BurntSushi/toml v0.3.1 h1:WXkYYl6Yr3qBf1K79EBnL4mak0OimBfB0XUf9Vl28OQ=
 github.com/BurntSushi/toml v0.3.1/go.mod h1:xHWCNGjB5oqiDr8zfno3MHue2Ht5sIBksp03qcyfWMU=
-github.com/IBM/idemix/bccsp/schemes/aries v0.0.0-20231007073542-19fc3525a5e6 h1:Id0PTOnaASY/MFd/0D5oiki7oWpv/MaBVe2PowOz9dY=
-github.com/IBM/idemix/bccsp/schemes/aries v0.0.0-20231007073542-19fc3525a5e6/go.mod h1:wjYMCJCOMuioZ8hgaktBMVbZGoi0EdlVGtgEgLa5SgA=
+github.com/IBM/idemix/bccsp/schemes/aries v0.0.0-20231023170933-072e5e41952c h1:6nxTT9CZkk2UciBeSf9woGdQcUb9kfKnSiQLWwp6he8=
+github.com/IBM/idemix/bccsp/schemes/aries v0.0.0-20231023170933-072e5e41952c/go.mod h1:rvel0opGv/k6OQHEXU6o74jzILVfWQOvomJfdyKMCTg=
 github.com/IBM/idemix/bccsp/schemes/weak-bb v0.0.0-20231007073542-19fc3525a5e6 h1:kTAivgWvb2G8JM55lN7ix56WpWShguHUl9yCq9SqTMI=
 github.com/IBM/idemix/bccsp/schemes/weak-bb v0.0.0-20231007073542-19fc3525a5e6/go.mod h1:EPAfwEciT+Yke9xTooqJUcEuf2R8pmIA0QjPG6df1xM=
 github.com/IBM/idemix/bccsp/types v0.0.0-20231007073542-19fc3525a5e6 h1:oL2OYBjdBiSAlnhDXQfhzEydBUSE0pvk4PD3DhtFGiM=

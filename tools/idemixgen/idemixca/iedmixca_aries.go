@@ -27,7 +27,7 @@ import (
 // AttributeNameRevocationHandle contains the revocation handle, which can be used to revoke this user
 // Generated keys are serialized to bytes.
 func GenerateIssuerKeyAries(curve *math.Curve) ([]byte, []byte, error) {
-	issuer := &aries.Issuer{}
+	issuer := &aries.Issuer{Curve: curve}
 
 	AttributeNames := []string{imsp.AttributeNameOU, imsp.AttributeNameRole, imsp.AttributeNameEnrollmentId, imsp.AttributeNameRevocationHandle}
 
@@ -79,7 +79,7 @@ func GenerateSignerConfigAries(
 
 	credentialSigner := &aries.Cred{
 		Curve: curve,
-		Bls:   bbs12381g2pub.New(),
+		Bls:   bbs12381g2pub.New(curve),
 	}
 
 	revocationAuthority := &aries.RevocationAuthority{
@@ -87,7 +87,7 @@ func GenerateSignerConfigAries(
 		Rng:   rng,
 	}
 
-	issuer := &aries.Issuer{}
+	issuer := &aries.Issuer{Curve: curve}
 	AttributeNames := []string{imsp.AttributeNameOU, imsp.AttributeNameRole, imsp.AttributeNameEnrollmentId, imsp.AttributeNameRevocationHandle}
 	isk, err := issuer.NewKeyFromBytes(iskBytes, AttributeNames)
 	if err != nil {

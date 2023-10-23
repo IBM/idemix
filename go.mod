@@ -3,7 +3,7 @@ module github.com/IBM/idemix
 go 1.19
 
 require (
-	github.com/IBM/idemix/bccsp/schemes/aries v0.0.0-20231007073542-19fc3525a5e6
+	github.com/IBM/idemix/bccsp/schemes/aries v0.0.0-20231023170933-072e5e41952c
 	github.com/IBM/idemix/bccsp/schemes/weak-bb v0.0.0-20231007073542-19fc3525a5e6
 	github.com/IBM/idemix/bccsp/types v0.0.0-20231007073542-19fc3525a5e6
 	github.com/IBM/mathlib v0.0.3-0.20231011094432-44ee0eb539da

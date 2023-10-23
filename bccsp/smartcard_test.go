@@ -26,8 +26,6 @@ import (
 )
 
 func getSmartcard(t *testing.T) (*aries.Smartcard, *math.Curve) {
-	bbs12381g2pub.SetCurve(math.Curves[math.FP256BN_AMCL_MIRACL])
-
 	c := math.Curves[math.FP256BN_AMCL_MIRACL]
 
 	rng, err := c.Rand()
@@ -89,16 +87,12 @@ func readFile(t *testing.T, name string) []byte {
 func TestSmartcardHybrid(t *testing.T) {
 	sc, curve := getSmartcard(t)
 	translator := &amcl.Gurvy{C: curve}
-	defer func() {
-		// reset the curve to the one other tests use
-		bbs12381g2pub.SetCurve(math.Curves[math.BLS12_381_BBS])
-	}()
 
 	/*******************************************************************************/
 	/****************************read out idemix config*****************************/
 	/*******************************************************************************/
 
-	issuer := &aries.Issuer{}
+	issuer := &aries.Issuer{Curve: curve}
 
 	_ipk, err := issuer.NewPublicKeyFromBytes(readFile(t, "testdata/idemix/msp/IssuerPublicKey"), []string{"", "", "", ""})
 	assert.NoError(t, err)
@@ -125,7 +119,7 @@ func TestSmartcardHybrid(t *testing.T) {
 	sc.H0 = ipk.PKwG.H0
 	sc.H1 = ipk.PKwG.H[0]
 	sc.H2 = ipk.PKwG.H[3]
-	sc.EID = bbs12381g2pub.FrFromOKM([]byte(conf.EnrollmentId))
+	sc.EID = bbs12381g2pub.FrFromOKM([]byte(conf.EnrollmentId), curve)
 	sc.Uid_sk = curve.NewZrFromBytes(conf.Sk)
 
 	/*******************************************************************************/
@@ -180,7 +174,7 @@ func TestSmartcardHybrid(t *testing.T) {
 		EidNymAuditData: &types.AttrNymAuditData{
 			Nym:  nymEid,
 			Rand: rNymEid,
-			Attr: bbs12381g2pub.FrFromOKM([]byte(conf.EnrollmentId)),
+			Attr: bbs12381g2pub.FrFromOKM([]byte(conf.EnrollmentId), curve),
 		},
 	}
 
@@ -217,16 +211,12 @@ func TestSmartcardHybrid(t *testing.T) {
 func TestSmartcardCSP(t *testing.T) {
 	sc, curve := getSmartcard(t)
 	translator := &amcl.Gurvy{C: curve}
-	defer func() {
-		// reset the curve to the one other tests use
-		bbs12381g2pub.SetCurve(math.Curves[math.BLS12_381_BBS])
-	}()
 
 	/*******************************************************************************/
 	/****************************read out idemix config*****************************/
 	/*******************************************************************************/
 
-	issuer := &aries.Issuer{}
+	issuer := &aries.Issuer{Curve: curve}
 
 	_ipk, err := issuer.NewPublicKeyFromBytes(readFile(t, "testdata/idemix/msp/IssuerPublicKey"), []string{"", "", "", ""})
 	assert.NoError(t, err)
@@ -253,7 +243,7 @@ func TestSmartcardCSP(t *testing.T) {
 	sc.H0 = ipk.PKwG.H0
 	sc.H1 = ipk.PKwG.H[0]
 	sc.H2 = ipk.PKwG.H[3]
-	sc.EID = bbs12381g2pub.FrFromOKM([]byte(conf.EnrollmentId))
+	sc.EID = bbs12381g2pub.FrFromOKM([]byte(conf.EnrollmentId), curve)
 	sc.Uid_sk = curve.NewZrFromBytes(conf.Sk)
 
 	/*******************************************************************************/
@@ -317,7 +307,7 @@ func TestSmartcardCSP(t *testing.T) {
 			EidNymAuditData: &types.AttrNymAuditData{
 				Nym:  nymEid,
 				Rand: rNymEid,
-				Attr: bbs12381g2pub.FrFromOKM([]byte(conf.EnrollmentId)),
+				Attr: bbs12381g2pub.FrFromOKM([]byte(conf.EnrollmentId), curve),
 			},
 		},
 	}
@@ -384,7 +374,7 @@ func TestSmartcardCSP(t *testing.T) {
 			EidNymAuditData: &types.AttrNymAuditData{
 				Nym:  nymEid,
 				Rand: rNymEid,
-				Attr: bbs12381g2pub.FrFromOKM([]byte(conf.EnrollmentId)),
+				Attr: bbs12381g2pub.FrFromOKM([]byte(conf.EnrollmentId), curve),
 			},
 		},
 	}
@@ -447,7 +437,7 @@ func TestSmartcardCSP(t *testing.T) {
 		EidNymAuditData: &types.AttrNymAuditData{
 			Nym:  nymEid,
 			Rand: rNymEid,
-			Attr: bbs12381g2pub.FrFromOKM([]byte(conf.EnrollmentId)),
+			Attr: bbs12381g2pub.FrFromOKM([]byte(conf.EnrollmentId), curve),
 		},
 	}
 
