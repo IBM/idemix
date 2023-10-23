@@ -18,20 +18,10 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestMain(m *testing.M) {
-	bbs12381g2pub.SetCurve(math.Curves[math.BLS12_381_BBS])
-
-	m.Run()
-}
-
 func TestSmartcardSigner(t *testing.T) {
 	sc, curve := getSmartcard(t)
-	defer func() {
-		// reset the curve to the one other tests use
-		bbs12381g2pub.SetCurve(math.Curves[math.BLS12_381_BBS])
-	}()
 
-	pubKey, privKey, err := generateKeyPairRandom()
+	pubKey, privKey, err := generateKeyPairRandom(curve)
 	assert.NoError(t, err)
 
 	privKeyBytes, err := privKey.Marshal()
@@ -46,7 +36,7 @@ func TestSmartcardSigner(t *testing.T) {
 	msgsZr := []*bbs12381g2pub.SignatureMessage{
 		{
 			Idx: 1,
-			FR:  bbs12381g2pub.FrFromOKM([]byte(ou)),
+			FR:  bbs12381g2pub.FrFromOKM([]byte(ou), curve),
 		},
 		{
 			Idx: 2,
@@ -54,18 +44,18 @@ func TestSmartcardSigner(t *testing.T) {
 		},
 		{
 			Idx: 3,
-			FR:  bbs12381g2pub.FrFromOKM([]byte(eid)),
+			FR:  bbs12381g2pub.FrFromOKM([]byte(eid), curve),
 		},
 		{
 			Idx: 4,
-			FR:  bbs12381g2pub.FrFromOKM([]byte(rh)),
+			FR:  bbs12381g2pub.FrFromOKM([]byte(rh), curve),
 		},
 	}
 
 	sc.H0 = pkwg.H0
 	sc.H1 = pkwg.H[0]
 	sc.H2 = pkwg.H[3]
-	sc.EID = bbs12381g2pub.FrFromOKM([]byte(eid))
+	sc.EID = bbs12381g2pub.FrFromOKM([]byte(eid), curve)
 
 	proofBytes, err := sc.NymSign(nil)
 	assert.NoError(t, err)
@@ -76,7 +66,7 @@ func TestSmartcardSigner(t *testing.T) {
 	B, err := sc.Curve.NewG1FromBytes(proofBytes[16 : 16+curve.G1ByteSize])
 	assert.NoError(t, err)
 
-	sig_, err := aries.BlindSign(msgsZr, messagesCount, B, privKeyBytes)
+	sig_, err := aries.BlindSign(msgsZr, messagesCount, B, privKeyBytes, curve)
 	assert.NoError(t, err)
 
 	sigBytes, err := aries.UnblindSign(sig_, r, curve)
@@ -95,9 +85,9 @@ func TestSmartcardSigner(t *testing.T) {
 	credBytes, err := proto.Marshal(cred)
 	assert.NoError(t, err)
 
-	issuerProto := &aries.Issuer{}
+	issuerProto := &aries.Issuer{curve}
 	credProto := &aries.Cred{
-		Bls:   bbs12381g2pub.New(),
+		Bls:   bbs12381g2pub.New(curve),
 		Curve: curve,
 	}
 
@@ -229,14 +219,14 @@ func TestSmartcardSigner(t *testing.T) {
 	// supply as eid nym the one received from the smartcard
 
 	rNymEid, NymEid := sc.NymEid()
-	assert.True(t, NymEid.Equals(sc.H0.Mul2(rNymEid, sc.H2, bbs12381g2pub.FrFromOKM([]byte(eid)))))
+	assert.True(t, NymEid.Equals(sc.H0.Mul2(rNymEid, sc.H2, bbs12381g2pub.FrFromOKM([]byte(eid), curve))))
 
 	meta := &types.IdemixSignerMetadata{
 		EidNym: NymEid.Bytes(),
 		EidNymAuditData: &types.AttrNymAuditData{
 			Nym:  NymEid,
 			Rand: rNymEid,
-			Attr: bbs12381g2pub.FrFromOKM([]byte(eid)),
+			Attr: bbs12381g2pub.FrFromOKM([]byte(eid), curve),
 		},
 	}
 
@@ -265,15 +255,11 @@ idemixgen signerconfig --curve="FP256BN_AMCL_MIRACL" --aries --output="./testdat
 
 func TestSmartcardSigner1(t *testing.T) {
 	sc, curve := getSmartcard(t)
-	defer func() {
-		// reset the curve to the one other tests use
-		bbs12381g2pub.SetCurve(math.Curves[math.BLS12_381_BBS])
-	}()
 
 	rng, err := curve.Rand()
 	assert.NoError(t, err)
 
-	issuer := &aries.Issuer{}
+	issuer := &aries.Issuer{curve}
 
 	verifier := &aries.Signer{
 		Curve: curve,
@@ -296,7 +282,7 @@ func TestSmartcardSigner1(t *testing.T) {
 	sc.H0 = ipk.(*aries.IssuerPublicKey).PKwG.H0
 	sc.H1 = ipk.(*aries.IssuerPublicKey).PKwG.H[0]
 	sc.H2 = ipk.(*aries.IssuerPublicKey).PKwG.H[3]
-	sc.EID = bbs12381g2pub.FrFromOKM([]byte(eid))
+	sc.EID = bbs12381g2pub.FrFromOKM([]byte(eid), curve)
 	sc.Uid_sk = curve.NewZrFromBytes(conf.Sk)
 
 	// make nym eid
@@ -388,7 +374,7 @@ func idemixScSign(
 		EidNymAuditData: &types.AttrNymAuditData{
 			Nym:  NymEid,
 			Rand: rNymEid,
-			Attr: bbs12381g2pub.FrFromOKM([]byte(eid)),
+			Attr: bbs12381g2pub.FrFromOKM([]byte(eid), sc.Curve),
 		},
 	}
 
@@ -414,10 +400,10 @@ func TestSigner(t *testing.T) {
 	curve := math.Curves[math.BLS12_381_BBS]
 
 	credProto := &aries.Cred{
-		Bls:   bbs12381g2pub.New(),
+		Bls:   bbs12381g2pub.New(curve),
 		Curve: curve,
 	}
-	issuerProto := &aries.Issuer{}
+	issuerProto := &aries.Issuer{curve}
 
 	attrs := []string{
 		"attr1",
@@ -552,7 +538,7 @@ func TestSigner(t *testing.T) {
 
 	cb = bbs12381g2pub.NewCommitmentBuilder(2)
 	cb.Add(ipk.(*aries.IssuerPublicKey).PKwG.H0, rNym)
-	cb.Add(ipk.(*aries.IssuerPublicKey).PKwG.H[eidIndex+1], bbs12381g2pub.FrFromOKM([]byte("nymeid")))
+	cb.Add(ipk.(*aries.IssuerPublicKey).PKwG.H[eidIndex+1], bbs12381g2pub.FrFromOKM([]byte("nymeid"), curve))
 	nym := cb.Build()
 
 	meta := &types.IdemixSignerMetadata{
@@ -560,7 +546,7 @@ func TestSigner(t *testing.T) {
 		EidNymAuditData: &types.AttrNymAuditData{
 			Nym:  nym,
 			Rand: rNym,
-			Attr: bbs12381g2pub.FrFromOKM([]byte("nymeid")),
+			Attr: bbs12381g2pub.FrFromOKM([]byte("nymeid"), curve),
 		},
 	}
 
@@ -612,7 +598,7 @@ func TestSigner(t *testing.T) {
 		EidNymAuditData: &types.AttrNymAuditData{
 			Nym:  curve.GenG1.Mul(curve.NewRandomZr(rand)),
 			Rand: rNym,
-			Attr: bbs12381g2pub.FrFromOKM([]byte("nymeid")),
+			Attr: bbs12381g2pub.FrFromOKM([]byte("nymeid"), curve),
 		},
 	}
 
@@ -673,7 +659,7 @@ func TestSigner(t *testing.T) {
 		EidNymAuditData: &types.AttrNymAuditData{
 			Nym:  nym,
 			Rand: rNym,
-			Attr: bbs12381g2pub.FrFromOKM([]byte("nymeid")),
+			Attr: bbs12381g2pub.FrFromOKM([]byte("nymeid"), curve),
 		},
 	}
 
@@ -708,7 +694,7 @@ func TestSigner(t *testing.T) {
 
 	cb = bbs12381g2pub.NewCommitmentBuilder(2)
 	cb.Add(ipk.(*aries.IssuerPublicKey).PKwG.H0, rNym)
-	cb.Add(ipk.(*aries.IssuerPublicKey).PKwG.H[rhIndex+1], bbs12381g2pub.FrFromOKM([]byte("nymrh")))
+	cb.Add(ipk.(*aries.IssuerPublicKey).PKwG.H[rhIndex+1], bbs12381g2pub.FrFromOKM([]byte("nymrh"), curve))
 	nym = cb.Build()
 
 	meta = &types.IdemixSignerMetadata{
@@ -716,7 +702,7 @@ func TestSigner(t *testing.T) {
 		RhNymAuditData: &types.AttrNymAuditData{
 			Nym:  nym,
 			Rand: rNym,
-			Attr: bbs12381g2pub.FrFromOKM([]byte("nymrh")),
+			Attr: bbs12381g2pub.FrFromOKM([]byte("nymrh"), curve),
 		},
 	}
 
@@ -764,7 +750,7 @@ func TestSigner(t *testing.T) {
 		RhNymAuditData: &types.AttrNymAuditData{
 			Nym:  curve.GenG1.Mul(curve.NewRandomZr(rand)),
 			Rand: rNym,
-			Attr: bbs12381g2pub.FrFromOKM([]byte("nymrh")),
+			Attr: bbs12381g2pub.FrFromOKM([]byte("nymrh"), curve),
 		},
 	}
 
@@ -816,7 +802,7 @@ func TestSigner(t *testing.T) {
 		RhNymAuditData: &types.AttrNymAuditData{
 			Nym:  nym,
 			Rand: rNym,
-			Attr: bbs12381g2pub.FrFromOKM([]byte("nymrh")),
+			Attr: bbs12381g2pub.FrFromOKM([]byte("nymrh"), curve),
 		},
 	}
 

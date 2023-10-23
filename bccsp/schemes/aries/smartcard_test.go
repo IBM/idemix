@@ -10,17 +10,83 @@ import (
 	"crypto/aes"
 	"crypto/rand"
 	"encoding/hex"
+	"os"
 	"testing"
 
 	"github.com/IBM/idemix/bccsp/schemes/aries"
 	math "github.com/IBM/mathlib"
 	"github.com/ale-linux/aries-framework-go/component/kmscrypto/crypto/primitive/bbs12381g2pub"
+	"github.com/golang/protobuf/proto"
 	"github.com/stretchr/testify/assert"
 )
 
-func getSmartcard(t *testing.T) (*aries.Smartcard, *math.Curve) {
-	bbs12381g2pub.SetCurve(math.Curves[math.FP256BN_AMCL_MIRACL])
+const (
+	// AttributeNameOU is the attribute name of the Organization Unit attribute
+	AttributeNameOU = "OU"
 
+	// AttributeNameRole is the attribute name of the Role attribute
+	AttributeNameRole = "Role"
+
+	// AttributeNameEnrollmentId is the attribute name of the Enrollment ID attribute
+	AttributeNameEnrollmentId = "EnrollmentID"
+
+	// AttributeNameRevocationHandle is the attribute name of the revocation handle attribute
+	AttributeNameRevocationHandle = "RevocationHandle"
+)
+
+var AttributeNames = []string{AttributeNameOU, AttributeNameRole, AttributeNameEnrollmentId, AttributeNameRevocationHandle}
+
+func getSmartcardFromFile(ipkFileName, signerFileName string, t *testing.T) (*aries.Smartcard, *math.Curve) {
+	c := math.Curves[math.FP256BN_AMCL_MIRACL]
+
+	rng, err := c.Rand()
+	assert.NoError(t, err)
+
+	k0, err := hex.DecodeString("4669650c993c43ef45742c3aa8aeb842")
+	assert.NoError(t, err)
+	k1, err := hex.DecodeString("358abd275e6a945d680d40474f5f16c7")
+	assert.NoError(t, err)
+
+	ciph0, err := aes.NewCipher(k0)
+	assert.NoError(t, err)
+	ciph1, err := aes.NewCipher(k1)
+	assert.NoError(t, err)
+
+	ipkBytes, err := os.ReadFile(ipkFileName)
+	assert.NoError(t, err)
+	issuer := &aries.Issuer{c}
+	_ipk, err := issuer.NewPublicKeyFromBytes(ipkBytes, AttributeNames)
+	assert.NoError(t, err)
+	ipk := _ipk.(*aries.IssuerPublicKey)
+
+	h0 := ipk.PKwG.H0
+	h1 := ipk.PKwG.H[0]
+	h2 := ipk.PKwG.H[3]
+
+	signerBytes, err := os.ReadFile(signerFileName)
+	assert.NoError(t, err)
+	signerConfig := &IdemixMSPSignerConfig{}
+	err = proto.Unmarshal(signerBytes, signerConfig)
+	assert.NoError(t, err)
+
+	eid := bbs12381g2pub.FrFromOKM([]byte(signerConfig.EnrollmentId), c)
+
+	sk := c.NewZrFromBytes(signerConfig.Sk)
+
+	return &aries.Smartcard{
+		H0:     h0,
+		H1:     h1,
+		H2:     h2,
+		Uid_sk: sk,
+		EID:    eid,
+		PRF_K0: ciph0,
+		PRF_K1: ciph1,
+		Curve:  c,
+		Rng:    rng,
+	}, c
+}
+
+func getSmartcard(t *testing.T) (*aries.Smartcard, *math.Curve) {
 	c := math.Curves[math.FP256BN_AMCL_MIRACL]
 
 	rng, err := c.Rand()
@@ -74,12 +140,8 @@ func getSmartcard(t *testing.T) (*aries.Smartcard, *math.Curve) {
 
 func TestAll(t *testing.T) {
 	sc, curve := getSmartcard(t)
-	defer func() {
-		// reset the curve to the one other tests use
-		bbs12381g2pub.SetCurve(math.Curves[math.BLS12_381_BBS])
-	}()
 
-	pubKey, privKey, err := generateKeyPairRandom()
+	pubKey, privKey, err := generateKeyPairRandom(curve)
 	assert.NoError(t, err)
 
 	privKeyBytes, err := privKey.Marshal()
@@ -107,27 +169,27 @@ func TestAll(t *testing.T) {
 	sig_, err := aries.BlindSign([]*bbs12381g2pub.SignatureMessage{
 		{
 			Idx: 1,
-			FR:  bbs12381g2pub.FrFromOKM([]byte(ou)),
+			FR:  bbs12381g2pub.FrFromOKM([]byte(ou), curve),
 		},
 		{
 			Idx: 2,
-			FR:  bbs12381g2pub.FrFromOKM([]byte(role)),
+			FR:  bbs12381g2pub.FrFromOKM([]byte(role), curve),
 		},
 		{
 			Idx: 3,
-			FR:  bbs12381g2pub.FrFromOKM([]byte(eid)),
+			FR:  bbs12381g2pub.FrFromOKM([]byte(eid), curve),
 		},
 		{
 			Idx: 4,
-			FR:  bbs12381g2pub.FrFromOKM([]byte(rh)),
+			FR:  bbs12381g2pub.FrFromOKM([]byte(rh), curve),
 		},
-	}, messagesCount, B, privKeyBytes)
+	}, messagesCount, B, privKeyBytes, curve)
 	assert.NoError(t, err)
 
 	sigBytes, err := aries.UnblindSign(sig_, r, curve)
 	assert.NoError(t, err)
 
-	sig, err := bbs12381g2pub.ParseSignature(sigBytes)
+	sig, err := bbs12381g2pub.NewBBSLib(curve).ParseSignature(sigBytes)
 	assert.NoError(t, err)
 
 	messagesFr := []*bbs12381g2pub.SignatureMessage{
@@ -137,19 +199,19 @@ func TestAll(t *testing.T) {
 		},
 		{
 			Idx: 1,
-			FR:  bbs12381g2pub.FrFromOKM([]byte(ou)),
+			FR:  bbs12381g2pub.FrFromOKM([]byte(ou), curve),
 		},
 		{
 			Idx: 2,
-			FR:  bbs12381g2pub.FrFromOKM([]byte(role)),
+			FR:  bbs12381g2pub.FrFromOKM([]byte(role), curve),
 		},
 		{
 			Idx: 3,
-			FR:  bbs12381g2pub.FrFromOKM([]byte(eid)),
+			FR:  bbs12381g2pub.FrFromOKM([]byte(eid), curve),
 		},
 		{
 			Idx: 4,
-			FR:  bbs12381g2pub.FrFromOKM([]byte(rh)),
+			FR:  bbs12381g2pub.FrFromOKM([]byte(rh), curve),
 		},
 	}
 
@@ -159,7 +221,7 @@ func TestAll(t *testing.T) {
 	/*********************************************************************/
 	/*********************************************************************/
 
-	pok_, err := bbs12381g2pub.NewPoKOfSignature(sig, messagesFr, []int{1, 2}, pkwg)
+	pok_, err := bbs12381g2pub.NewBBSLib(curve).NewPoKOfSignature(sig, messagesFr, []int{1, 2}, pkwg)
 	assert.NoError(t, err)
 
 	c := curve.NewRandomZr(rand.Reader)
@@ -177,7 +239,7 @@ func TestAll(t *testing.T) {
 	C.Sub(sc.H0.Mul(r))
 	assert.True(t, C.Equals(sc.H1.Mul(sc.Uid_sk)))
 
-	pok_, err = bbs12381g2pub.NewPoKOfSignatureExt(sig, messagesFr[1:], []int{0, 1}, pkwg, B, r, C)
+	pok_, err = bbs12381g2pub.NewBBSLib(curve).NewPoKOfSignatureExt(sig, messagesFr[1:], []int{0, 1}, pkwg, B, r, C)
 	assert.NoError(t, err)
 
 	c = curve.NewRandomZr(rand.Reader)
@@ -263,7 +325,7 @@ func TestAll(t *testing.T) {
 	revealedMessages[2] = messagesFr[2]
 
 	// DELTA: we pass sPrime.Minus(r) as sPrime and drop the first message in messagesFr
-	pokVC2, secrets2 := newModifiedVC2Signature(d, r3, pkwg, sPrime.Minus(r), messagesFr[1:], revealedMessages)
+	pokVC2, secrets2 := newModifiedVC2Signature(d, r3, pkwg, sPrime.Minus(r), messagesFr[1:], revealedMessages, curve)
 
 	/*************/
 
@@ -343,10 +405,11 @@ func newModifiedVC2Signature(
 	sPrime *math.Zr,
 	messages []*bbs12381g2pub.SignatureMessage,
 	revealedMessages map[int]*bbs12381g2pub.SignatureMessage,
+	curve *math.Curve,
 ) (*bbs12381g2pub.ProverCommittedG1, []*math.Zr) {
 
 	messagesCount := len(messages)
-	committing2 := bbs12381g2pub.NewProverCommittingG1()
+	committing2 := bbs12381g2pub.NewBBSLib(curve).NewProverCommittingG1()
 	baseSecretsCount := 2
 	secrets2 := make([]*math.Zr, 0, baseSecretsCount+messagesCount)
 
@@ -381,10 +444,6 @@ func newModifiedVC2Signature(
 
 func TestPRF(t *testing.T) {
 	sc, _ := getSmartcard(t)
-	defer func() {
-		// reset the curve to the one other tests use
-		bbs12381g2pub.SetCurve(math.Curves[math.BLS12_381_BBS])
-	}()
 
 	seed, err := hex.DecodeString("62189E8BFAC71BA9894ACEC9FCE45FE7")
 	assert.NoError(t, err)
@@ -398,10 +457,6 @@ func TestPRF(t *testing.T) {
 
 func TestVerifyFromCard(t *testing.T) {
 	sc, _ := getSmartcard(t)
-	defer func() {
-		// reset the curve to the one other tests use
-		bbs12381g2pub.SetCurve(math.Curves[math.BLS12_381_BBS])
-	}()
 
 	_, tau0 := sc.NymEid()
 
@@ -420,10 +475,6 @@ func TestVerifyFromCard(t *testing.T) {
 
 func TestSmartcard(t *testing.T) {
 	sc, curve := getSmartcard(t)
-	defer func() {
-		// reset the curve to the one other tests use
-		bbs12381g2pub.SetCurve(math.Curves[math.BLS12_381_BBS])
-	}()
 
 	_, nymEid := sc.NymEid()
 

@@ -10,11 +10,12 @@ import (
 	"testing"
 
 	"github.com/IBM/idemix/bccsp/schemes/aries"
+	math "github.com/IBM/mathlib"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestIssuer(t *testing.T) {
-	issuer := &aries.Issuer{}
+	issuer := &aries.Issuer{math.Curves[math.BLS12_381_BBS]}
 
 	attrs := []string{
 		"attr1",

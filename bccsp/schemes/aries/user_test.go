@@ -15,7 +15,7 @@ import (
 )
 
 func TestUser(t *testing.T) {
-	issuer := &aries.Issuer{}
+	issuer := &aries.Issuer{math.Curves[math.BLS12_381_BBS]}
 
 	attrs := []string{
 		"attr1",
