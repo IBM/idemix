@@ -448,23 +448,23 @@ var _ = Describe("Idemix Bridge", func() {
 
 		Context("verify", func() {
 			It("fail on nil issuer Public key", func() {
-				err := SignatureScheme.Verify(nil, nil, nil, nil, 0, 2, nil, 0, 0, nil)
+				err := SignatureScheme.Verify(nil, nil, nil, nil, 0, 2, 1, nil, 0, 0, nil)
 				Expect(err).To(MatchError("invalid issuer public key, expected *IssuerPublicKey, got [<nil>]"))
 			})
 
 			It("fail on nil signature", func() {
-				err := SignatureScheme.Verify(issuerPublicKey, nil, nil, nil, 0, 2, nil, 0, 0, nil)
+				err := SignatureScheme.Verify(issuerPublicKey, nil, nil, nil, 0, 2, 1, nil, 0, 0, nil)
 				Expect(err).To(MatchError("cannot verify idemix signature: received nil input"))
 			})
 
 			It("fail on invalid signature", func() {
-				err := SignatureScheme.Verify(issuerPublicKey, []byte{0, 1, 2, 3, 4}, nil, nil, 0, 2, nil, 0, 0, nil)
+				err := SignatureScheme.Verify(issuerPublicKey, []byte{0, 1, 2, 3, 4}, nil, nil, 0, 2, 1, nil, 0, 0, nil)
 				Expect(err.Error()).To(ContainSubstring("cannot parse invalid wire-format data"))
 			})
 
 			It("fail on invalid attributes", func() {
 				err := SignatureScheme.Verify(issuerPublicKey, nil, nil,
-					[]types.IdemixAttribute{{Type: -1}}, 0, 2, nil, 0, 0, nil)
+					[]types.IdemixAttribute{{Type: -1}}, 0, 2, 1, nil, 0, 0, nil)
 				Expect(err).To(MatchError("attribute type not allowed or supported [-1] at position [0]"))
 			})
 		})
@@ -488,17 +488,17 @@ var _ = Describe("Idemix Bridge", func() {
 
 		Context("verify", func() {
 			It("fail on nil issuer Public key", func() {
-				err := NymSignatureScheme.Verify(nil, nil, nil, nil)
+				err := NymSignatureScheme.Verify(nil, nil, nil, nil, 0)
 				Expect(err).To(MatchError("invalid issuer public key, expected *IssuerPublicKey, got [<nil>]"))
 			})
 
 			It("panic on nil signature", func() {
-				err := NymSignatureScheme.Verify(issuerPublicKey, nymPublicKey, nil, nil)
+				err := NymSignatureScheme.Verify(issuerPublicKey, nymPublicKey, nil, nil, 0)
 				Expect(err).To(MatchError(ContainSubstring("failure [runtime error: invalid memory address or nil pointer dereference]")))
 			})
 
 			It("fail on invalid signature", func() {
-				err := NymSignatureScheme.Verify(issuerPublicKey, nymPublicKey, []byte{0, 1, 2, 3, 4}, nil)
+				err := NymSignatureScheme.Verify(issuerPublicKey, nymPublicKey, []byte{0, 1, 2, 3, 4}, nil, 0)
 				Expect(err.Error()).To(ContainSubstring("error unmarshalling signature"))
 			})
 
