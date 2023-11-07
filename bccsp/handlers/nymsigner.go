@@ -132,7 +132,8 @@ func (v *NymVerifier) Verify(k types.Key, signature, digest []byte, opts types.S
 		ipk.pk,
 		nymPublicKey.pk,
 		signature,
-		digest)
+		digest,
+		signerOpts.SKIndex)
 	if err != nil {
 		return false, err
 	}

@@ -33,7 +33,7 @@ type Signer struct {
 }
 
 func (s *Signer) getPoKOfSignature(
-	credBytes []byte,
+	credential *Credential,
 	attributes []types.IdemixAttribute,
 	sk *math.Zr,
 	ipk *bbs12381g2pub.PublicKeyWithGenerators,
@@ -41,12 +41,6 @@ func (s *Signer) getPoKOfSignature(
 	Nym *math.G1,
 	RNym *math.Zr,
 ) (*bbs12381g2pub.PoKOfSignature, []*bbs12381g2pub.SignatureMessage, error) {
-	credential := &Credential{}
-	err := proto.Unmarshal(credBytes, credential)
-	if err != nil {
-		return nil, nil, fmt.Errorf("proto.Unmarshal failed [%w]", err)
-	}
-
 	signature, err := bbs12381g2pub.NewBBSLib(s.Curve).ParseSignature(credential.Cred)
 	if err != nil {
 		return nil, nil, fmt.Errorf("parse signature: %w", err)
@@ -66,10 +60,10 @@ func (s *Signer) getPoKOfSignature(
 		// and so we cannot prove their knowledge. We therefore pass them in to
 		// `NewPoKOfSignatureExt` as their as, since thier correctiness has already
 		// been proven by the smartcard in a separate proof.
-		messagesFr = append([]*bbs12381g2pub.SignatureMessage{{}}, messagesFr...)
 		C := Nym.Copy()
 		C.Sub(ipk.H0.Mul(RNym))
-		pokOS, err = bbs12381g2pub.NewBBSLib(s.Curve).NewPoKOfSignatureExt(signature, messagesFr[1:], revealedAttributesIndexNoSk(attributes), ipk, Nym, RNym, C)
+		messagesFrNoSk := append(append([]*bbs12381g2pub.SignatureMessage{}, messagesFr[:credential.SkPos]...), messagesFr[credential.SkPos+1:]...)
+		pokOS, err = bbs12381g2pub.NewBBSLib(s.Curve).NewPoKOfSignatureExt(signature, messagesFrNoSk, revealedAttributesIndexNoSk(attributes), ipk, Nym, RNym, C)
 	} else {
 		pokOS, err = bbs12381g2pub.NewBBSLib(s.Curve).NewPoKOfSignatureExt(signature, messagesFr, revealedAttributesIndex(attributes), ipk, nil, nil, nil)
 	}
@@ -197,6 +191,7 @@ func (s *Signer) getCommitNym(
 	ipk *IssuerPublicKey,
 	pokSignature *bbs12381g2pub.PoKOfSignature,
 	sigType types.SignatureType,
+	userSecretKeyIndex int,
 ) *bbs12381g2pub.ProverCommittedG1 {
 
 	if sigType == types.Smartcard {
@@ -207,14 +202,14 @@ func (s *Signer) getCommitNym(
 
 	commit := bbs12381g2pub.NewBBSLib(s.Curve).NewProverCommittingG1()
 	commit.Commit(ipk.PKwG.H0)
-	commit.Commit(ipk.PKwG.H[UserSecretKeyIndex])
+	commit.Commit(ipk.PKwG.H[userSecretKeyIndex])
 	// we force the same blinding factor used in PokVC2 to prove equality.
 	// 1) commit.BlindingFactors[1] is the blinding factor for the sk in the Nym
 	//    H0^{RNym} \cdot H[0]^{sk}
 	// 2) pokSignature.PokVC2.BlindingFactors[2] is the blinding factor for the sk in
 	//    D * (-r3~) + Q_1 * s~ + H_j1 * m~_j1 + ... + H_jU * m~_jU
 	//    index 0 is for D, index 1 is for s~ and index 2 is for the first message (which is the sk)
-	commit.BlindingFactors[AttributeIndexInNym] = pokSignature.PokVC2.BlindingFactors[IndexOffsetVC2Attributes+UserSecretKeyIndex]
+	commit.BlindingFactors[AttributeIndexInNym] = pokSignature.PokVC2.BlindingFactors[IndexOffsetVC2Attributes+userSecretKeyIndex]
 
 	return commit.Finish()
 }
@@ -382,7 +377,13 @@ func (s *Signer) Sign(
 	// Generate main PoK (1st move) //
 	//////////////////////////////////
 
-	pokSignature, messagesFr, err := s.getPoKOfSignature(credBytes, attributes, sk, ipk.PKwG, sigType, Nym, RNym)
+	credential := &Credential{}
+	err = proto.Unmarshal(credBytes, credential)
+	if err != nil {
+		return nil, nil, fmt.Errorf("proto.Unmarshal failed [%w]", err)
+	}
+
+	pokSignature, messagesFr, err := s.getPoKOfSignature(credential, attributes, sk, ipk.PKwG, sigType, Nym, RNym)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -391,14 +392,16 @@ func (s *Signer) Sign(
 	// Handling Nym //
 	//////////////////
 
-	commitNym := s.getCommitNym(ipk, pokSignature, sigType)
+	commitNym := s.getCommitNym(ipk, pokSignature, sigType, int(credential.SkPos))
 
 	///////////////////
 	// Handle NymEID //
 	///////////////////
 
-	// increment the index to cater for the first hidden index for `sk`
-	eidIndex++
+	// increment the index to cater for the index for `sk`
+	if eidIndex >= int(credential.SkPos) {
+		eidIndex++
+	}
 
 	nymEid, err := s.getAttributeCommitment(ipk, pokSignature, messagesFr[eidIndex].FR, eidIndex, nymEidAttrCommitmentEnabled(sigType), safeNymEidAuditDataAccess(metadata))
 	if err != nil {
@@ -409,8 +412,10 @@ func (s *Signer) Sign(
 	// Handle RhNym //
 	///////////////////
 
-	// increment the index to cater for the first hidden index for `sk`
-	rhIndex++
+	// increment the index to cater for the index for `sk`
+	if rhIndex >= int(credential.SkPos) {
+		rhIndex++
+	}
 
 	rhNym, err := s.getAttributeCommitment(ipk, pokSignature, messagesFr[rhIndex].FR, rhIndex, rhAttrCommitmentEnabled(sigType), safeRhNymAuditDataAccess(metadata))
 	if err != nil {
@@ -488,7 +493,7 @@ func (s *Signer) Verify(
 	key types.IssuerPublicKey,
 	signature, msg []byte,
 	attributes []types.IdemixAttribute,
-	rhIndex, eidIndex int,
+	rhIndex, eidIndex, skIndex int,
 	_ *ecdsa.PublicKey,
 	_ int,
 	verType types.VerificationType,
@@ -498,6 +503,8 @@ func (s *Signer) Verify(
 	if !ok {
 		return fmt.Errorf("invalid issuer public key, expected *IssuerPublicKey, got [%T]", ipk)
 	}
+
+	lib := bbs12381g2pub.NewBBSLib(s.Curve)
 
 	sig := &Signature{}
 	err := proto.Unmarshal(signature, sig)
@@ -535,14 +542,14 @@ func (s *Signer) Verify(
 	verifyRHNym := (verType == types.BestEffort && sig.NymRh != nil) || verType == types.ExpectEidNymRhNym
 	verifyEIDNym := (verType == types.BestEffort && sig.NymEid != nil) || verType == types.ExpectEidNym || verType == types.ExpectEidNymRhNym || verType == types.ExpectSmartcard || verifyRHNym
 
-	messages := attributesToSignatureMessage(nil, attributes, s.Curve)
+	messages := attributesToSignatureMessage(attributes, s.Curve, skIndex)
 
 	payload, err := bbs12381g2pub.ParsePoKPayload(sig.MainSignature)
 	if err != nil {
 		return fmt.Errorf("parse signature proof: %w", err)
 	}
 
-	signatureProof, err := bbs12381g2pub.NewBBSLib(s.Curve).ParseSignatureProof(sig.MainSignature[payload.LenInBytes():])
+	signatureProof, err := lib.ParseSignatureProof(sig.MainSignature[payload.LenInBytes():])
 	if err != nil {
 		return fmt.Errorf("parse signature proof: %w", err)
 	}
@@ -558,7 +565,7 @@ func (s *Signer) Verify(
 
 	var nymProof *bbs12381g2pub.ProofG1
 	if verType != types.ExpectSmartcard {
-		nymProof, err = bbs12381g2pub.NewBBSLib(s.Curve).ParseProofG1(sig.NymProof)
+		nymProof, err = lib.ParseProofG1(sig.NymProof)
 		if err != nil {
 			return fmt.Errorf("parse nym proof: %w", err)
 		}
@@ -567,7 +574,7 @@ func (s *Signer) Verify(
 	var nymEidProof *bbs12381g2pub.ProofG1
 	var NymEid *math.G1
 	if verifyEIDNym {
-		nymEidProof, err = bbs12381g2pub.NewBBSLib(s.Curve).ParseProofG1(sig.NymEidProof)
+		nymEidProof, err = lib.ParseProofG1(sig.NymEidProof)
 		if err != nil {
 			return fmt.Errorf("parse nym proof: %w", err)
 		}
@@ -581,7 +588,7 @@ func (s *Signer) Verify(
 	var rhNymProof *bbs12381g2pub.ProofG1
 	var RhNym *math.G1
 	if verifyRHNym {
-		rhNymProof, err = bbs12381g2pub.NewBBSLib(s.Curve).ParseProofG1(sig.NymRhProof)
+		rhNymProof, err = lib.ParseProofG1(sig.NymRhProof)
 		if err != nil {
 			return fmt.Errorf("parse rh proof: %w", err)
 		}
@@ -651,10 +658,20 @@ func (s *Signer) Verify(
 	// Verify responses //
 	//////////////////////
 
+	// increment the index to cater for the index for `sk`
+	if eidIndex >= skIndex {
+		eidIndex++
+	}
+
+	// increment the index to cater for the index for `sk`
+	if rhIndex >= skIndex {
+		rhIndex++
+	}
+
 	// audit eid nym if data provided and verification requested
 	if (verifyEIDNym || verifyRHNym) && meta != nil {
 		if meta.EidNymAuditData != nil {
-			ne := ipk.PKwG.H[eidIndex+1].Mul2(
+			ne := ipk.PKwG.H[eidIndex].Mul2(
 				meta.EidNymAuditData.Attr,
 				ipk.PKwG.H0, meta.EidNymAuditData.Rand)
 
@@ -681,7 +698,7 @@ func (s *Signer) Verify(
 	// audit rh nym if data provided and verification requested
 	if verifyRHNym && meta != nil {
 		if meta.RhNymAuditData != nil {
-			rn := ipk.PKwG.H[rhIndex+1].Mul2(
+			rn := ipk.PKwG.H[rhIndex].Mul2(
 				meta.RhNymAuditData.Attr,
 				ipk.PKwG.H0, meta.RhNymAuditData.Rand,
 			)
@@ -708,12 +725,12 @@ func (s *Signer) Verify(
 
 	if verType != types.ExpectSmartcard {
 		// verify that `sk` in the Nym is the same as the one in the signature
-		if !nymProof.Responses[AttributeIndexInNym].Equals(signatureProof.ProofVC2.Responses[IndexOffsetVC2Attributes+UserSecretKeyIndex]) {
+		if !nymProof.Responses[AttributeIndexInNym].Equals(signatureProof.ProofVC2.Responses[IndexOffsetVC2Attributes+skIndex]) {
 			return fmt.Errorf("failed equality proof for sk")
 		}
 
 		// verify the proof of knowledge of the Nym
-		err = nymProof.Verify([]*math.G1{ipk.PKwG.H0, ipk.PKwG.H[UserSecretKeyIndex]}, Nym, proofChallenge)
+		err = nymProof.Verify([]*math.G1{ipk.PKwG.H0, ipk.PKwG.H[skIndex]}, Nym, proofChallenge)
 		if err != nil {
 			return fmt.Errorf("verify nym proof: %w", err)
 		}
@@ -726,7 +743,7 @@ func (s *Signer) Verify(
 		}
 
 		// verify the proof of knowledge of the Nym
-		err = nymEidProof.Verify([]*math.G1{ipk.PKwG.H0, ipk.PKwG.H[eidIndex+1]}, NymEid, proofChallenge)
+		err = nymEidProof.Verify([]*math.G1{ipk.PKwG.H0, ipk.PKwG.H[eidIndex]}, NymEid, proofChallenge)
 		if err != nil {
 			return fmt.Errorf("verify nym eid proof: %w", err)
 		}
@@ -739,7 +756,7 @@ func (s *Signer) Verify(
 		}
 
 		// verify the proof of knowledge of the Rh
-		err = rhNymProof.Verify([]*math.G1{ipk.PKwG.H0, ipk.PKwG.H[rhIndex+1]}, RhNym, proofChallenge)
+		err = rhNymProof.Verify([]*math.G1{ipk.PKwG.H0, ipk.PKwG.H[rhIndex]}, RhNym, proofChallenge)
 		if err != nil {
 			return fmt.Errorf("verify nym eid proof: %w", err)
 		}
@@ -756,7 +773,7 @@ func (s *Signer) Verify(
 // AuditNymEid permits the auditing of the nym eid generated by a signer
 func (s *Signer) AuditNymEid(
 	key types.IssuerPublicKey,
-	eidIndex int,
+	eidIndex, skIndex int,
 	signature []byte,
 	enrollmentID string,
 	RNymEid *math.Zr,
@@ -794,7 +811,11 @@ func (s *Signer) AuditNymEid(
 
 	eidAttr := bbs12381g2pub.FrFromOKM([]byte(enrollmentID), s.Curve)
 
-	ne := ipk.PKwG.H[eidIndex+1].Mul2(eidAttr, ipk.PKwG.H0, RNymEid)
+	if eidIndex >= skIndex {
+		eidIndex++
+	}
+
+	ne := ipk.PKwG.H[eidIndex].Mul2(eidAttr, ipk.PKwG.H0, RNymEid)
 
 	if !ne.Equals(NymEid) {
 		return fmt.Errorf("eid nym does not match")
@@ -806,7 +827,7 @@ func (s *Signer) AuditNymEid(
 // AuditNymRh permits the auditing of the nym rh generated by a signer
 func (s *Signer) AuditNymRh(
 	key types.IssuerPublicKey,
-	rhIndex int,
+	rhIndex, skIndex int,
 	signature []byte,
 	revocationHandle string,
 	RNymRh *math.Zr,
@@ -842,7 +863,11 @@ func (s *Signer) AuditNymRh(
 
 	rhAttr := bbs12381g2pub.FrFromOKM([]byte(revocationHandle), s.Curve)
 
-	nr := ipk.PKwG.H[rhIndex+1].Mul2(rhAttr, ipk.PKwG.H0, RNymRh)
+	if rhIndex >= skIndex {
+		rhIndex++
+	}
+
+	nr := ipk.PKwG.H[rhIndex].Mul2(rhAttr, ipk.PKwG.H0, RNymRh)
 
 	if !nr.Equals(RhNym) {
 		return fmt.Errorf("rh nym does not match")

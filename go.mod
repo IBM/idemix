@@ -45,3 +45,7 @@ require (
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	rsc.io/tmplfunc v0.0.3 // indirect
 )
+
+replace github.com/IBM/idemix/bccsp/types => ./bccsp/types/
+
+replace github.com/IBM/idemix/bccsp/schemes/aries => ./bccsp/schemes/aries/
