@@ -7,6 +7,8 @@ SPDX-License-Identifier: Apache-2.0
 package aries_test
 
 import (
+	"encoding/base64"
+	"encoding/hex"
 	"os"
 	"testing"
 
@@ -146,7 +148,7 @@ func TestSmartcardSigner(t *testing.T) {
 	sig, _, err := signer.Sign(credBytes, nil, B, r, isk.Public(), idemixAttrs, []byte("silliness"), rhIndex, eidIndex, nil, types.Smartcard, nil)
 	assert.NoError(t, err)
 
-	err = signer.Verify(isk.Public(), sig, []byte("silliness"), idemixAttrs, rhIndex, eidIndex, nil, 0, types.ExpectSmartcard, nil)
+	err = signer.Verify(isk.Public(), sig, []byte("silliness"), idemixAttrs, rhIndex, eidIndex, 0, nil, 0, types.ExpectSmartcard, nil)
 	assert.NoError(t, err)
 
 	idemixAttrs = []types.IdemixAttribute{
@@ -168,7 +170,7 @@ func TestSmartcardSigner(t *testing.T) {
 	sig, _, err = signer.Sign(credBytes, nil, B, r, isk.Public(), idemixAttrs, []byte("silliness"), rhIndex, eidIndex, nil, types.Smartcard, nil)
 	assert.NoError(t, err)
 
-	err = signer.Verify(isk.Public(), sig, []byte("silliness"), idemixAttrs, rhIndex, eidIndex, nil, 0, types.ExpectSmartcard, nil)
+	err = signer.Verify(isk.Public(), sig, []byte("silliness"), idemixAttrs, rhIndex, eidIndex, 0, nil, 0, types.ExpectSmartcard, nil)
 	assert.NoError(t, err)
 
 	idemixAttrs = []types.IdemixAttribute{
@@ -190,7 +192,7 @@ func TestSmartcardSigner(t *testing.T) {
 	sig, _, err = signer.Sign(credBytes, nil, B, r, isk.Public(), idemixAttrs, []byte("silliness"), rhIndex, eidIndex, nil, types.Smartcard, nil)
 	assert.NoError(t, err)
 
-	err = signer.Verify(isk.Public(), sig, []byte("silliness"), idemixAttrs, rhIndex, eidIndex, nil, 0, types.ExpectSmartcard, nil)
+	err = signer.Verify(isk.Public(), sig, []byte("silliness"), idemixAttrs, rhIndex, eidIndex, 0, nil, 0, types.ExpectSmartcard, nil)
 	assert.NoError(t, err)
 
 	idemixAttrs = []types.IdemixAttribute{
@@ -211,7 +213,7 @@ func TestSmartcardSigner(t *testing.T) {
 	sig, _, err = signer.Sign(credBytes, nil, B, r, isk.Public(), idemixAttrs, []byte("silliness"), rhIndex, eidIndex, nil, types.Smartcard, nil)
 	assert.NoError(t, err)
 
-	err = signer.Verify(isk.Public(), sig, []byte("silliness"), idemixAttrs, rhIndex, eidIndex, nil, 0, types.ExpectSmartcard, nil)
+	err = signer.Verify(isk.Public(), sig, []byte("silliness"), idemixAttrs, rhIndex, eidIndex, 0, nil, 0, types.ExpectSmartcard, nil)
 	assert.NoError(t, err)
 
 	/**************************************************/
@@ -233,7 +235,7 @@ func TestSmartcardSigner(t *testing.T) {
 	sig, _, err = signer.Sign(credBytes, nil, B, r, isk.Public(), idemixAttrs, []byte("silliness"), rhIndex, eidIndex, nil, types.Smartcard, meta)
 	assert.NoError(t, err)
 
-	err = signer.Verify(isk.Public(), sig, []byte("silliness"), idemixAttrs, rhIndex, eidIndex, nil, 0, types.ExpectSmartcard, meta)
+	err = signer.Verify(isk.Public(), sig, []byte("silliness"), idemixAttrs, rhIndex, eidIndex, 0, nil, 0, types.ExpectSmartcard, meta)
 	assert.NoError(t, err)
 }
 
@@ -326,7 +328,7 @@ func TestSmartcardSigner1(t *testing.T) {
 		{
 			Type: types.IdemixHiddenAttribute,
 		},
-	}, 3, 2, nil, -1, types.ExpectSmartcard, &types.IdemixSignerMetadata{EidNym: NymEid.Bytes()})
+	}, 3, 2, 0, nil, -1, types.ExpectSmartcard, &types.IdemixSignerMetadata{EidNym: NymEid.Bytes()})
 	assert.NoError(t, err)
 }
 
@@ -394,6 +396,469 @@ func idemixScSign(
 	}
 
 	return sig, nil
+}
+
+func TestW3CCred(t *testing.T) {
+	curve := math.Curves[math.BLS12_381_BBS]
+
+	rand, err := curve.Rand()
+	assert.NoError(t, err)
+
+	pkHex := `87fae47132975f345b38fafd53149f7a009b89dd94fdc54d5d051a29e185ed4870acc2453fbd2e307d1543dfb7fbfdb30cf0008df96c75e2e43975b7f92864b4bc6e3f2f1495748d80a36691f6feaeb8fe151c1bb35de9bff5ac21ff9e57aebe`
+	sigBase64 := "tQ4rHLBIh7a9dk5MVoly8ccb80pGeoEqybhYnYZO8VmguaFDyuCN7rFdBPCVs1/SYUHlKfzccE4m7waZyoLEkBLFiK2g54Q2i+CdtYBgDdkUDsoULSBMcH1MwGHwdjfXpldFNFrHFx/IAvLVniyeMQ=="
+
+	messagesBytes := [][]byte{
+		[]byte(`_:c14n0 <http://purl.org/dc/terms/created> "2023-11-03T11:12:17Z"^^<http://www.w3.org/2001/XMLSchema#dateTime> .`),
+		[]byte(`_:c14n0 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <https://w3id.org/security#BbsBlsSignature2020> .`),
+		[]byte(`_:c14n0 <https://w3id.org/security#proofPurpose> <https://w3id.org/security#assertionMethod> .`),
+		[]byte(`_:c14n0 <https://w3id.org/security#verificationMethod> <did:key:zUC73gNPc1EnZmDDjYJzE8Bk89VRhuZPQYXFnSiSUZvX9N1i7N5VtMbJyowDR46rtARHLJYRVf7WMbGLb43s9tfTyKF9KFF22vBjXZRomcwtoQJmMNUSY7tfzyhLEy58dwUz3WD#zUC73gNPc1EnZmDDjYJzE8Bk89VRhuZPQYXFnSiSUZvX9N1i7N5VtMbJyowDR46rtARHLJYRVf7WMbGLb43s9tfTyKF9KFF22vBjXZRomcwtoQJmMNUSY7tfzyhLEy58dwUz3WD> .`),
+		[]byte(`<did:key:z6MknntgQWCT8Zs5vpQEVoV2HvsfdYfe7b1LTnM9Lty6fD4e> <cbdccard:cbdcdata> _:c14n0 .`),
+		[]byte(`<did:key:z6MknntgQWCT8Zs5vpQEVoV2HvsfdYfe7b1LTnM9Lty6fD4e> <http://schema.org/birthDate> "1990-11-22"^^<http://www.w3.org/2001/XMLSchema#dateTime> .`),
+		[]byte(`<did:key:z6MknntgQWCT8Zs5vpQEVoV2HvsfdYfe7b1LTnM9Lty6fD4e> <http://schema.org/familyName> "Bowen" .`),
+		[]byte(`<did:key:z6MknntgQWCT8Zs5vpQEVoV2HvsfdYfe7b1LTnM9Lty6fD4e> <http://schema.org/gender> "Male" .`),
+		[]byte(`<did:key:z6MknntgQWCT8Zs5vpQEVoV2HvsfdYfe7b1LTnM9Lty6fD4e> <http://schema.org/givenName> "Jace" .`),
+		[]byte(`<did:key:z6MknntgQWCT8Zs5vpQEVoV2HvsfdYfe7b1LTnM9Lty6fD4e> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <cbdccard:CBDC> .`),
+		[]byte(`<did:key:z6MknntgQWCT8Zs5vpQEVoV2HvsfdYfe7b1LTnM9Lty6fD4e> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://schema.org/Person> .`),
+		[]byte(`<did:key:z6MknntgQWCT8Zs5vpQEVoV2HvsfdYfe7b1LTnM9Lty6fD4e> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <https://w3id.org/citizenship#PermanentResident> .`),
+		[]byte(`<did:key:z6MknntgQWCT8Zs5vpQEVoV2HvsfdYfe7b1LTnM9Lty6fD4e> <https://w3id.org/citizenship#birthCountry> "Bahamas" .`),
+		[]byte(`<did:key:z6MknntgQWCT8Zs5vpQEVoV2HvsfdYfe7b1LTnM9Lty6fD4e> <https://w3id.org/citizenship#lprCategory> "C09" .`),
+		[]byte(`<did:key:z6MknntgQWCT8Zs5vpQEVoV2HvsfdYfe7b1LTnM9Lty6fD4e> <https://w3id.org/citizenship#lprNumber> "223-45-198" .`),
+		[]byte(`<did:key:z6MknntgQWCT8Zs5vpQEVoV2HvsfdYfe7b1LTnM9Lty6fD4e> <https://w3id.org/citizenship#residentSince> "2015-01-01"^^<http://www.w3.org/2001/XMLSchema#dateTime> .`),
+		[]byte(`<did:key:z6MknntgQWCT8Zs5vpQEVoV2HvsfdYfe7b1LTnM9Lty6fD4e> <https://w3id.org/vdl#portraitMetadata> "{\"hash\":\"de701215430a0c4f940ffe830efd27f54cae0d9655d78dc3849272e7641c05eedd066588345caf9d4181d9f325e73a9950a967d6fe766a4a62e02876e73255ad\",\"key\":\"aab053a5e11e3360679ce1a42c7733063843854a1002c19186743d7432a2e467\",\"link\":\"https://dev.lcn-cluster-dev-qa-app-583c1d2c1a459ad4539801325cd4ba78-0000.us-south.containers.appdomain.cloud/api/public/v1/object/70a62792-eb95-4491-a77f-e53dde8034fb\"}"^^<http://www.w3.org/1999/02/22-rdf-syntax-ns#JSON> .`),
+		[]byte(`<https://issuer.oidp.uscis.gov/credentials/83627465> <http://schema.org/name> "Permanent Resident Card" .`),
+		[]byte(`<https://issuer.oidp.uscis.gov/credentials/83627465> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <https://w3id.org/citizenship#PermanentResidentCard> .`),
+		[]byte(`<https://issuer.oidp.uscis.gov/credentials/83627465> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <https://www.w3.org/2018/credentials#VerifiableCredential> .`),
+		[]byte(`<https://issuer.oidp.uscis.gov/credentials/83627465> <https://www.w3.org/2018/credentials#credentialSubject> <did:key:z6MknntgQWCT8Zs5vpQEVoV2HvsfdYfe7b1LTnM9Lty6fD4e> .`),
+		[]byte(`<https://issuer.oidp.uscis.gov/credentials/83627465> <https://www.w3.org/2018/credentials#expirationDate> "2029-12-03T12:19:52Z"^^<http://www.w3.org/2001/XMLSchema#dateTime> .`),
+		[]byte(`<https://issuer.oidp.uscis.gov/credentials/83627465> <https://www.w3.org/2018/credentials#issuanceDate> "2019-12-03T12:19:52Z"^^<http://www.w3.org/2001/XMLSchema#dateTime> .`),
+		[]byte(`<https://issuer.oidp.uscis.gov/credentials/83627465> <https://www.w3.org/2018/credentials#issuer> <did:key:zUC73gNPc1EnZmDDjYJzE8Bk89VRhuZPQYXFnSiSUZvX9N1i7N5VtMbJyowDR46rtARHLJYRVf7WMbGLb43s9tfTyKF9KFF22vBjXZRomcwtoQJmMNUSY7tfzyhLEy58dwUz3WD> .`),
+		[]byte(`_:c14n0 <cbdccard:1_usk> "chgA6VtGQeRd/0rf1P6fCFm8t7ZU1Q8eMPM/+E9gsw8=" .`),
+		[]byte(`_:c14n0 <cbdccard:2_ou> "mytopos-mychannel-token-chaincode.example.com" .`),
+		[]byte(`_:c14n0 <cbdccard:3_role> "2"^^<http://www.w3.org/2001/XMLSchema#integer> .`),
+		[]byte(`_:c14n0 <cbdccard:4_eid> "alice.remote" .`),
+		[]byte(`_:c14n0 <cbdccard:5_rh> "111" .`),
+	}
+
+	pkBytes, err := hex.DecodeString(pkHex)
+	assert.NoError(t, err)
+	sigBytes, err := base64.StdEncoding.DecodeString(sigBase64)
+	assert.NoError(t, err)
+
+	bls := bbs12381g2pub.New(math.Curves[math.BLS12_381_BBS])
+
+	err = bls.Verify(messagesBytes, sigBytes, pkBytes)
+	assert.NoError(t, err)
+
+	attributeNames := []string{
+		"_:c14n0 <http://www.w3.",
+		"_:c14n0 <https://w3id.o",
+		"_:c14n0 <https://w3id.o",
+		"<did:key:z6MknntgQWCT8Z",
+		"<did:key:z6MknntgQWCT8Z",
+		"<did:key:z6MknntgQWCT8Z",
+		"<did:key:z6MknntgQWCT8Z",
+		"<did:key:z6MknntgQWCT8Z",
+		"<did:key:z6MknntgQWCT8Z",
+		"<did:key:z6MknntgQWCT8Z",
+		"<did:key:z6MknntgQWCT8Z",
+		"<did:key:z6MknntgQWCT8Z",
+		"<did:key:z6MknntgQWCT8Z",
+		"<did:key:z6MknntgQWCT8Z",
+		"<did:key:z6MknntgQWCT8Z",
+		"<did:key:z6MknntgQWCT8Z",
+		"<https://issuer.oidp.us",
+		"<https://issuer.oidp.us",
+		"<https://issuer.oidp.us",
+		"<https://issuer.oidp.us",
+		"<https://issuer.oidp.us",
+		"<https://issuer.oidp.us",
+		"<https://issuer.oidp.us",
+		"_:c14n0 <cbdccard:1_usk",
+		"_:c14n0 <cbdccard:2_ou>",
+		"_:c14n0 <cbdccard:3_rol",
+		"_:c14n0 <cbdccard:4_eid",
+		"_:c14n0 <cbdccard:5_rh>",
+	}
+
+	attributes := make([][]byte, len(attributeNames))
+	for i, msg := range messagesBytes[1:] {
+		attributes[i] = bbs12381g2pub.FrFromOKM(msg, curve).Bytes()
+	}
+
+	sk := bbs12381g2pub.FrFromOKM(messagesBytes[0], curve)
+
+	cred := &aries.Credential{
+		Cred:  sigBytes,
+		Attrs: attributes,
+	}
+	credBytes, err := proto.Marshal(cred)
+	assert.NoError(t, err)
+
+	credProto := &aries.Cred{
+		Bls:   bbs12381g2pub.New(curve),
+		Curve: curve,
+	}
+
+	issuerProto := &aries.Issuer{curve}
+
+	ipk, err := issuerProto.NewPublicKeyFromBytes(pkBytes, attributeNames)
+	assert.NoError(t, err)
+
+	idemixAttrs := []types.IdemixAttribute{}
+	for _, msg := range messagesBytes[1:] {
+		idemixAttrs = append(idemixAttrs, types.IdemixAttribute{
+			Type:  types.IdemixBytesAttribute,
+			Value: msg,
+		})
+	}
+
+	err = credProto.Verify(sk, ipk, credBytes, idemixAttrs)
+	assert.NoError(t, err)
+
+	signer := &aries.Signer{
+		Curve: curve,
+		Rng:   rand,
+	}
+
+	userProto := &aries.User{
+		Curve: curve,
+		Rng:   rand,
+	}
+
+	for i := range messagesBytes[1:] {
+		idemixAttrs[i] = types.IdemixAttribute{
+			Type: types.IdemixHiddenAttribute,
+		}
+	}
+
+	rhIndex, eidIndex := 27, 26
+
+	Nym, RNmy, err := userProto.MakeNym(sk, ipk)
+	assert.NoError(t, err)
+
+	////////////////////
+	// base signature //
+	////////////////////
+
+	sig, _, err := signer.Sign(credBytes, sk, Nym, RNmy, ipk, idemixAttrs, []byte("silliness"), rhIndex, eidIndex, nil, types.Standard, nil)
+	assert.NoError(t, err)
+
+	err = signer.Verify(ipk, sig, []byte("silliness"), idemixAttrs, rhIndex, eidIndex, 0, nil, 0, types.Basic, nil)
+	assert.NoError(t, err)
+
+	//////////////////////
+	// eidNym signature //
+	//////////////////////
+
+	sig, m, err := signer.Sign(credBytes, sk, Nym, RNmy, ipk, idemixAttrs, []byte("silliness"), rhIndex, eidIndex, nil, types.EidNym, nil)
+	assert.NoError(t, err)
+
+	cb := bbs12381g2pub.NewCommitmentBuilder(2)
+	cb.Add(ipk.(*aries.IssuerPublicKey).PKwG.H0, m.EidNymAuditData.Rand)
+	cb.Add(ipk.(*aries.IssuerPublicKey).PKwG.H[eidIndex+1], bbs12381g2pub.FrFromOKM([]byte(`_:c14n0 <cbdccard:4_eid> "alice.remote" .`), curve))
+	assert.True(t, cb.Build().Equals(m.EidNymAuditData.Nym))
+
+	err = signer.Verify(ipk, sig, []byte("silliness"), idemixAttrs, rhIndex, eidIndex, 0, nil, 0, types.ExpectEidNym, nil)
+	assert.NoError(t, err)
+}
+
+func TestW3CCredSkElsewhere(t *testing.T) {
+	curve := math.Curves[math.BLS12_381_BBS]
+
+	rand, err := curve.Rand()
+	assert.NoError(t, err)
+
+	pkHex := `87fae47132975f345b38fafd53149f7a009b89dd94fdc54d5d051a29e185ed4870acc2453fbd2e307d1543dfb7fbfdb30cf0008df96c75e2e43975b7f92864b4bc6e3f2f1495748d80a36691f6feaeb8fe151c1bb35de9bff5ac21ff9e57aebe`
+	sigBase64 := "tQ4rHLBIh7a9dk5MVoly8ccb80pGeoEqybhYnYZO8VmguaFDyuCN7rFdBPCVs1/SYUHlKfzccE4m7waZyoLEkBLFiK2g54Q2i+CdtYBgDdkUDsoULSBMcH1MwGHwdjfXpldFNFrHFx/IAvLVniyeMQ=="
+
+	attributeNames := []string{
+		"_:c14n0 <http://www.w3.",
+		"_:c14n0 <https://w3id.o",
+		"_:c14n0 <https://w3id.o",
+		"<did:key:z6MknntgQWCT8Z",
+		"<did:key:z6MknntgQWCT8Z",
+		"<did:key:z6MknntgQWCT8Z",
+		"<did:key:z6MknntgQWCT8Z",
+		"<did:key:z6MknntgQWCT8Z",
+		"<did:key:z6MknntgQWCT8Z",
+		"<did:key:z6MknntgQWCT8Z",
+		"<did:key:z6MknntgQWCT8Z",
+		"<did:key:z6MknntgQWCT8Z",
+		"<did:key:z6MknntgQWCT8Z",
+		"<did:key:z6MknntgQWCT8Z",
+		"<did:key:z6MknntgQWCT8Z",
+		"<did:key:z6MknntgQWCT8Z",
+		"<https://issuer.oidp.us",
+		"<https://issuer.oidp.us",
+		"<https://issuer.oidp.us",
+		"<https://issuer.oidp.us",
+		"<https://issuer.oidp.us",
+		"<https://issuer.oidp.us",
+		"<https://issuer.oidp.us",
+		"_:c14n0 <cbdccard:1_usk",
+		"_:c14n0 <cbdccard:2_ou>",
+		"_:c14n0 <cbdccard:3_rol",
+		"_:c14n0 <cbdccard:4_eid",
+		"_:c14n0 <cbdccard:5_rh>",
+	}
+
+	messagesBytes := [][]byte{
+		[]byte(`_:c14n0 <http://purl.org/dc/terms/created> "2023-11-03T11:12:17Z"^^<http://www.w3.org/2001/XMLSchema#dateTime> .`),
+		[]byte(`_:c14n0 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <https://w3id.org/security#BbsBlsSignature2020> .`),
+		[]byte(`_:c14n0 <https://w3id.org/security#proofPurpose> <https://w3id.org/security#assertionMethod> .`),
+		[]byte(`_:c14n0 <https://w3id.org/security#verificationMethod> <did:key:zUC73gNPc1EnZmDDjYJzE8Bk89VRhuZPQYXFnSiSUZvX9N1i7N5VtMbJyowDR46rtARHLJYRVf7WMbGLb43s9tfTyKF9KFF22vBjXZRomcwtoQJmMNUSY7tfzyhLEy58dwUz3WD#zUC73gNPc1EnZmDDjYJzE8Bk89VRhuZPQYXFnSiSUZvX9N1i7N5VtMbJyowDR46rtARHLJYRVf7WMbGLb43s9tfTyKF9KFF22vBjXZRomcwtoQJmMNUSY7tfzyhLEy58dwUz3WD> .`),
+		[]byte(`<did:key:z6MknntgQWCT8Zs5vpQEVoV2HvsfdYfe7b1LTnM9Lty6fD4e> <cbdccard:cbdcdata> _:c14n0 .`),
+		[]byte(`<did:key:z6MknntgQWCT8Zs5vpQEVoV2HvsfdYfe7b1LTnM9Lty6fD4e> <http://schema.org/birthDate> "1990-11-22"^^<http://www.w3.org/2001/XMLSchema#dateTime> .`),
+		[]byte(`<did:key:z6MknntgQWCT8Zs5vpQEVoV2HvsfdYfe7b1LTnM9Lty6fD4e> <http://schema.org/familyName> "Bowen" .`),
+		[]byte(`<did:key:z6MknntgQWCT8Zs5vpQEVoV2HvsfdYfe7b1LTnM9Lty6fD4e> <http://schema.org/gender> "Male" .`),
+		[]byte(`<did:key:z6MknntgQWCT8Zs5vpQEVoV2HvsfdYfe7b1LTnM9Lty6fD4e> <http://schema.org/givenName> "Jace" .`),
+		[]byte(`<did:key:z6MknntgQWCT8Zs5vpQEVoV2HvsfdYfe7b1LTnM9Lty6fD4e> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <cbdccard:CBDC> .`),
+		[]byte(`<did:key:z6MknntgQWCT8Zs5vpQEVoV2HvsfdYfe7b1LTnM9Lty6fD4e> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://schema.org/Person> .`),
+		[]byte(`<did:key:z6MknntgQWCT8Zs5vpQEVoV2HvsfdYfe7b1LTnM9Lty6fD4e> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <https://w3id.org/citizenship#PermanentResident> .`),
+		[]byte(`<did:key:z6MknntgQWCT8Zs5vpQEVoV2HvsfdYfe7b1LTnM9Lty6fD4e> <https://w3id.org/citizenship#birthCountry> "Bahamas" .`),
+		[]byte(`<did:key:z6MknntgQWCT8Zs5vpQEVoV2HvsfdYfe7b1LTnM9Lty6fD4e> <https://w3id.org/citizenship#lprCategory> "C09" .`),
+		[]byte(`<did:key:z6MknntgQWCT8Zs5vpQEVoV2HvsfdYfe7b1LTnM9Lty6fD4e> <https://w3id.org/citizenship#lprNumber> "223-45-198" .`),
+		[]byte(`<did:key:z6MknntgQWCT8Zs5vpQEVoV2HvsfdYfe7b1LTnM9Lty6fD4e> <https://w3id.org/citizenship#residentSince> "2015-01-01"^^<http://www.w3.org/2001/XMLSchema#dateTime> .`),
+		[]byte(`<did:key:z6MknntgQWCT8Zs5vpQEVoV2HvsfdYfe7b1LTnM9Lty6fD4e> <https://w3id.org/vdl#portraitMetadata> "{\"hash\":\"de701215430a0c4f940ffe830efd27f54cae0d9655d78dc3849272e7641c05eedd066588345caf9d4181d9f325e73a9950a967d6fe766a4a62e02876e73255ad\",\"key\":\"aab053a5e11e3360679ce1a42c7733063843854a1002c19186743d7432a2e467\",\"link\":\"https://dev.lcn-cluster-dev-qa-app-583c1d2c1a459ad4539801325cd4ba78-0000.us-south.containers.appdomain.cloud/api/public/v1/object/70a62792-eb95-4491-a77f-e53dde8034fb\"}"^^<http://www.w3.org/1999/02/22-rdf-syntax-ns#JSON> .`),
+		[]byte(`<https://issuer.oidp.uscis.gov/credentials/83627465> <http://schema.org/name> "Permanent Resident Card" .`),
+		[]byte(`<https://issuer.oidp.uscis.gov/credentials/83627465> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <https://w3id.org/citizenship#PermanentResidentCard> .`),
+		[]byte(`<https://issuer.oidp.uscis.gov/credentials/83627465> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <https://www.w3.org/2018/credentials#VerifiableCredential> .`),
+		[]byte(`<https://issuer.oidp.uscis.gov/credentials/83627465> <https://www.w3.org/2018/credentials#credentialSubject> <did:key:z6MknntgQWCT8Zs5vpQEVoV2HvsfdYfe7b1LTnM9Lty6fD4e> .`),
+		[]byte(`<https://issuer.oidp.uscis.gov/credentials/83627465> <https://www.w3.org/2018/credentials#expirationDate> "2029-12-03T12:19:52Z"^^<http://www.w3.org/2001/XMLSchema#dateTime> .`),
+		[]byte(`<https://issuer.oidp.uscis.gov/credentials/83627465> <https://www.w3.org/2018/credentials#issuanceDate> "2019-12-03T12:19:52Z"^^<http://www.w3.org/2001/XMLSchema#dateTime> .`),
+		[]byte(`<https://issuer.oidp.uscis.gov/credentials/83627465> <https://www.w3.org/2018/credentials#issuer> <did:key:zUC73gNPc1EnZmDDjYJzE8Bk89VRhuZPQYXFnSiSUZvX9N1i7N5VtMbJyowDR46rtARHLJYRVf7WMbGLb43s9tfTyKF9KFF22vBjXZRomcwtoQJmMNUSY7tfzyhLEy58dwUz3WD> .`),
+		[]byte(`_:c14n0 <cbdccard:1_usk> "chgA6VtGQeRd/0rf1P6fCFm8t7ZU1Q8eMPM/+E9gsw8=" .`),
+		[]byte(`_:c14n0 <cbdccard:2_ou> "mytopos-mychannel-token-chaincode.example.com" .`),
+		[]byte(`_:c14n0 <cbdccard:3_role> "2"^^<http://www.w3.org/2001/XMLSchema#integer> .`),
+		[]byte(`_:c14n0 <cbdccard:4_eid> "alice.remote" .`),
+		[]byte(`_:c14n0 <cbdccard:5_rh> "111" .`),
+	}
+
+	for _, idcs := range [][]int{
+		{24, 27, 26},
+		{0, 0, 1},
+		{0, 1, 0},
+		{3, 9, 7},
+		{24, 0, 1},
+		{24, 1, 0},
+		{24, 25, 26},
+		{26, 25, 24},
+		{25, 26, 24},
+		{25, 24, 26},
+		{0, 1, len(messagesBytes) - 2},
+		{0, len(messagesBytes) - 3, len(messagesBytes) - 2},
+		{len(messagesBytes) - 2, len(messagesBytes) - 3, 0},
+		{len(messagesBytes) - 2, 0, len(messagesBytes) - 3},
+	} {
+		skIndex := idcs[0]                    // this is an index into the `messagesBytes` array
+		rhIndex, eidIndex := idcs[1], idcs[2] // these are indices into the `messagesBytes` *without* the usk attribute
+
+		eidIndexInBases := eidIndex
+		rhIndexInBases := rhIndex
+
+		// increment the index to cater for the index for `sk`
+		if eidIndexInBases >= skIndex {
+			eidIndexInBases++
+		}
+
+		// increment the index to cater for the index for `sk`
+		if rhIndexInBases >= skIndex {
+			rhIndexInBases++
+		}
+
+		eidAttr := messagesBytes[eidIndexInBases]
+		rhAttr := messagesBytes[rhIndexInBases]
+
+		t.Run("run", func(t *testing.T) {
+			pkBytes, err := hex.DecodeString(pkHex)
+			assert.NoError(t, err)
+			sigBytes, err := base64.StdEncoding.DecodeString(sigBase64)
+			assert.NoError(t, err)
+
+			bls := bbs12381g2pub.New(math.Curves[math.BLS12_381_BBS])
+
+			err = bls.Verify(messagesBytes, sigBytes, pkBytes)
+			assert.NoError(t, err)
+
+			attributes := make([][]byte, len(attributeNames))
+			j := 0
+			for i, msg := range messagesBytes {
+				if i == skIndex {
+					continue
+				}
+				attributes[j] = bbs12381g2pub.FrFromOKM(msg, curve).Bytes()
+				j++
+			}
+
+			sk := bbs12381g2pub.FrFromOKM(messagesBytes[skIndex], curve)
+
+			cred := &aries.Credential{
+				Cred:  sigBytes,
+				Attrs: attributes,
+				SkPos: int32(skIndex),
+			}
+			credBytes, err := proto.Marshal(cred)
+			assert.NoError(t, err)
+
+			credProto := &aries.Cred{
+				Bls:   bbs12381g2pub.New(curve),
+				Curve: curve,
+			}
+
+			issuerProto := &aries.Issuer{curve}
+
+			ipk, err := issuerProto.NewPublicKeyFromBytes(pkBytes, attributeNames)
+			assert.NoError(t, err)
+
+			idemixAttrs := []types.IdemixAttribute{}
+			for i, msg := range messagesBytes {
+				if i == skIndex {
+					continue
+				}
+				idemixAttrs = append(idemixAttrs, types.IdemixAttribute{
+					Type:  types.IdemixBytesAttribute,
+					Value: msg,
+				})
+			}
+
+			err = credProto.Verify(sk, ipk, credBytes, idemixAttrs)
+			assert.NoError(t, err)
+
+			signer := &aries.Signer{
+				Curve: curve,
+				Rng:   rand,
+			}
+
+			userProto := &aries.User{
+				Curve:              curve,
+				Rng:                rand,
+				UserSecretKeyIndex: skIndex,
+			}
+
+			for i := range idemixAttrs {
+				idemixAttrs[i] = types.IdemixAttribute{
+					Type: types.IdemixHiddenAttribute,
+				}
+			}
+
+			Nym, RNmy, err := userProto.MakeNym(sk, ipk)
+			assert.NoError(t, err)
+
+			////////////////////
+			// base signature //
+			////////////////////
+
+			sig, _, err := signer.Sign(credBytes, sk, Nym, RNmy, ipk, idemixAttrs, []byte("silliness"), rhIndex, eidIndex, nil, types.Standard, nil)
+			assert.NoError(t, err)
+
+			err = signer.Verify(ipk, sig, []byte("silliness"), idemixAttrs, rhIndex, eidIndex, skIndex, nil, 0, types.Basic, nil)
+			assert.NoError(t, err)
+
+			//////////////////////
+			// eidNym signature //
+			//////////////////////
+
+			sig, m, err := signer.Sign(credBytes, sk, Nym, RNmy, ipk, idemixAttrs, []byte("silliness"), rhIndex, eidIndex, nil, types.EidNym, nil)
+			assert.NoError(t, err)
+
+			cb := bbs12381g2pub.NewCommitmentBuilder(2)
+			cb.Add(ipk.(*aries.IssuerPublicKey).PKwG.H0, m.EidNymAuditData.Rand)
+			cb.Add(ipk.(*aries.IssuerPublicKey).PKwG.H[eidIndexInBases], bbs12381g2pub.FrFromOKM(eidAttr, curve))
+			assert.True(t, cb.Build().Equals(m.EidNymAuditData.Nym))
+
+			err = signer.Verify(ipk, sig, []byte("silliness"), idemixAttrs, rhIndex, eidIndex, skIndex, nil, 0, types.ExpectEidNym, nil)
+			assert.NoError(t, err)
+
+			//////////////////////
+			// eidNym signature // (nym supplied)
+			//////////////////////
+
+			rNym := curve.NewRandomZr(rand)
+
+			cb = bbs12381g2pub.NewCommitmentBuilder(2)
+			cb.Add(ipk.(*aries.IssuerPublicKey).PKwG.H0, rNym)
+			cb.Add(ipk.(*aries.IssuerPublicKey).PKwG.H[eidIndexInBases], bbs12381g2pub.FrFromOKM(eidAttr, curve))
+			nym := cb.Build()
+
+			meta := &types.IdemixSignerMetadata{
+				EidNym: nym.Bytes(),
+				EidNymAuditData: &types.AttrNymAuditData{
+					Nym:  nym,
+					Rand: rNym,
+					Attr: bbs12381g2pub.FrFromOKM(eidAttr, curve),
+				},
+			}
+
+			sig, _, err = signer.Sign(credBytes, sk, Nym, RNmy, ipk, idemixAttrs, []byte("silliness"), rhIndex, eidIndex, nil, types.EidNym, meta)
+			assert.NoError(t, err)
+
+			err = signer.Verify(ipk, sig, []byte("silliness"), idemixAttrs, rhIndex, eidIndex, skIndex, nil, 0, types.ExpectEidNym, nil)
+			assert.NoError(t, err)
+
+			// supply correct metadata for verification
+			err = signer.Verify(ipk, sig, []byte("silliness"), idemixAttrs,
+				rhIndex, eidIndex, skIndex, nil, 0, types.ExpectEidNym, meta)
+			assert.NoError(t, err)
+
+			// audit with AuditNymEid - it should succeed with the right nym and randomness
+			err = signer.AuditNymEid(ipk, eidIndex, skIndex, sig, string(eidAttr), rNym, types.AuditExpectSignature)
+			assert.NoError(t, err)
+
+			/////////////////////
+			// NymRh signature //
+			/////////////////////
+
+			sig, m, err = signer.Sign(credBytes, sk, Nym, RNmy, ipk, idemixAttrs, []byte("tome"), rhIndex, eidIndex, nil, types.EidNymRhNym, nil)
+			assert.NoError(t, err)
+
+			cb = bbs12381g2pub.NewCommitmentBuilder(2)
+			cb.Add(ipk.(*aries.IssuerPublicKey).PKwG.H0, m.EidNymAuditData.Rand)
+			cb.Add(ipk.(*aries.IssuerPublicKey).PKwG.H[eidIndexInBases], m.EidNymAuditData.Attr)
+			assert.True(t, cb.Build().Equals(m.EidNymAuditData.Nym))
+
+			cb = bbs12381g2pub.NewCommitmentBuilder(2)
+			cb.Add(ipk.(*aries.IssuerPublicKey).PKwG.H0, m.RhNymAuditData.Rand)
+			cb.Add(ipk.(*aries.IssuerPublicKey).PKwG.H[rhIndexInBases], m.RhNymAuditData.Attr)
+			assert.True(t, cb.Build().Equals(m.RhNymAuditData.Nym))
+
+			err = signer.Verify(ipk, sig, []byte("tome"), idemixAttrs, rhIndex, eidIndex, skIndex, nil, 0, types.ExpectEidNymRhNym, nil)
+			assert.NoError(t, err)
+
+			/////////////////////
+			// NymRh signature // (nym supplied)
+			/////////////////////
+
+			rNym = curve.NewRandomZr(rand)
+
+			cb = bbs12381g2pub.NewCommitmentBuilder(2)
+			cb.Add(ipk.(*aries.IssuerPublicKey).PKwG.H0, rNym)
+			cb.Add(ipk.(*aries.IssuerPublicKey).PKwG.H[rhIndexInBases], bbs12381g2pub.FrFromOKM(rhAttr, curve))
+			nym = cb.Build()
+
+			meta = &types.IdemixSignerMetadata{
+				RhNym: nym.Bytes(),
+				RhNymAuditData: &types.AttrNymAuditData{
+					Nym:  nym,
+					Rand: rNym,
+					Attr: bbs12381g2pub.FrFromOKM(rhAttr, curve),
+				},
+			}
+
+			sig, _, err = signer.Sign(credBytes, sk, Nym, RNmy, ipk, idemixAttrs, []byte("silliness"), rhIndex, eidIndex, nil, types.EidNymRhNym, meta)
+			assert.NoError(t, err)
+
+			err = signer.Verify(ipk, sig, []byte("silliness"), idemixAttrs, rhIndex, eidIndex, skIndex, nil, 0, types.ExpectEidNymRhNym, nil)
+			assert.NoError(t, err)
+
+			// supply correct metadata for verification
+			err = signer.Verify(ipk, sig, []byte("silliness"), idemixAttrs, rhIndex, eidIndex, skIndex, nil, 0, types.ExpectEidNymRhNym, meta)
+			assert.NoError(t, err)
+
+			// audit with AuditNymEid - it should succeed with the right nym and randomness
+			err = signer.AuditNymRh(ipk, rhIndex, skIndex, sig, string(rhAttr), rNym, types.AuditExpectSignature)
+			assert.NoError(t, err)
+		})
+	}
 }
 
 func TestSigner(t *testing.T) {
@@ -512,7 +977,7 @@ func TestSigner(t *testing.T) {
 	sig, _, err := signer.Sign(cred, sk, Nym, RNmy, ipk, idemixAttrs, []byte("silliness"), rhIndex, eidIndex, nil, types.Standard, nil)
 	assert.NoError(t, err)
 
-	err = signer.Verify(ipk, sig, []byte("silliness"), idemixAttrs, rhIndex, eidIndex, nil, 0, types.Basic, nil)
+	err = signer.Verify(ipk, sig, []byte("silliness"), idemixAttrs, rhIndex, eidIndex, 0, nil, 0, types.Basic, nil)
 	assert.NoError(t, err)
 
 	//////////////////////
@@ -527,7 +992,7 @@ func TestSigner(t *testing.T) {
 	cb.Add(ipk.(*aries.IssuerPublicKey).PKwG.H[eidIndex+1], m.EidNymAuditData.Attr)
 	assert.True(t, cb.Build().Equals(m.EidNymAuditData.Nym))
 
-	err = signer.Verify(ipk, sig, []byte("silliness"), idemixAttrs, rhIndex, eidIndex, nil, 0, types.ExpectEidNym, nil)
+	err = signer.Verify(ipk, sig, []byte("silliness"), idemixAttrs, rhIndex, eidIndex, 0, nil, 0, types.ExpectEidNym, nil)
 	assert.NoError(t, err)
 
 	//////////////////////
@@ -553,12 +1018,12 @@ func TestSigner(t *testing.T) {
 	sig, _, err = signer.Sign(cred, sk, Nym, RNmy, ipk, idemixAttrs, []byte("silliness"), rhIndex, eidIndex, nil, types.EidNym, meta)
 	assert.NoError(t, err)
 
-	err = signer.Verify(ipk, sig, []byte("silliness"), idemixAttrs, rhIndex, eidIndex, nil, 0, types.ExpectEidNym, nil)
+	err = signer.Verify(ipk, sig, []byte("silliness"), idemixAttrs, rhIndex, eidIndex, 0, nil, 0, types.ExpectEidNym, nil)
 	assert.NoError(t, err)
 
 	// supply correct metadata for verification
 	err = signer.Verify(ipk, sig, []byte("silliness"), idemixAttrs,
-		rhIndex, eidIndex, nil, 0, types.ExpectEidNym, meta)
+		rhIndex, eidIndex, 0, nil, 0, types.ExpectEidNym, meta)
 	assert.NoError(t, err)
 
 	meta = &types.IdemixSignerMetadata{
@@ -572,7 +1037,7 @@ func TestSigner(t *testing.T) {
 
 	// supply wrong metadata for verification
 	err = signer.Verify(ipk, sig, []byte("silliness"), idemixAttrs,
-		rhIndex, eidIndex, nil, 0, types.ExpectEidNym, meta)
+		rhIndex, eidIndex, 0, nil, 0, types.ExpectEidNym, meta)
 	assert.EqualError(t, err, "signature invalid: nym eid validation failed, does not match regenerated nym eid")
 
 	meta = &types.IdemixSignerMetadata{
@@ -581,7 +1046,7 @@ func TestSigner(t *testing.T) {
 
 	// supply wrong metadata for verification
 	err = signer.Verify(ipk, sig, []byte("silliness"), idemixAttrs,
-		rhIndex, eidIndex, nil, 0, types.ExpectEidNym, meta)
+		rhIndex, eidIndex, 0, nil, 0, types.ExpectEidNym, meta)
 	assert.EqualError(t, err, "signature invalid: nym eid validation failed, signature nym eid does not match metadata")
 
 	meta = &types.IdemixSignerMetadata{
@@ -590,7 +1055,7 @@ func TestSigner(t *testing.T) {
 
 	// supply wrong metadata for verification
 	err = signer.Verify(ipk, sig, []byte("silliness"), idemixAttrs,
-		rhIndex, eidIndex, nil, 0, types.ExpectEidNym, meta)
+		rhIndex, eidIndex, 0, nil, 0, types.ExpectEidNym, meta)
 	assert.EqualError(t, err, "signature invalid: nym eid validation failed, failed to unmarshal meta nym eid")
 
 	meta = &types.IdemixSignerMetadata{
@@ -604,43 +1069,43 @@ func TestSigner(t *testing.T) {
 
 	// supply wrong metadata for verification
 	err = signer.Verify(ipk, sig, []byte("silliness"), idemixAttrs,
-		rhIndex, eidIndex, nil, 0, types.ExpectEidNym, meta)
+		rhIndex, eidIndex, 0, nil, 0, types.ExpectEidNym, meta)
 	assert.EqualError(t, err, "signature invalid: nym eid validation failed, does not match metadata")
 
 	// audit with AuditNymEid - it should succeed with the right nym and randomness
-	err = signer.AuditNymEid(ipk, eidIndex, sig, "nymeid", rNym, types.AuditExpectSignature)
+	err = signer.AuditNymEid(ipk, eidIndex, 0, sig, "nymeid", rNym, types.AuditExpectSignature)
 	assert.NoError(t, err)
 
 	// audit with AuditNymEid - it should fail with the wrong nym
-	err = signer.AuditNymEid(ipk, eidIndex, sig, "not so much the nymeid", rNym, types.AuditExpectSignature)
+	err = signer.AuditNymEid(ipk, eidIndex, 0, sig, "not so much the nymeid", rNym, types.AuditExpectSignature)
 	assert.EqualError(t, err, "eid nym does not match")
 
 	// audit with AuditNymEid - it should fail with the wrong randomness
-	err = signer.AuditNymEid(ipk, eidIndex, sig, "nymeid", curve.NewRandomZr(rand), types.AuditExpectSignature)
+	err = signer.AuditNymEid(ipk, eidIndex, 0, sig, "nymeid", curve.NewRandomZr(rand), types.AuditExpectSignature)
 	assert.EqualError(t, err, "eid nym does not match")
 
 	// audit with AuditNymEid - it should succeed with the right nym and randomness
-	err = signer.AuditNymEid(ipk, eidIndex, nym.Bytes(), "nymeid", rNym, types.AuditExpectEidNym)
+	err = signer.AuditNymEid(ipk, eidIndex, 0, nym.Bytes(), "nymeid", rNym, types.AuditExpectEidNym)
 	assert.NoError(t, err)
 
 	// audit with AuditNymEid - it should fail with the wrong nym
-	err = signer.AuditNymEid(ipk, eidIndex, nym.Bytes(), "not so much the nymeid", rNym, types.AuditExpectEidNym)
+	err = signer.AuditNymEid(ipk, eidIndex, 0, nym.Bytes(), "not so much the nymeid", rNym, types.AuditExpectEidNym)
 	assert.EqualError(t, err, "eid nym does not match")
 
 	// audit with AuditNymEid - it should fail with the wrong randomness
-	err = signer.AuditNymEid(ipk, eidIndex, nym.Bytes(), "nymeid", curve.NewRandomZr(rand), types.AuditExpectEidNym)
+	err = signer.AuditNymEid(ipk, eidIndex, 0, nym.Bytes(), "nymeid", curve.NewRandomZr(rand), types.AuditExpectEidNym)
 	assert.EqualError(t, err, "eid nym does not match")
 
 	// audit with AuditNymEid - it should succeed with the right nym and randomness
-	err = signer.AuditNymEid(ipk, eidIndex, nym.Bytes(), "nymeid", rNym, types.AuditExpectEidNymRhNym)
+	err = signer.AuditNymEid(ipk, eidIndex, 0, nym.Bytes(), "nymeid", rNym, types.AuditExpectEidNymRhNym)
 	assert.NoError(t, err)
 
 	// audit with AuditNymEid - it should fail with the wrong nym
-	err = signer.AuditNymEid(ipk, eidIndex, nym.Bytes(), "not so much the nymeid", rNym, types.AuditExpectEidNymRhNym)
+	err = signer.AuditNymEid(ipk, eidIndex, 0, nym.Bytes(), "not so much the nymeid", rNym, types.AuditExpectEidNymRhNym)
 	assert.EqualError(t, err, "eid nym does not match")
 
 	// audit with AuditNymEid - it should fail with the wrong randomness
-	err = signer.AuditNymEid(ipk, eidIndex, nym.Bytes(), "nymeid", curve.NewRandomZr(rand), types.AuditExpectEidNymRhNym)
+	err = signer.AuditNymEid(ipk, eidIndex, 0, nym.Bytes(), "nymeid", curve.NewRandomZr(rand), types.AuditExpectEidNymRhNym)
 	assert.EqualError(t, err, "eid nym does not match")
 
 	//////////////////////
@@ -683,7 +1148,7 @@ func TestSigner(t *testing.T) {
 	cb.Add(ipk.(*aries.IssuerPublicKey).PKwG.H[rhIndex+1], m.RhNymAuditData.Attr)
 	assert.True(t, cb.Build().Equals(m.RhNymAuditData.Nym))
 
-	err = signer.Verify(ipk, sig, []byte("tome"), idemixAttrs, rhIndex, eidIndex, nil, 0, types.ExpectEidNymRhNym, nil)
+	err = signer.Verify(ipk, sig, []byte("tome"), idemixAttrs, rhIndex, eidIndex, 0, nil, 0, types.ExpectEidNymRhNym, nil)
 	assert.NoError(t, err)
 
 	/////////////////////
@@ -709,11 +1174,11 @@ func TestSigner(t *testing.T) {
 	sig, _, err = signer.Sign(cred, sk, Nym, RNmy, ipk, idemixAttrs, []byte("silliness"), rhIndex, eidIndex, nil, types.EidNymRhNym, meta)
 	assert.NoError(t, err)
 
-	err = signer.Verify(ipk, sig, []byte("silliness"), idemixAttrs, rhIndex, eidIndex, nil, 0, types.ExpectEidNymRhNym, nil)
+	err = signer.Verify(ipk, sig, []byte("silliness"), idemixAttrs, rhIndex, eidIndex, 0, nil, 0, types.ExpectEidNymRhNym, nil)
 	assert.NoError(t, err)
 
 	// supply correct metadata for verification
-	err = signer.Verify(ipk, sig, []byte("silliness"), idemixAttrs, rhIndex, eidIndex, nil, 0, types.ExpectEidNymRhNym, meta)
+	err = signer.Verify(ipk, sig, []byte("silliness"), idemixAttrs, rhIndex, eidIndex, 0, nil, 0, types.ExpectEidNymRhNym, meta)
 	assert.NoError(t, err)
 
 	meta = &types.IdemixSignerMetadata{
@@ -726,7 +1191,7 @@ func TestSigner(t *testing.T) {
 	}
 
 	// supply wrong metadata for verification
-	err = signer.Verify(ipk, sig, []byte("silliness"), idemixAttrs, rhIndex, eidIndex, nil, 0, types.ExpectEidNymRhNym, meta)
+	err = signer.Verify(ipk, sig, []byte("silliness"), idemixAttrs, rhIndex, eidIndex, 0, nil, 0, types.ExpectEidNymRhNym, meta)
 	assert.EqualError(t, err, "signature invalid: nym rh validation failed, does not match regenerated nym rh")
 
 	meta = &types.IdemixSignerMetadata{
@@ -734,7 +1199,7 @@ func TestSigner(t *testing.T) {
 	}
 
 	// supply wrong metadata for verification
-	err = signer.Verify(ipk, sig, []byte("silliness"), idemixAttrs, rhIndex, eidIndex, nil, 0, types.ExpectEidNymRhNym, meta)
+	err = signer.Verify(ipk, sig, []byte("silliness"), idemixAttrs, rhIndex, eidIndex, 0, nil, 0, types.ExpectEidNymRhNym, meta)
 	assert.EqualError(t, err, "signature invalid: rh nym validation failed, signature rh nym does not match metadata")
 
 	meta = &types.IdemixSignerMetadata{
@@ -742,7 +1207,7 @@ func TestSigner(t *testing.T) {
 	}
 
 	// supply wrong metadata for verification
-	err = signer.Verify(ipk, sig, []byte("silliness"), idemixAttrs, rhIndex, eidIndex, nil, 0, types.ExpectEidNymRhNym, meta)
+	err = signer.Verify(ipk, sig, []byte("silliness"), idemixAttrs, rhIndex, eidIndex, 0, nil, 0, types.ExpectEidNymRhNym, meta)
 	assert.EqualError(t, err, "signature invalid: rh nym validation failed, failed to unmarshal meta rh nym")
 
 	meta = &types.IdemixSignerMetadata{
@@ -755,35 +1220,35 @@ func TestSigner(t *testing.T) {
 	}
 
 	// supply wrong metadata for verification
-	err = signer.Verify(ipk, sig, []byte("silliness"), idemixAttrs, rhIndex, eidIndex, nil, 0, types.ExpectEidNymRhNym, meta)
+	err = signer.Verify(ipk, sig, []byte("silliness"), idemixAttrs, rhIndex, eidIndex, 0, nil, 0, types.ExpectEidNymRhNym, meta)
 	assert.EqualError(t, err, "signature invalid: nym rh validation failed, does not match metadata")
 
 	// audit with AuditNymEid - it should succeed with the right nym and randomness
-	err = signer.AuditNymRh(ipk, rhIndex, sig, "nymrh", rNym, types.AuditExpectSignature)
+	err = signer.AuditNymRh(ipk, rhIndex, 0, sig, "nymrh", rNym, types.AuditExpectSignature)
 	assert.NoError(t, err)
 
 	// audit with AuditNymEid - it should fail with the wrong nym
-	err = signer.AuditNymRh(ipk, rhIndex, sig, "not so much the nymrh", rNym, types.AuditExpectSignature)
+	err = signer.AuditNymRh(ipk, rhIndex, 0, sig, "not so much the nymrh", rNym, types.AuditExpectSignature)
 	assert.EqualError(t, err, "rh nym does not match")
 
 	// audit with AuditNymEid - it should fail with the wrong randomness
-	err = signer.AuditNymRh(ipk, rhIndex, sig, "nymrh", curve.NewRandomZr(rand), types.AuditExpectSignature)
+	err = signer.AuditNymRh(ipk, rhIndex, 0, sig, "nymrh", curve.NewRandomZr(rand), types.AuditExpectSignature)
 	assert.EqualError(t, err, "rh nym does not match")
 
 	// audit with AuditNymEid - it should succeed with the right nym and randomness
-	err = signer.AuditNymRh(ipk, rhIndex, nym.Bytes(), "nymrh", rNym, types.AuditExpectEidNymRhNym)
+	err = signer.AuditNymRh(ipk, rhIndex, 0, nym.Bytes(), "nymrh", rNym, types.AuditExpectEidNymRhNym)
 	assert.NoError(t, err)
 
 	// audit with AuditNymEid - it should fail with the wrong nym
-	err = signer.AuditNymRh(ipk, rhIndex, nym.Bytes(), "not so much the nymrh", rNym, types.AuditExpectEidNymRhNym)
+	err = signer.AuditNymRh(ipk, rhIndex, 0, nym.Bytes(), "not so much the nymrh", rNym, types.AuditExpectEidNymRhNym)
 	assert.EqualError(t, err, "rh nym does not match")
 
 	// audit with AuditNymEid - it should fail with the wrong randomness
-	err = signer.AuditNymRh(ipk, rhIndex, nym.Bytes(), "nymrh", curve.NewRandomZr(rand), types.AuditExpectEidNymRhNym)
+	err = signer.AuditNymRh(ipk, rhIndex, 0, nym.Bytes(), "nymrh", curve.NewRandomZr(rand), types.AuditExpectEidNymRhNym)
 	assert.EqualError(t, err, "rh nym does not match")
 
 	// audit with AuditNymEid - it should fail with AuditExpectEidNym
-	err = signer.AuditNymRh(ipk, rhIndex, nym.Bytes(), "nymrh", rNym, types.AuditExpectEidNym)
+	err = signer.AuditNymRh(ipk, rhIndex, 0, nym.Bytes(), "nymrh", rNym, types.AuditExpectEidNym)
 	assert.EqualError(t, err, "invalid audit type [1]")
 
 	/////////////////////
@@ -816,7 +1281,7 @@ func TestSigner(t *testing.T) {
 	sig, _, err = signer.Sign(cred, sk, Nym, RNmy, ipk, idemixAttrs, []byte("silliness"), rhIndex, eidIndex, nil, types.Standard, nil)
 	assert.NoError(t, err)
 
-	err = signer.Verify(ipk, sig, []byte("silliness"), idemixAttrs, rhIndex, eidIndex, nil, 0, types.ExpectEidNym, nil)
+	err = signer.Verify(ipk, sig, []byte("silliness"), idemixAttrs, rhIndex, eidIndex, 0, nil, 0, types.ExpectEidNym, nil)
 	assert.EqualError(t, err, "no EidNym provided but ExpectEidNym required")
 
 	/////////////////////
@@ -826,7 +1291,7 @@ func TestSigner(t *testing.T) {
 	sig, _, err = signer.Sign(cred, sk, Nym, RNmy, ipk, idemixAttrs, []byte("silliness"), rhIndex, eidIndex, nil, types.EidNym, nil)
 	assert.NoError(t, err)
 
-	err = signer.Verify(ipk, sig, []byte("silliness"), idemixAttrs, rhIndex, eidIndex, nil, 0, types.ExpectEidNymRhNym, nil)
+	err = signer.Verify(ipk, sig, []byte("silliness"), idemixAttrs, rhIndex, eidIndex, 0, nil, 0, types.ExpectEidNymRhNym, nil)
 	assert.EqualError(t, err, "no RhNym provided but ExpectEidNymRhNym required")
 
 	//////////////////////
