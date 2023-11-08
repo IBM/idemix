@@ -36,7 +36,7 @@ func (c *Cred) Sign(key types.IssuerSecretKey, credentialRequest []byte, attribu
 
 	msgsZr := attributesToSignatureMessage(nil, attributes, c.Curve)
 
-	sig, err := BlindSign(msgsZr, len(attributes)+1, blindedMsg.C, isk.SK.FR.Bytes(), c.Curve)
+	sig, err := BlindSign(msgsZr, len(attributes)+1, blindedMsg.C, isk.SK.FR.Bytes())
 	if err != nil {
 		return nil, fmt.Errorf("ParseBlindedMessages failed [%w]", err)
 	}
@@ -73,7 +73,7 @@ func (c *Cred) Verify(sk *math.Zr, key types.IssuerPublicKey, credBytes []byte, 
 		return fmt.Errorf("proto.Unmarshal failed [%w]", err)
 	}
 
-	sigma, err := bbs12381g2pub.NewBBSLib(c.Curve).ParseSignature(credential.Cred)
+	sigma, err := bbs12381g2pub.ParseSignature(credential.Cred)
 	if err != nil {
 		return fmt.Errorf("ParseSignature failed [%w]", err)
 	}
@@ -93,7 +93,7 @@ func (c *Cred) Verify(sk *math.Zr, key types.IssuerPublicKey, credBytes []byte, 
 		case types.IdemixHiddenAttribute:
 			continue
 		case types.IdemixBytesAttribute:
-			fr := bbs12381g2pub.FrFromOKM(attributes[i].Value.([]byte), c.Curve)
+			fr := bbs12381g2pub.FrFromOKM(attributes[i].Value.([]byte))
 			if !fr.Equals(sm[i+1].FR) {
 				return errors.Errorf("credential does not contain the correct attribute value at position [%d]", i)
 			}

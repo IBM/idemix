@@ -4,8 +4,8 @@ github.com/IBM/idemix/bccsp/types v0.0.0-20231003085036-c4470b87b2d6 h1:h50UUl8/
 github.com/IBM/idemix/bccsp/types v0.0.0-20231003085036-c4470b87b2d6/go.mod h1:2lO6nmsoSH3WDJdat4kIicU+WTs4qDntGZkF8XdgHm8=
 github.com/IBM/mathlib v0.0.3-0.20231011094432-44ee0eb539da h1:qqGozq4tF6EOVnWoTgBoJGudRKKZXSAYnEtDggzTnsw=
 github.com/IBM/mathlib v0.0.3-0.20231011094432-44ee0eb539da/go.mod h1:Tco9QzE3fQzjMS7nPbHDeFfydAzctStf1Pa8hsh6Hjs=
-github.com/ale-linux/aries-framework-go/component/kmscrypto v0.0.0-20231023164747-f3f972769504 h1:sQyFeDcHVHWJ3IeE437NSJjv0+J/6MvGQOJew4X+Cuw=
-github.com/ale-linux/aries-framework-go/component/kmscrypto v0.0.0-20231023164747-f3f972769504/go.mod h1:z5xq4Ji1RQojJLZzKeZH5+LKCVZxgQRZpQ4xAJWi8r0=
+github.com/ale-linux/aries-framework-go/component/kmscrypto v0.0.0-20230817163708-4b3de6d91874 h1:O08ZCyb1f7UeyOmTeItAw7eSZOlyM0fBnrPgaYgKEiA=
+github.com/ale-linux/aries-framework-go/component/kmscrypto v0.0.0-20230817163708-4b3de6d91874/go.mod h1:4sHtFlGI84SVjaSW7u1pCfC0bjijd9ZeqbKptU/Qljs=
 github.com/bits-and-blooms/bitset v1.7.0 h1:YjAGVd3XmtK9ktAbX8Zg2g2PwLIMjGREZJHlV4j7NEo=
 github.com/bits-and-blooms/bitset v1.7.0/go.mod h1:gIdJ4wp64HaoK2YrL1Q5/N7Y16edYb8uY+O0FJTyyDA=
 github.com/btcsuite/btcutil v1.0.3-0.20201208143702-a53e38424cce h1:YtWJF7RHm2pYCvA5t0RPmAaLUhREsKuKd+SLhxFbFeQ=

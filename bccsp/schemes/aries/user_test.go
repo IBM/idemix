@@ -15,7 +15,7 @@ import (
 )
 
 func TestUser(t *testing.T) {
-	issuer := &aries.Issuer{math.Curves[math.BLS12_381_BBS]}
+	issuer := &aries.Issuer{}
 
 	attrs := []string{
 		"attr1",
@@ -59,12 +59,12 @@ func TestUser(t *testing.T) {
 	nym1, err := user.NewPublicNymFromBytes(nymBytes)
 	assert.NoError(t, err)
 	assert.NotNil(t, nym)
-	assert.True(t, nym.Equals(nym1))
+	assert.Equal(t, nym, nym1)
 
 	nym1, r1, err := user.NewNymFromBytes(bothBytes)
 	assert.NoError(t, err)
 	assert.NotNil(t, nym)
-	assert.True(t, nym.Equals(nym1))
+	assert.Equal(t, nym, nym1)
 	assert.NotNil(t, r1)
 	assert.Equal(t, r, r1)
 

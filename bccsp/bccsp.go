@@ -194,9 +194,7 @@ func NewAries(keyStore bccsp.KeyStore, curve *math.Curve, _translator idemix.Tra
 	base.AddWrapper(reflect.TypeOf(&bccsp.IdemixIssuerKeyGenOpts{}),
 		&handlers.IssuerKeyGen{
 			Exportable: exportable,
-			Issuer: &aries.Issuer{
-				Curve: curve,
-			},
+			Issuer:     &aries.Issuer{},
 		})
 	base.AddWrapper(reflect.TypeOf(&bccsp.IdemixUserSecretKeyGenOpts{}),
 		&handlers.UserKeyGen{
@@ -249,7 +247,7 @@ func NewAries(keyStore bccsp.KeyStore, curve *math.Curve, _translator idemix.Tra
 		&handlers.CredentialSigner{
 			Credential: &aries.Cred{
 				Curve: curve,
-				Bls:   bbs12381g2pub.New(curve),
+				Bls:   bbs12381g2pub.New(),
 			},
 		})
 	base.AddWrapper(reflect.TypeOf(handlers.NewRevocationSecretKey(nil, true)),
@@ -285,7 +283,7 @@ func NewAries(keyStore bccsp.KeyStore, curve *math.Curve, _translator idemix.Tra
 		&handlers.CredentialVerifier{
 			Credential: &aries.Cred{
 				Curve: curve,
-				Bls:   bbs12381g2pub.New(curve),
+				Bls:   bbs12381g2pub.New(),
 			},
 		})
 	base.AddWrapper(reflect.TypeOf(handlers.NewRevocationPublicKey(nil)),
@@ -307,16 +305,12 @@ func NewAries(keyStore bccsp.KeyStore, curve *math.Curve, _translator idemix.Tra
 		})
 	base.AddWrapper(reflect.TypeOf(&bccsp.IdemixIssuerPublicKeyImportOpts{}),
 		&handlers.IssuerPublicKeyImporter{
-			Issuer: &aries.Issuer{
-				Curve: curve,
-			},
+			Issuer: &aries.Issuer{},
 		})
 	base.AddWrapper(reflect.TypeOf(&bccsp.IdemixIssuerKeyImportOpts{}),
 		&handlers.IssuerKeyImporter{
 			Exportable: exportable,
-			Issuer: &aries.Issuer{
-				Curve: curve,
-			},
+			Issuer:     &aries.Issuer{},
 		})
 	base.AddWrapper(reflect.TypeOf(&bccsp.IdemixNymPublicKeyImportOpts{}),
 		&handlers.NymPublicKeyImporter{

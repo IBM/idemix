@@ -29,7 +29,7 @@ func attributesToSignatureMessage(sk *math.Zr, attributes []types.IdemixAttribut
 		switch msg.Type {
 		case types.IdemixBytesAttribute:
 			msgsZr = append(msgsZr, &bbs12381g2pub.SignatureMessage{
-				FR:  bbs12381g2pub.FrFromOKM(msg.Value.([]byte), curve),
+				FR:  bbs12381g2pub.FrFromOKM(msg.Value.([]byte)),
 				Idx: i + 1,
 			})
 		case types.IdemixIntAttribute:

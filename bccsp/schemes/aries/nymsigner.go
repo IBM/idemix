@@ -37,7 +37,7 @@ func (s *NymSigner) Sign(
 
 	Nonce := s.Curve.NewRandomZr(s.Rng)
 
-	commit := bbs12381g2pub.NewBBSLib(s.Curve).NewProverCommittingG1()
+	commit := bbs12381g2pub.NewProverCommittingG1()
 	commit.Commit(ipk.PKwG.H0)
 	commit.Commit(ipk.PKwG.H[0])
 	commitNym := commit.Finish()
@@ -47,11 +47,11 @@ func (s *NymSigner) Sign(
 	challengeBytes = append(challengeBytes, commitNym.ToBytes()...)
 	challengeBytes = append(challengeBytes, digest...)
 
-	proofChallenge := bbs12381g2pub.FrFromOKM(challengeBytes, s.Curve)
+	proofChallenge := bbs12381g2pub.FrFromOKM(challengeBytes)
 
 	challengeBytes = proofChallenge.Bytes()
 	challengeBytes = append(challengeBytes, Nonce.Bytes()...)
-	proofChallenge = bbs12381g2pub.FrFromOKM(challengeBytes, s.Curve)
+	proofChallenge = bbs12381g2pub.FrFromOKM(challengeBytes)
 
 	proof := commitNym.GenerateProof(proofChallenge, []*math.Zr{RNym, sk})
 
@@ -80,7 +80,7 @@ func (s *NymSigner) Verify(
 		return fmt.Errorf("error unmarshalling signature: [%w]", err)
 	}
 
-	nymProof, err := bbs12381g2pub.NewBBSLib(s.Curve).ParseProofG1(sig.MainSignature)
+	nymProof, err := bbs12381g2pub.ParseProofG1(sig.MainSignature)
 	if err != nil {
 		return fmt.Errorf("parse nym proof: %w", err)
 	}
@@ -92,11 +92,11 @@ func (s *NymSigner) Verify(
 	challengeBytes = append(challengeBytes, nymProof.Commitment.Bytes()...)
 	challengeBytes = append(challengeBytes, digest...)
 
-	proofChallenge := bbs12381g2pub.FrFromOKM(challengeBytes, s.Curve)
+	proofChallenge := bbs12381g2pub.FrFromOKM(challengeBytes)
 
 	challengeBytes = proofChallenge.Bytes()
 	challengeBytes = append(challengeBytes, sig.Nonce...)
-	proofChallenge = bbs12381g2pub.FrFromOKM(challengeBytes, s.Curve)
+	proofChallenge = bbs12381g2pub.FrFromOKM(challengeBytes)
 
 	return nymProof.Verify([]*math.G1{ipk.PKwG.H0, ipk.PKwG.H[0]}, Nym, proofChallenge)
 }

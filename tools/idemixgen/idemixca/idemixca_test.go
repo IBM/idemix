@@ -42,7 +42,7 @@ func TestIdemixCaAries(t *testing.T) {
 		Rng:   rng,
 	}
 
-	issuer := &aries.Issuer{Curve: curve}
+	issuer := &aries.Issuer{}
 
 	revocationkey, err := revAuth.NewKey()
 	require.NoError(t, err)

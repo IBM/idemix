@@ -20,10 +20,10 @@ func TestSigner(t *testing.T) {
 	curve := math.Curves[math.BLS12_381_BBS]
 
 	credProto := &aries.Cred{
-		Bls:   bbs12381g2pub.New(curve),
+		Bls:   bbs12381g2pub.New(),
 		Curve: curve,
 	}
-	issuerProto := &aries.Issuer{curve}
+	issuerProto := &aries.Issuer{}
 
 	attrs := []string{
 		"attr1",
@@ -158,7 +158,7 @@ func TestSigner(t *testing.T) {
 
 	cb = bbs12381g2pub.NewCommitmentBuilder(2)
 	cb.Add(ipk.(*aries.IssuerPublicKey).PKwG.H0, rNym)
-	cb.Add(ipk.(*aries.IssuerPublicKey).PKwG.H[eidIndex+1], bbs12381g2pub.FrFromOKM([]byte("nymeid"), curve))
+	cb.Add(ipk.(*aries.IssuerPublicKey).PKwG.H[eidIndex+1], bbs12381g2pub.FrFromOKM([]byte("nymeid")))
 	nym := cb.Build()
 
 	meta := &types.IdemixSignerMetadata{
@@ -166,7 +166,7 @@ func TestSigner(t *testing.T) {
 		EidNymAuditData: &types.AttrNymAuditData{
 			Nym:  nym,
 			Rand: rNym,
-			Attr: bbs12381g2pub.FrFromOKM([]byte("nymeid"), curve),
+			Attr: bbs12381g2pub.FrFromOKM([]byte("nymeid")),
 		},
 	}
 
@@ -218,7 +218,7 @@ func TestSigner(t *testing.T) {
 		EidNymAuditData: &types.AttrNymAuditData{
 			Nym:  curve.GenG1.Mul(curve.NewRandomZr(rand)),
 			Rand: rNym,
-			Attr: bbs12381g2pub.FrFromOKM([]byte("nymeid"), curve),
+			Attr: bbs12381g2pub.FrFromOKM([]byte("nymeid")),
 		},
 	}
 
@@ -279,7 +279,7 @@ func TestSigner(t *testing.T) {
 		EidNymAuditData: &types.AttrNymAuditData{
 			Nym:  nym,
 			Rand: rNym,
-			Attr: bbs12381g2pub.FrFromOKM([]byte("nymeid"), curve),
+			Attr: bbs12381g2pub.FrFromOKM([]byte("nymeid")),
 		},
 	}
 
@@ -314,7 +314,7 @@ func TestSigner(t *testing.T) {
 
 	cb = bbs12381g2pub.NewCommitmentBuilder(2)
 	cb.Add(ipk.(*aries.IssuerPublicKey).PKwG.H0, rNym)
-	cb.Add(ipk.(*aries.IssuerPublicKey).PKwG.H[rhIndex+1], bbs12381g2pub.FrFromOKM([]byte("nymrh"), curve))
+	cb.Add(ipk.(*aries.IssuerPublicKey).PKwG.H[rhIndex+1], bbs12381g2pub.FrFromOKM([]byte("nymrh")))
 	nym = cb.Build()
 
 	meta = &types.IdemixSignerMetadata{
@@ -322,7 +322,7 @@ func TestSigner(t *testing.T) {
 		RhNymAuditData: &types.AttrNymAuditData{
 			Nym:  nym,
 			Rand: rNym,
-			Attr: bbs12381g2pub.FrFromOKM([]byte("nymrh"), curve),
+			Attr: bbs12381g2pub.FrFromOKM([]byte("nymrh")),
 		},
 	}
 
@@ -370,7 +370,7 @@ func TestSigner(t *testing.T) {
 		RhNymAuditData: &types.AttrNymAuditData{
 			Nym:  curve.GenG1.Mul(curve.NewRandomZr(rand)),
 			Rand: rNym,
-			Attr: bbs12381g2pub.FrFromOKM([]byte("nymrh"), curve),
+			Attr: bbs12381g2pub.FrFromOKM([]byte("nymrh")),
 		},
 	}
 
@@ -422,7 +422,7 @@ func TestSigner(t *testing.T) {
 		RhNymAuditData: &types.AttrNymAuditData{
 			Nym:  nym,
 			Rand: rNym,
-			Attr: bbs12381g2pub.FrFromOKM([]byte("nymrh"), curve),
+			Attr: bbs12381g2pub.FrFromOKM([]byte("nymrh")),
 		},
 	}
 
