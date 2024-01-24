@@ -25,6 +25,7 @@ const IndexOffsetVC2Attributes = 2
 const signLabel = "sign"
 const signWithEidNymLabel = "signWithEidNym"
 const signWithEidNymRhNymLabel = "signWithEidNymRhNym" // When the revocation handle is present the enrollment id must also be present
+const signWithSmartcardLabel = "signWithSmartcard"
 
 type Signer struct {
 	Curve *math.Curve
@@ -36,6 +37,9 @@ func (s *Signer) getPoKOfSignature(
 	attributes []types.IdemixAttribute,
 	sk *math.Zr,
 	ipk *bbs12381g2pub.PublicKeyWithGenerators,
+	sigtype types.SignatureType,
+	Nym *math.G1,
+	RNym *math.Zr,
 ) (*bbs12381g2pub.PoKOfSignature, []*bbs12381g2pub.SignatureMessage, error) {
 	credential := &Credential{}
 	err := proto.Unmarshal(credBytes, credential)
@@ -50,7 +54,15 @@ func (s *Signer) getPoKOfSignature(
 
 	messagesFr := credential.toSignatureMessage(sk, s.Curve)
 
-	pokOS, err := bbs12381g2pub.NewBBSLib(s.Curve).NewPoKOfSignature(signature, messagesFr, revealedAttributesIndex(attributes), ipk)
+	var pokOS *bbs12381g2pub.PoKOfSignature
+	if sigtype == types.Smartcard {
+		messagesFr = append([]*bbs12381g2pub.SignatureMessage{{}}, messagesFr...)
+		C := Nym.Copy()
+		C.Sub(ipk.H0.Mul(RNym))
+		pokOS, err = bbs12381g2pub.NewBBSLib(s.Curve).NewPoKOfSignatureExt(signature, messagesFr[1:], revealedAttributesIndexNoSk(attributes), ipk, Nym, RNym, C)
+	} else {
+		pokOS, err = bbs12381g2pub.NewBBSLib(s.Curve).NewPoKOfSignatureExt(signature, messagesFr, revealedAttributesIndex(attributes), ipk, nil, nil, nil)
+	}
 	if err != nil {
 		return nil, nil, fmt.Errorf("bbs12381g2pub.NewPoKOfSignature error: %w", err)
 	}
@@ -61,7 +73,7 @@ func (s *Signer) getPoKOfSignature(
 func (s *Signer) getChallengeHash(
 	pokSignature *bbs12381g2pub.PoKOfSignature,
 	Nym *math.G1,
-	commitNym *math.G1,
+	commitNym *bbs12381g2pub.ProverCommittedG1,
 	eid *attributeCommitment,
 	rh *attributeCommitment,
 	msg []byte,
@@ -77,6 +89,8 @@ func (s *Signer) getChallengeHash(
 		challengeBytes = []byte(signWithEidNymLabel)
 	case types.EidNymRhNym:
 		challengeBytes = []byte(signWithEidNymRhNymLabel)
+	case types.Smartcard:
+		challengeBytes = []byte(signWithSmartcardLabel)
 	default:
 		panic("programming error")
 	}
@@ -86,10 +100,12 @@ func (s *Signer) getChallengeHash(
 
 	// hash the Nym and t-value
 	challengeBytes = append(challengeBytes, Nym.Bytes()...)
-	challengeBytes = append(challengeBytes, commitNym.Bytes()...)
+	if sigType != types.Smartcard {
+		challengeBytes = append(challengeBytes, commitNym.Commitment.Bytes()...)
+	}
 
 	// hash the NymEid and t-value
-	if sigType == types.EidNym || sigType == types.EidNymRhNym {
+	if sigType == types.EidNym || sigType == types.EidNymRhNym || sigType == types.Smartcard {
 		challengeBytes = append(challengeBytes, eid.comm.Bytes()...)
 		challengeBytes = append(challengeBytes, eid.proof.Commitment.Bytes()...)
 	}
@@ -140,13 +156,16 @@ func (s *Signer) packageProof(
 		MainSignature:     signatureProofBytes,
 		Nonce:             nonce.Bytes(),
 		Nym:               Nym.Bytes(),
-		NymProof:          proofNym.ToBytes(),
 		RevocationEpochPk: cri.EpochPk,
 		RevocationPkSig:   cri.EpochPkSig,
 		Epoch:             cri.Epoch,
 		NonRevocationProof: &NonRevocationProof{
 			RevocationAlg: cri.RevocationAlg,
 		},
+	}
+
+	if proofNym != nil {
+		sig.NymProof = proofNym.ToBytes()
 	}
 
 	if nymEid != nil {
@@ -167,7 +186,12 @@ func (s *Signer) packageProof(
 func (s *Signer) getCommitNym(
 	ipk *IssuerPublicKey,
 	pokSignature *bbs12381g2pub.PoKOfSignature,
+	sigType types.SignatureType,
 ) *bbs12381g2pub.ProverCommittedG1 {
+
+	if sigType == types.Smartcard {
+		return nil
+	}
 
 	// Nym is H0^{RNym} \cdot H[0]^{sk}
 
@@ -313,12 +337,12 @@ func (s *Signer) Sign(
 	// arg check //
 	///////////////
 
-	if sigType == types.EidNym &&
+	if (sigType == types.EidNym || sigType == types.Smartcard) &&
 		attributes[eidIndex].Type != types.IdemixHiddenAttribute {
 		return nil, nil, fmt.Errorf("cannot create idemix signature: disclosure of enrollment ID requested for EidNym signature")
 	}
 
-	if sigType == types.EidNymRhNym &&
+	if (sigType == types.EidNymRhNym || sigType == types.Smartcard) &&
 		(attributes[eidIndex].Type != types.IdemixHiddenAttribute ||
 			attributes[rhIndex].Type != types.IdemixHiddenAttribute) {
 		return nil, nil, fmt.Errorf("cannot create idemix signature: disclosure of enrollment ID or RH requested for EidNymRhNym signature")
@@ -348,7 +372,7 @@ func (s *Signer) Sign(
 	// Generate main PoK (1st move) //
 	//////////////////////////////////
 
-	pokSignature, messagesFr, err := s.getPoKOfSignature(credBytes, attributes, sk, ipk.PKwG)
+	pokSignature, messagesFr, err := s.getPoKOfSignature(credBytes, attributes, sk, ipk.PKwG, sigType, Nym, RNym)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -357,7 +381,7 @@ func (s *Signer) Sign(
 	// Handling Nym //
 	//////////////////
 
-	commitNym := s.getCommitNym(ipk, pokSignature)
+	commitNym := s.getCommitNym(ipk, pokSignature, sigType)
 
 	///////////////////
 	// Handle NymEID //
@@ -387,7 +411,7 @@ func (s *Signer) Sign(
 	// Get the challenge //
 	///////////////////////
 
-	proofChallenge, Nonce := s.getChallengeHash(pokSignature, Nym, commitNym.Commitment, nymEid, rhNym, msg, sigType)
+	proofChallenge, Nonce := s.getChallengeHash(pokSignature, Nym, commitNym, nymEid, rhNym, msg, sigType)
 
 	////////////////////////
 	// Generate responses //
@@ -396,7 +420,10 @@ func (s *Signer) Sign(
 	// 1) main
 	proof := pokSignature.GenerateProof(proofChallenge)
 	// 2) Nym
-	proofNym := commitNym.GenerateProof(proofChallenge, []*math.Zr{RNym, sk})
+	var proofNym *bbs12381g2pub.ProofG1
+	if commitNym != nil {
+		proofNym = commitNym.GenerateProof(proofChallenge, []*math.Zr{RNym, sk})
+	}
 	// 3) NymEid
 	var proofNymEid *bbs12381g2pub.ProofG1
 	if nymEid != nil {
@@ -418,7 +445,7 @@ func (s *Signer) Sign(
 	}
 
 	var m *types.IdemixSignerMetadata
-	if sigType == types.EidNym {
+	if sigType == types.EidNym || sigType == types.Smartcard {
 		m = &types.IdemixSignerMetadata{
 			EidNymAuditData: &types.AttrNymAuditData{
 				Nym:  nymEid.comm,
@@ -496,7 +523,7 @@ func (s *Signer) Verify(
 	}
 
 	verifyRHNym := (verType == types.BestEffort && sig.NymRh != nil) || verType == types.ExpectEidNymRhNym
-	verifyEIDNym := (verType == types.BestEffort && sig.NymEid != nil) || verType == types.ExpectEidNym || verType == types.ExpectEidNymRhNym || verifyRHNym
+	verifyEIDNym := (verType == types.BestEffort && sig.NymEid != nil) || verType == types.ExpectEidNym || verType == types.ExpectEidNymRhNym || verType == types.ExpectSmartcard || verifyRHNym
 
 	messages := attributesToSignatureMessage(nil, attributes, s.Curve)
 
@@ -514,19 +541,17 @@ func (s *Signer) Verify(
 		return fmt.Errorf("payload revealed bigger from messages")
 	}
 
-	revealedMessages := make(map[int]*bbs12381g2pub.SignatureMessage)
-	for i := range payload.Revealed {
-		revealedMessages[payload.Revealed[i]] = messages[i]
-	}
-
 	Nym, err := s.Curve.NewG1FromBytes(sig.Nym)
 	if err != nil {
 		return fmt.Errorf("parse nym commit: %w", err)
 	}
 
-	nymProof, err := bbs12381g2pub.NewBBSLib(s.Curve).ParseProofG1(sig.NymProof)
-	if err != nil {
-		return fmt.Errorf("parse nym proof: %w", err)
+	var nymProof *bbs12381g2pub.ProofG1
+	if verType != types.ExpectSmartcard {
+		nymProof, err = bbs12381g2pub.NewBBSLib(s.Curve).ParseProofG1(sig.NymProof)
+		if err != nil {
+			return fmt.Errorf("parse nym proof: %w", err)
+		}
 	}
 
 	var nymEidProof *bbs12381g2pub.ProofG1
@@ -563,7 +588,9 @@ func (s *Signer) Verify(
 
 	// hash the signature type first
 	var challengeBytes []byte
-	if verifyRHNym {
+	if verType == types.ExpectSmartcard {
+		challengeBytes = []byte(signWithSmartcardLabel)
+	} else if verifyRHNym {
 		challengeBytes = []byte(signWithEidNymRhNymLabel)
 	} else if verifyEIDNym {
 		challengeBytes = []byte(signWithEidNymLabel)
@@ -571,10 +598,25 @@ func (s *Signer) Verify(
 		challengeBytes = []byte(signLabel)
 	}
 
+	revealedMessages := make(map[int]*bbs12381g2pub.SignatureMessage)
+	for i := range payload.Revealed {
+		revealedMessages[payload.Revealed[i]] = messages[i]
+	}
+
+	if verType == types.ExpectSmartcard {
+		// we add this so that GetBytesForChallenge thinks we disclose attr 0 and doesn't add its base to the ZKP chall
+		// we will remove it later
+		revealedMessages[0] = &bbs12381g2pub.SignatureMessage{}
+	}
 	challengeBytes = append(challengeBytes, signatureProof.GetBytesForChallenge(revealedMessages, ipk.PKwG)...)
+	if verType == types.ExpectSmartcard {
+		delete(revealedMessages, 0)
+	}
 
 	challengeBytes = append(challengeBytes, sig.Nym...)
-	challengeBytes = append(challengeBytes, nymProof.Commitment.Bytes()...)
+	if verType != types.ExpectSmartcard {
+		challengeBytes = append(challengeBytes, nymProof.Commitment.Bytes()...)
+	}
 
 	if verifyEIDNym {
 		challengeBytes = append(challengeBytes, sig.NymEid...)
@@ -654,15 +696,17 @@ func (s *Signer) Verify(
 		}
 	}
 
-	// verify that `sk` in the Nym is the same as the one in the signature
-	if !nymProof.Responses[AttributeIndexInNym].Equals(signatureProof.ProofVC2.Responses[IndexOffsetVC2Attributes+UserSecretKeyIndex]) {
-		return fmt.Errorf("failed equality proof for sk")
-	}
+	if verType != types.ExpectSmartcard {
+		// verify that `sk` in the Nym is the same as the one in the signature
+		if !nymProof.Responses[AttributeIndexInNym].Equals(signatureProof.ProofVC2.Responses[IndexOffsetVC2Attributes+UserSecretKeyIndex]) {
+			return fmt.Errorf("failed equality proof for sk")
+		}
 
-	// verify the proof of knowledge of the Nym
-	err = nymProof.Verify([]*math.G1{ipk.PKwG.H0, ipk.PKwG.H[UserSecretKeyIndex]}, Nym, proofChallenge)
-	if err != nil {
-		return fmt.Errorf("verify nym proof: %w", err)
+		// verify the proof of knowledge of the Nym
+		err = nymProof.Verify([]*math.G1{ipk.PKwG.H0, ipk.PKwG.H[UserSecretKeyIndex]}, Nym, proofChallenge)
+		if err != nil {
+			return fmt.Errorf("verify nym proof: %w", err)
+		}
 	}
 
 	if verifyEIDNym {
@@ -692,7 +736,11 @@ func (s *Signer) Verify(
 	}
 
 	// verify the proof of knowledge of the signature
-	return signatureProof.Verify(proofChallenge, ipk.PKwG, revealedMessages, messages)
+	if verType != types.ExpectSmartcard {
+		return signatureProof.Verify(proofChallenge, ipk.PKwG, revealedMessages, messages)
+	} else {
+		return signatureProof.VerifyExt(proofChallenge, ipk.PKwG, revealedMessages, messages, Nym)
+	}
 }
 
 // AuditNymEid permits the auditing of the nym eid generated by a signer

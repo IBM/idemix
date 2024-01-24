@@ -160,7 +160,10 @@ func (i *NymPublicKeyImporter) KeyImport(raw interface{}, opts bccsp.KeyImportOp
 
 	pk, err := i.User.NewPublicNymFromBytes(bytes)
 	if err != nil {
-		return nil, err
+		pk, err = i.User.NewPublicNymFromBytes(append([]byte{04}, bytes...))
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	return &nymPublicKey{pk: pk, translator: i.Translator}, nil

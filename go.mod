@@ -3,9 +3,9 @@ module github.com/IBM/idemix
 go 1.19
 
 require (
-	github.com/IBM/idemix/bccsp/schemes/aries v0.0.0-20231108072133-d352a06c88b7
-	github.com/IBM/idemix/bccsp/schemes/weak-bb v0.0.0-20231108072133-d352a06c88b7
-	github.com/IBM/idemix/bccsp/types v0.0.0-20231108072133-d352a06c88b7
+	github.com/IBM/idemix/bccsp/schemes/aries v0.0.0-20231108073447-b4e82d4bd076
+	github.com/IBM/idemix/bccsp/schemes/weak-bb v0.0.0-20231108073447-b4e82d4bd076
+	github.com/IBM/idemix/bccsp/types v0.0.0-20231108073447-b4e82d4bd076
 	github.com/IBM/mathlib v0.0.3-0.20231011094432-44ee0eb539da
 	github.com/ale-linux/aries-framework-go/component/kmscrypto v0.0.0-20231023164747-f3f972769504
 	github.com/alecthomas/template v0.0.0-20190718012654-fb15b899a751 // indirect
@@ -36,6 +36,7 @@ require (
 	go.uber.org/atomic v1.6.0 // indirect
 	go.uber.org/multierr v1.5.0 // indirect
 	golang.org/x/crypto v0.10.0 // indirect
+	golang.org/x/mod v0.9.0 // indirect
 	golang.org/x/net v0.10.0 // indirect
 	golang.org/x/sys v0.9.0 // indirect
 	golang.org/x/text v0.10.0 // indirect
