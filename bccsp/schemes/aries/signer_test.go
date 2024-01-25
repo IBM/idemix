@@ -7,6 +7,8 @@ SPDX-License-Identifier: Apache-2.0
 package aries_test
 
 import (
+	"encoding/base64"
+	"encoding/hex"
 	"os"
 	"testing"
 
@@ -394,6 +396,170 @@ func idemixScSign(
 	}
 
 	return sig, nil
+}
+
+func TestW3CCred(t *testing.T) {
+	curve := math.Curves[math.BLS12_381_BBS]
+
+	rand, err := curve.Rand()
+	assert.NoError(t, err)
+
+	pkHex := `87fae47132975f345b38fafd53149f7a009b89dd94fdc54d5d051a29e185ed4870acc2453fbd2e307d1543dfb7fbfdb30cf0008df96c75e2e43975b7f92864b4bc6e3f2f1495748d80a36691f6feaeb8fe151c1bb35de9bff5ac21ff9e57aebe`
+	sigBase64 := "tQ4rHLBIh7a9dk5MVoly8ccb80pGeoEqybhYnYZO8VmguaFDyuCN7rFdBPCVs1/SYUHlKfzccE4m7waZyoLEkBLFiK2g54Q2i+CdtYBgDdkUDsoULSBMcH1MwGHwdjfXpldFNFrHFx/IAvLVniyeMQ=="
+
+	messagesBytes := [][]byte{
+		[]byte(`_:c14n0 <http://purl.org/dc/terms/created> "2023-11-03T11:12:17Z"^^<http://www.w3.org/2001/XMLSchema#dateTime> .`),
+		[]byte(`_:c14n0 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <https://w3id.org/security#BbsBlsSignature2020> .`),
+		[]byte(`_:c14n0 <https://w3id.org/security#proofPurpose> <https://w3id.org/security#assertionMethod> .`),
+		[]byte(`_:c14n0 <https://w3id.org/security#verificationMethod> <did:key:zUC73gNPc1EnZmDDjYJzE8Bk89VRhuZPQYXFnSiSUZvX9N1i7N5VtMbJyowDR46rtARHLJYRVf7WMbGLb43s9tfTyKF9KFF22vBjXZRomcwtoQJmMNUSY7tfzyhLEy58dwUz3WD#zUC73gNPc1EnZmDDjYJzE8Bk89VRhuZPQYXFnSiSUZvX9N1i7N5VtMbJyowDR46rtARHLJYRVf7WMbGLb43s9tfTyKF9KFF22vBjXZRomcwtoQJmMNUSY7tfzyhLEy58dwUz3WD> .`),
+		[]byte(`<did:key:z6MknntgQWCT8Zs5vpQEVoV2HvsfdYfe7b1LTnM9Lty6fD4e> <cbdccard:cbdcdata> _:c14n0 .`),
+		[]byte(`<did:key:z6MknntgQWCT8Zs5vpQEVoV2HvsfdYfe7b1LTnM9Lty6fD4e> <http://schema.org/birthDate> "1990-11-22"^^<http://www.w3.org/2001/XMLSchema#dateTime> .`),
+		[]byte(`<did:key:z6MknntgQWCT8Zs5vpQEVoV2HvsfdYfe7b1LTnM9Lty6fD4e> <http://schema.org/familyName> "Bowen" .`),
+		[]byte(`<did:key:z6MknntgQWCT8Zs5vpQEVoV2HvsfdYfe7b1LTnM9Lty6fD4e> <http://schema.org/gender> "Male" .`),
+		[]byte(`<did:key:z6MknntgQWCT8Zs5vpQEVoV2HvsfdYfe7b1LTnM9Lty6fD4e> <http://schema.org/givenName> "Jace" .`),
+		[]byte(`<did:key:z6MknntgQWCT8Zs5vpQEVoV2HvsfdYfe7b1LTnM9Lty6fD4e> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <cbdccard:CBDC> .`),
+		[]byte(`<did:key:z6MknntgQWCT8Zs5vpQEVoV2HvsfdYfe7b1LTnM9Lty6fD4e> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://schema.org/Person> .`),
+		[]byte(`<did:key:z6MknntgQWCT8Zs5vpQEVoV2HvsfdYfe7b1LTnM9Lty6fD4e> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <https://w3id.org/citizenship#PermanentResident> .`),
+		[]byte(`<did:key:z6MknntgQWCT8Zs5vpQEVoV2HvsfdYfe7b1LTnM9Lty6fD4e> <https://w3id.org/citizenship#birthCountry> "Bahamas" .`),
+		[]byte(`<did:key:z6MknntgQWCT8Zs5vpQEVoV2HvsfdYfe7b1LTnM9Lty6fD4e> <https://w3id.org/citizenship#lprCategory> "C09" .`),
+		[]byte(`<did:key:z6MknntgQWCT8Zs5vpQEVoV2HvsfdYfe7b1LTnM9Lty6fD4e> <https://w3id.org/citizenship#lprNumber> "223-45-198" .`),
+		[]byte(`<did:key:z6MknntgQWCT8Zs5vpQEVoV2HvsfdYfe7b1LTnM9Lty6fD4e> <https://w3id.org/citizenship#residentSince> "2015-01-01"^^<http://www.w3.org/2001/XMLSchema#dateTime> .`),
+		[]byte(`<did:key:z6MknntgQWCT8Zs5vpQEVoV2HvsfdYfe7b1LTnM9Lty6fD4e> <https://w3id.org/vdl#portraitMetadata> "{\"hash\":\"de701215430a0c4f940ffe830efd27f54cae0d9655d78dc3849272e7641c05eedd066588345caf9d4181d9f325e73a9950a967d6fe766a4a62e02876e73255ad\",\"key\":\"aab053a5e11e3360679ce1a42c7733063843854a1002c19186743d7432a2e467\",\"link\":\"https://dev.lcn-cluster-dev-qa-app-583c1d2c1a459ad4539801325cd4ba78-0000.us-south.containers.appdomain.cloud/api/public/v1/object/70a62792-eb95-4491-a77f-e53dde8034fb\"}"^^<http://www.w3.org/1999/02/22-rdf-syntax-ns#JSON> .`),
+		[]byte(`<https://issuer.oidp.uscis.gov/credentials/83627465> <http://schema.org/name> "Permanent Resident Card" .`),
+		[]byte(`<https://issuer.oidp.uscis.gov/credentials/83627465> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <https://w3id.org/citizenship#PermanentResidentCard> .`),
+		[]byte(`<https://issuer.oidp.uscis.gov/credentials/83627465> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <https://www.w3.org/2018/credentials#VerifiableCredential> .`),
+		[]byte(`<https://issuer.oidp.uscis.gov/credentials/83627465> <https://www.w3.org/2018/credentials#credentialSubject> <did:key:z6MknntgQWCT8Zs5vpQEVoV2HvsfdYfe7b1LTnM9Lty6fD4e> .`),
+		[]byte(`<https://issuer.oidp.uscis.gov/credentials/83627465> <https://www.w3.org/2018/credentials#expirationDate> "2029-12-03T12:19:52Z"^^<http://www.w3.org/2001/XMLSchema#dateTime> .`),
+		[]byte(`<https://issuer.oidp.uscis.gov/credentials/83627465> <https://www.w3.org/2018/credentials#issuanceDate> "2019-12-03T12:19:52Z"^^<http://www.w3.org/2001/XMLSchema#dateTime> .`),
+		[]byte(`<https://issuer.oidp.uscis.gov/credentials/83627465> <https://www.w3.org/2018/credentials#issuer> <did:key:zUC73gNPc1EnZmDDjYJzE8Bk89VRhuZPQYXFnSiSUZvX9N1i7N5VtMbJyowDR46rtARHLJYRVf7WMbGLb43s9tfTyKF9KFF22vBjXZRomcwtoQJmMNUSY7tfzyhLEy58dwUz3WD> .`),
+		[]byte(`_:c14n0 <cbdccard:1_usk> "chgA6VtGQeRd/0rf1P6fCFm8t7ZU1Q8eMPM/+E9gsw8=" .`),
+		[]byte(`_:c14n0 <cbdccard:2_ou> "mytopos-mychannel-token-chaincode.example.com" .`),
+		[]byte(`_:c14n0 <cbdccard:3_role> "2"^^<http://www.w3.org/2001/XMLSchema#integer> .`),
+		[]byte(`_:c14n0 <cbdccard:4_eid> "alice.remote" .`),
+		[]byte(`_:c14n0 <cbdccard:5_rh> "111" .`),
+	}
+
+	pkBytes, err := hex.DecodeString(pkHex)
+	assert.NoError(t, err)
+	sigBytes, err := base64.StdEncoding.DecodeString(sigBase64)
+	assert.NoError(t, err)
+
+	bls := bbs12381g2pub.New(math.Curves[math.BLS12_381_BBS])
+
+	err = bls.Verify(messagesBytes, sigBytes, pkBytes)
+	assert.NoError(t, err)
+
+	attributeNames := []string{
+		"_:c14n0 <http://www.w3.",
+		"_:c14n0 <https://w3id.o",
+		"_:c14n0 <https://w3id.o",
+		"<did:key:z6MknntgQWCT8Z",
+		"<did:key:z6MknntgQWCT8Z",
+		"<did:key:z6MknntgQWCT8Z",
+		"<did:key:z6MknntgQWCT8Z",
+		"<did:key:z6MknntgQWCT8Z",
+		"<did:key:z6MknntgQWCT8Z",
+		"<did:key:z6MknntgQWCT8Z",
+		"<did:key:z6MknntgQWCT8Z",
+		"<did:key:z6MknntgQWCT8Z",
+		"<did:key:z6MknntgQWCT8Z",
+		"<did:key:z6MknntgQWCT8Z",
+		"<did:key:z6MknntgQWCT8Z",
+		"<did:key:z6MknntgQWCT8Z",
+		"<https://issuer.oidp.us",
+		"<https://issuer.oidp.us",
+		"<https://issuer.oidp.us",
+		"<https://issuer.oidp.us",
+		"<https://issuer.oidp.us",
+		"<https://issuer.oidp.us",
+		"<https://issuer.oidp.us",
+		"_:c14n0 <cbdccard:1_usk",
+		"_:c14n0 <cbdccard:2_ou>",
+		"_:c14n0 <cbdccard:3_rol",
+		"_:c14n0 <cbdccard:4_eid",
+		"_:c14n0 <cbdccard:5_rh>",
+	}
+
+	attributes := make([][]byte, len(attributeNames))
+	for i, msg := range messagesBytes[1:] {
+		attributes[i] = bbs12381g2pub.FrFromOKM(msg, curve).Bytes()
+	}
+
+	sk := bbs12381g2pub.FrFromOKM(messagesBytes[0], curve)
+
+	cred := &aries.Credential{
+		Cred:  sigBytes,
+		Attrs: attributes,
+	}
+	credBytes, err := proto.Marshal(cred)
+	assert.NoError(t, err)
+
+	credProto := &aries.Cred{
+		Bls:   bbs12381g2pub.New(curve),
+		Curve: curve,
+	}
+
+	issuerProto := &aries.Issuer{curve}
+
+	ipk, err := issuerProto.NewPublicKeyFromBytes(pkBytes, attributeNames)
+	assert.NoError(t, err)
+
+	idemixAttrs := []types.IdemixAttribute{}
+	for _, msg := range messagesBytes[1:] {
+		idemixAttrs = append(idemixAttrs, types.IdemixAttribute{
+			Type:  types.IdemixBytesAttribute,
+			Value: msg,
+		})
+	}
+
+	err = credProto.Verify(sk, ipk, credBytes, idemixAttrs)
+	assert.NoError(t, err)
+
+	signer := &aries.Signer{
+		Curve: curve,
+		Rng:   rand,
+	}
+
+	userProto := &aries.User{
+		Curve: curve,
+		Rng:   rand,
+	}
+
+	for i := range messagesBytes[1:] {
+		idemixAttrs[i] = types.IdemixAttribute{
+			Type: types.IdemixHiddenAttribute,
+		}
+	}
+
+	rhIndex, eidIndex := 27, 26
+
+	Nym, RNmy, err := userProto.MakeNym(sk, ipk)
+	assert.NoError(t, err)
+
+	////////////////////
+	// base signature //
+	////////////////////
+
+	sig, _, err := signer.Sign(credBytes, sk, Nym, RNmy, ipk, idemixAttrs, []byte("silliness"), rhIndex, eidIndex, nil, types.Standard, nil)
+	assert.NoError(t, err)
+
+	err = signer.Verify(ipk, sig, []byte("silliness"), idemixAttrs, rhIndex, eidIndex, nil, 0, types.Basic, nil)
+	assert.NoError(t, err)
+
+	//////////////////////
+	// eidNym signature //
+	//////////////////////
+
+	sig, m, err := signer.Sign(credBytes, sk, Nym, RNmy, ipk, idemixAttrs, []byte("silliness"), rhIndex, eidIndex, nil, types.EidNym, nil)
+	assert.NoError(t, err)
+
+	cb := bbs12381g2pub.NewCommitmentBuilder(2)
+	cb.Add(ipk.(*aries.IssuerPublicKey).PKwG.H0, m.EidNymAuditData.Rand)
+	cb.Add(ipk.(*aries.IssuerPublicKey).PKwG.H[eidIndex+1], bbs12381g2pub.FrFromOKM([]byte(`_:c14n0 <cbdccard:4_eid> "alice.remote" .`), curve))
+	assert.True(t, cb.Build().Equals(m.EidNymAuditData.Nym))
+
+	err = signer.Verify(ipk, sig, []byte("silliness"), idemixAttrs, rhIndex, eidIndex, nil, 0, types.ExpectEidNym, nil)
+	assert.NoError(t, err)
 }
 
 func TestSigner(t *testing.T) {
