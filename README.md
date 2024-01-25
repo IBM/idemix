@@ -115,7 +115,7 @@ $`S \gets_{\scriptscriptstyle\$} \mathbb{Z}_{r}`$
 
 and computes
 
-$`B \leftarrow g_{1} \cdot N \cdot H_{r}^S \cdot \prod_{i=0}^4 H_{a_{i}}^{a_{ci}}`$
+$$B \leftarrow g_{1} \cdot N \cdot H_{r}^S \cdot \prod_{i=0}^{4} H_{a_{i}}^{a_{ci}}$$
 
 $`e \leftarrow \frac{1}{E %2B ISK}`$
 
@@ -125,7 +125,7 @@ The CA returns the credential $`\{ A, B, S, E \}`$ to the user.
 
 The user verifies the credential by computing
 
-$`B' \leftarrow g_{1} \cdot H_{ISK}^{sk_{c}} \cdot H_{r}^S  \cdot \prod_{i=0}^4 H_{a_{i}}^{a_{ci}}`$
+$$B' \leftarrow g_{1} \cdot H_{ISK}^{sk_{c}} \cdot H_{r}^S  \cdot \prod_{i=0}^4 H_{a_{i}}^{a_{ci}}$$
 
 If $`B \neq B'`$ the user aborts. Otherwise it verifies the signature by checking whether the following equality
 
@@ -134,7 +134,7 @@ $`e(g_{2}^E \cdot W, A) = e(g_{2}, B)`$
 holds. If so, the user accepts private key $`SK_{C} \leftarrow \{ sk_{c} \}`$ and the user public key is $`PK_{C} \leftarrow \{ A, B, E, S \}`$.
 
 ## Generation of signature
-<a name="sign`$</a>
+<a name="sign"></a>
 
 To sign message $`m`$ and simultaneously disclose a subset of attributes $`a_{c0}, \ldots, a_{c3}`$ (tracked by the bits $`d_{0}, \ldots, d_{3}`$ such that if the bit is one the corresponding attribute is disclosed; notationally, $`\bar{d}_{i} = d_{i} %2B 1 mod 2`$), the client chooses a new random element $`r_{n} \gets_{\scriptscriptstyle\$} \mathbb{Z}_{r}`$ and generates a new pseudonym
 
@@ -184,7 +184,7 @@ and then generates
 
 $`t_1 \leftarrow A'^{r_{e}} \cdot H_{r}^{r_{r_2}}`$
 
-$`t_2 \leftarrow B'^{r_{r_3}} \cdot H_{ISK}^{r_{sk_{c}}} \cdot H_{r}^{r_{S'}} \cdot \prod_{i=0}^4 H_{a_{i}}^{r_{a_{i}} \bar{d}_i}`$
+$$t_2 \leftarrow B'^{r_{r_3}} \cdot H_{ISK}^{r_{sk_{c}}} \cdot H_{r}^{r_{S'}} \cdot \prod_{i=0}^4 H_{a_{i}}^{r_{a_{i}} \bar{d}_i}$$
 
 $`t_3 \leftarrow H_{ISK}^{r_{sk_{c}}} \cdot H_{r}^{r_{r_{n}}}`$
 
