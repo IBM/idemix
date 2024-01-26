@@ -78,15 +78,21 @@ func (c *Cred) Verify(sk *math.Zr, key types.IssuerPublicKey, credBytes []byte, 
 		return fmt.Errorf("ParseSignature failed [%w]", err)
 	}
 
-	sm := make([]*bbs12381g2pub.SignatureMessage, len(credential.Attrs)+1)
-	sm[0] = &bbs12381g2pub.SignatureMessage{
-		FR:  sk,
-		Idx: 0,
-	}
-	for i, v := range credential.Attrs {
-		sm[i+1] = &bbs12381g2pub.SignatureMessage{
-			FR:  c.Curve.NewZrFromBytes(v),
-			Idx: i + 1,
+	i := 0
+	sm := make([]*bbs12381g2pub.SignatureMessage, len(ipk.PKwG.H))
+	for j := range ipk.PKwG.H {
+		if j == int(credential.SkPos) {
+			sm[j] = &bbs12381g2pub.SignatureMessage{
+				FR:  sk,
+				Idx: j,
+			}
+
+			continue
+		}
+
+		sm[j] = &bbs12381g2pub.SignatureMessage{
+			FR:  c.Curve.NewZrFromBytes(credential.Attrs[i]),
+			Idx: j,
 		}
 
 		switch attributes[i].Type {
@@ -94,15 +100,17 @@ func (c *Cred) Verify(sk *math.Zr, key types.IssuerPublicKey, credBytes []byte, 
 			continue
 		case types.IdemixBytesAttribute:
 			fr := bbs12381g2pub.FrFromOKM(attributes[i].Value.([]byte), c.Curve)
-			if !fr.Equals(sm[i+1].FR) {
+			if !fr.Equals(sm[j].FR) {
 				return errors.Errorf("credential does not contain the correct attribute value at position [%d]", i)
 			}
 		case types.IdemixIntAttribute:
 			fr := c.Curve.NewZrFromInt(int64(attributes[i].Value.(int)))
-			if !fr.Equals(sm[i+1].FR) {
+			if !fr.Equals(sm[j].FR) {
 				return errors.Errorf("credential does not contain the correct attribute value at position [%d]", i)
 			}
 		}
+
+		i++
 	}
 
 	return sigma.Verify(sm, ipk.PKwG)
