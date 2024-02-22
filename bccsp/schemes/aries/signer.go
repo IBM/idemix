@@ -33,7 +33,7 @@ type Signer struct {
 }
 
 func (s *Signer) getPoKOfSignature(
-	credBytes []byte,
+	credential *Credential,
 	attributes []types.IdemixAttribute,
 	sk *math.Zr,
 	ipk *bbs12381g2pub.PublicKeyWithGenerators,
@@ -41,12 +41,6 @@ func (s *Signer) getPoKOfSignature(
 	Nym *math.G1,
 	RNym *math.Zr,
 ) (*bbs12381g2pub.PoKOfSignature, []*bbs12381g2pub.SignatureMessage, error) {
-	credential := &Credential{}
-	err := proto.Unmarshal(credBytes, credential)
-	if err != nil {
-		return nil, nil, fmt.Errorf("proto.Unmarshal failed [%w]", err)
-	}
-
 	signature, err := bbs12381g2pub.NewBBSLib(s.Curve).ParseSignature(credential.Cred)
 	if err != nil {
 		return nil, nil, fmt.Errorf("parse signature: %w", err)
@@ -187,6 +181,7 @@ func (s *Signer) getCommitNym(
 	ipk *IssuerPublicKey,
 	pokSignature *bbs12381g2pub.PoKOfSignature,
 	sigType types.SignatureType,
+	userSecretKeyIndex int,
 ) *bbs12381g2pub.ProverCommittedG1 {
 
 	if sigType == types.Smartcard {
@@ -197,14 +192,14 @@ func (s *Signer) getCommitNym(
 
 	commit := bbs12381g2pub.NewBBSLib(s.Curve).NewProverCommittingG1()
 	commit.Commit(ipk.PKwG.H0)
-	commit.Commit(ipk.PKwG.H[UserSecretKeyIndex])
+	commit.Commit(ipk.PKwG.H[userSecretKeyIndex])
 	// we force the same blinding factor used in PokVC2 to prove equality.
 	// 1) commit.BlindingFactors[1] is the blinding factor for the sk in the Nym
 	//    H0^{RNym} \cdot H[0]^{sk}
 	// 2) pokSignature.PokVC2.BlindingFactors[2] is the blinding factor for the sk in
 	//    D * (-r3~) + Q_1 * s~ + H_j1 * m~_j1 + ... + H_jU * m~_jU
 	//    index 0 is for D, index 1 is for s~ and index 2 is for the first message (which is the sk)
-	commit.BlindingFactors[AttributeIndexInNym] = pokSignature.PokVC2.BlindingFactors[IndexOffsetVC2Attributes+UserSecretKeyIndex]
+	commit.BlindingFactors[AttributeIndexInNym] = pokSignature.PokVC2.BlindingFactors[IndexOffsetVC2Attributes+userSecretKeyIndex]
 
 	return commit.Finish()
 }
@@ -372,7 +367,13 @@ func (s *Signer) Sign(
 	// Generate main PoK (1st move) //
 	//////////////////////////////////
 
-	pokSignature, messagesFr, err := s.getPoKOfSignature(credBytes, attributes, sk, ipk.PKwG, sigType, Nym, RNym)
+	credential := &Credential{}
+	err = proto.Unmarshal(credBytes, credential)
+	if err != nil {
+		return nil, nil, fmt.Errorf("proto.Unmarshal failed [%w]", err)
+	}
+
+	pokSignature, messagesFr, err := s.getPoKOfSignature(credential, attributes, sk, ipk.PKwG, sigType, Nym, RNym)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -381,7 +382,7 @@ func (s *Signer) Sign(
 	// Handling Nym //
 	//////////////////
 
-	commitNym := s.getCommitNym(ipk, pokSignature, sigType)
+	commitNym := s.getCommitNym(ipk, pokSignature, sigType, int(credential.SkPos))
 
 	///////////////////
 	// Handle NymEID //
