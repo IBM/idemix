@@ -16,8 +16,9 @@ import (
 )
 
 type User struct {
-	Curve *math.Curve
-	Rng   io.Reader
+	Curve              *math.Curve
+	Rng                io.Reader
+	UserSecretKeyIndex int
 }
 
 // NewKey generates a new User secret key
@@ -50,7 +51,7 @@ func (u *User) MakeNym(sk *math.Zr, key types.IssuerPublicKey) (*math.G1, *math.
 
 	cb := bbs12381g2pub.NewCommitmentBuilder(2)
 	cb.Add(ipk.PKwG.H0, rNym)
-	cb.Add(ipk.PKwG.H[UserSecretKeyIndex], sk)
+	cb.Add(ipk.PKwG.H[u.UserSecretKeyIndex], sk)
 	nym := cb.Build()
 
 	return nym, rNym, nil
