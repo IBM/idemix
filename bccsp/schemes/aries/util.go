@@ -70,23 +70,21 @@ func revealedAttributesIndex(attributes []types.IdemixAttribute) []int {
 }
 
 func (c *Credential) toSignatureMessage(sk *math.Zr, curve *math.Curve) []*bbs12381g2pub.SignatureMessage {
-	var msgsZr []*bbs12381g2pub.SignatureMessage
+	msgsZr := make([]*bbs12381g2pub.SignatureMessage, 0, len(c.Attrs)+1)
 
-	if sk == nil {
-		msgsZr = make([]*bbs12381g2pub.SignatureMessage, 0, len(c.Attrs))
-	} else {
-		msgsZr = make([]*bbs12381g2pub.SignatureMessage, 1, len(c.Attrs)+1)
-		msgsZr[UserSecretKeyIndex] = &bbs12381g2pub.SignatureMessage{
-			FR:  sk,
-			Idx: UserSecretKeyIndex,
+	j := 0
+	for i := 0; i < len(c.Attrs)+1; i++ {
+		msg := &bbs12381g2pub.SignatureMessage{}
+		msgsZr = append(msgsZr, msg)
+
+		if i == int(c.SkPos) {
+			msg.FR = sk
+		} else {
+			msg.FR = curve.NewZrFromBytes(c.Attrs[j])
+			j++
 		}
-	}
 
-	for i, msg := range c.Attrs {
-		msgsZr = append(msgsZr, &bbs12381g2pub.SignatureMessage{
-			FR:  curve.NewZrFromBytes(msg),
-			Idx: i + 1,
-		})
+		msg.Idx = i
 	}
 
 	return msgsZr
