@@ -56,10 +56,11 @@ func (s *Signer) getPoKOfSignature(
 
 	var pokOS *bbs12381g2pub.PoKOfSignature
 	if sigtype == types.Smartcard {
-		messagesFr = append([]*bbs12381g2pub.SignatureMessage{{}}, messagesFr...)
 		C := Nym.Copy()
 		C.Sub(ipk.H0.Mul(RNym))
-		pokOS, err = bbs12381g2pub.NewBBSLib(s.Curve).NewPoKOfSignatureExt(signature, messagesFr[1:], revealedAttributesIndexNoSk(attributes), ipk, Nym, RNym, C)
+		pokOS, err = bbs12381g2pub.NewBBSLib(s.Curve).NewPoKOfSignatureExt(signature, messagesFr, revealedAttributesIndexNoSk(attributes), ipk, Nym, RNym, C)
+
+		messagesFr = append(messagesFr[:credential.SkPos], append([]*bbs12381g2pub.SignatureMessage{{}}, messagesFr[credential.SkPos:]...)...)
 	} else {
 		pokOS, err = bbs12381g2pub.NewBBSLib(s.Curve).NewPoKOfSignatureExt(signature, messagesFr, revealedAttributesIndex(attributes), ipk, nil, nil, nil)
 	}
