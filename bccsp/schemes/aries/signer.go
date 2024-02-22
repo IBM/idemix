@@ -388,8 +388,10 @@ func (s *Signer) Sign(
 	// Handle NymEID //
 	///////////////////
 
-	// increment the index to cater for the first hidden index for `sk`
-	eidIndex++
+	// increment the index to cater for the index for `sk`
+	if eidIndex > int(credential.SkPos) {
+		eidIndex++
+	}
 
 	nymEid, err := s.getAttributeCommitment(ipk, pokSignature, messagesFr[eidIndex].FR, eidIndex, nymEidAttrCommitmentEnabled(sigType), safeNymEidAuditDataAccess(metadata))
 	if err != nil {
@@ -400,8 +402,10 @@ func (s *Signer) Sign(
 	// Handle RhNym //
 	///////////////////
 
-	// increment the index to cater for the first hidden index for `sk`
-	rhIndex++
+	// increment the index to cater for the index for `sk`
+	if rhIndex > int(credential.SkPos) {
+		rhIndex++
+	}
 
 	rhNym, err := s.getAttributeCommitment(ipk, pokSignature, messagesFr[rhIndex].FR, rhIndex, rhAttrCommitmentEnabled(sigType), safeRhNymAuditDataAccess(metadata))
 	if err != nil {
