@@ -571,6 +571,37 @@ func TestW3CCredSkElsewhere(t *testing.T) {
 	pkHex := `87fae47132975f345b38fafd53149f7a009b89dd94fdc54d5d051a29e185ed4870acc2453fbd2e307d1543dfb7fbfdb30cf0008df96c75e2e43975b7f92864b4bc6e3f2f1495748d80a36691f6feaeb8fe151c1bb35de9bff5ac21ff9e57aebe`
 	sigBase64 := "tQ4rHLBIh7a9dk5MVoly8ccb80pGeoEqybhYnYZO8VmguaFDyuCN7rFdBPCVs1/SYUHlKfzccE4m7waZyoLEkBLFiK2g54Q2i+CdtYBgDdkUDsoULSBMcH1MwGHwdjfXpldFNFrHFx/IAvLVniyeMQ=="
 
+	attributeNames := []string{
+		"_:c14n0 <http://www.w3.",
+		"_:c14n0 <https://w3id.o",
+		"_:c14n0 <https://w3id.o",
+		"<did:key:z6MknntgQWCT8Z",
+		"<did:key:z6MknntgQWCT8Z",
+		"<did:key:z6MknntgQWCT8Z",
+		"<did:key:z6MknntgQWCT8Z",
+		"<did:key:z6MknntgQWCT8Z",
+		"<did:key:z6MknntgQWCT8Z",
+		"<did:key:z6MknntgQWCT8Z",
+		"<did:key:z6MknntgQWCT8Z",
+		"<did:key:z6MknntgQWCT8Z",
+		"<did:key:z6MknntgQWCT8Z",
+		"<did:key:z6MknntgQWCT8Z",
+		"<did:key:z6MknntgQWCT8Z",
+		"<did:key:z6MknntgQWCT8Z",
+		"<https://issuer.oidp.us",
+		"<https://issuer.oidp.us",
+		"<https://issuer.oidp.us",
+		"<https://issuer.oidp.us",
+		"<https://issuer.oidp.us",
+		"<https://issuer.oidp.us",
+		"<https://issuer.oidp.us",
+		"_:c14n0 <cbdccard:1_usk",
+		"_:c14n0 <cbdccard:2_ou>",
+		"_:c14n0 <cbdccard:3_rol",
+		"_:c14n0 <cbdccard:4_eid",
+		"_:c14n0 <cbdccard:5_rh>",
+	}
+
 	messagesBytes := [][]byte{
 		[]byte(`_:c14n0 <http://purl.org/dc/terms/created> "2023-11-03T11:12:17Z"^^<http://www.w3.org/2001/XMLSchema#dateTime> .`),
 		[]byte(`_:c14n0 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <https://w3id.org/security#BbsBlsSignature2020> .`),
@@ -603,6 +634,11 @@ func TestW3CCredSkElsewhere(t *testing.T) {
 		[]byte(`_:c14n0 <cbdccard:5_rh> "111" .`),
 	}
 
+	skIndex := 24               // this is an index into the `messagesBytes` array
+	rhIndex, eidIndex := 27, 26 // these are indices into the `messagesBytes` *without* the usk attribute
+	eidAttr := messagesBytes[eidIndex+1]
+	rhAttr := messagesBytes[rhIndex+1]
+
 	pkBytes, err := hex.DecodeString(pkHex)
 	assert.NoError(t, err)
 	sigBytes, err := base64.StdEncoding.DecodeString(sigBase64)
@@ -612,39 +648,6 @@ func TestW3CCredSkElsewhere(t *testing.T) {
 
 	err = bls.Verify(messagesBytes, sigBytes, pkBytes)
 	assert.NoError(t, err)
-
-	attributeNames := []string{
-		"_:c14n0 <http://www.w3.",
-		"_:c14n0 <https://w3id.o",
-		"_:c14n0 <https://w3id.o",
-		"<did:key:z6MknntgQWCT8Z",
-		"<did:key:z6MknntgQWCT8Z",
-		"<did:key:z6MknntgQWCT8Z",
-		"<did:key:z6MknntgQWCT8Z",
-		"<did:key:z6MknntgQWCT8Z",
-		"<did:key:z6MknntgQWCT8Z",
-		"<did:key:z6MknntgQWCT8Z",
-		"<did:key:z6MknntgQWCT8Z",
-		"<did:key:z6MknntgQWCT8Z",
-		"<did:key:z6MknntgQWCT8Z",
-		"<did:key:z6MknntgQWCT8Z",
-		"<did:key:z6MknntgQWCT8Z",
-		"<did:key:z6MknntgQWCT8Z",
-		"<https://issuer.oidp.us",
-		"<https://issuer.oidp.us",
-		"<https://issuer.oidp.us",
-		"<https://issuer.oidp.us",
-		"<https://issuer.oidp.us",
-		"<https://issuer.oidp.us",
-		"<https://issuer.oidp.us",
-		"_:c14n0 <cbdccard:1_usk",
-		"_:c14n0 <cbdccard:2_ou>",
-		"_:c14n0 <cbdccard:3_rol",
-		"_:c14n0 <cbdccard:4_eid",
-		"_:c14n0 <cbdccard:5_rh>",
-	}
-
-	skIndex := 24
 
 	attributes := make([][]byte, len(attributeNames))
 	j := 0
@@ -707,8 +710,6 @@ func TestW3CCredSkElsewhere(t *testing.T) {
 		}
 	}
 
-	rhIndex, eidIndex := 27, 26
-
 	Nym, RNmy, err := userProto.MakeNym(sk, ipk)
 	assert.NoError(t, err)
 
@@ -731,7 +732,7 @@ func TestW3CCredSkElsewhere(t *testing.T) {
 
 	cb := bbs12381g2pub.NewCommitmentBuilder(2)
 	cb.Add(ipk.(*aries.IssuerPublicKey).PKwG.H0, m.EidNymAuditData.Rand)
-	cb.Add(ipk.(*aries.IssuerPublicKey).PKwG.H[eidIndex+1], bbs12381g2pub.FrFromOKM([]byte(`_:c14n0 <cbdccard:4_eid> "alice.remote" .`), curve))
+	cb.Add(ipk.(*aries.IssuerPublicKey).PKwG.H[eidIndex+1], bbs12381g2pub.FrFromOKM(eidAttr, curve))
 	assert.True(t, cb.Build().Equals(m.EidNymAuditData.Nym))
 
 	err = signer.Verify(ipk, sig, []byte("silliness"), idemixAttrs, rhIndex, eidIndex, skIndex, nil, 0, types.ExpectEidNym, nil)
@@ -745,7 +746,7 @@ func TestW3CCredSkElsewhere(t *testing.T) {
 
 	cb = bbs12381g2pub.NewCommitmentBuilder(2)
 	cb.Add(ipk.(*aries.IssuerPublicKey).PKwG.H0, rNym)
-	cb.Add(ipk.(*aries.IssuerPublicKey).PKwG.H[eidIndex+1], bbs12381g2pub.FrFromOKM([]byte(`_:c14n0 <cbdccard:4_eid> "alice.remote" .`), curve))
+	cb.Add(ipk.(*aries.IssuerPublicKey).PKwG.H[eidIndex+1], bbs12381g2pub.FrFromOKM(eidAttr, curve))
 	nym := cb.Build()
 
 	meta := &types.IdemixSignerMetadata{
@@ -753,7 +754,7 @@ func TestW3CCredSkElsewhere(t *testing.T) {
 		EidNymAuditData: &types.AttrNymAuditData{
 			Nym:  nym,
 			Rand: rNym,
-			Attr: bbs12381g2pub.FrFromOKM([]byte(`_:c14n0 <cbdccard:4_eid> "alice.remote" .`), curve),
+			Attr: bbs12381g2pub.FrFromOKM(eidAttr, curve),
 		},
 	}
 
@@ -769,7 +770,7 @@ func TestW3CCredSkElsewhere(t *testing.T) {
 	assert.NoError(t, err)
 
 	// audit with AuditNymEid - it should succeed with the right nym and randomness
-	err = signer.AuditNymEid(ipk, eidIndex, sig, `_:c14n0 <cbdccard:4_eid> "alice.remote" .`, rNym, types.AuditExpectSignature)
+	err = signer.AuditNymEid(ipk, eidIndex, sig, string(eidAttr), rNym, types.AuditExpectSignature)
 	assert.NoError(t, err)
 
 	/////////////////////
@@ -800,7 +801,7 @@ func TestW3CCredSkElsewhere(t *testing.T) {
 
 	cb = bbs12381g2pub.NewCommitmentBuilder(2)
 	cb.Add(ipk.(*aries.IssuerPublicKey).PKwG.H0, rNym)
-	cb.Add(ipk.(*aries.IssuerPublicKey).PKwG.H[rhIndex+1], bbs12381g2pub.FrFromOKM([]byte(`_:c14n0 <cbdccard:5_rh> "111" .`), curve))
+	cb.Add(ipk.(*aries.IssuerPublicKey).PKwG.H[rhIndex+1], bbs12381g2pub.FrFromOKM(rhAttr, curve))
 	nym = cb.Build()
 
 	meta = &types.IdemixSignerMetadata{
@@ -808,7 +809,7 @@ func TestW3CCredSkElsewhere(t *testing.T) {
 		RhNymAuditData: &types.AttrNymAuditData{
 			Nym:  nym,
 			Rand: rNym,
-			Attr: bbs12381g2pub.FrFromOKM([]byte(`_:c14n0 <cbdccard:5_rh> "111" .`), curve),
+			Attr: bbs12381g2pub.FrFromOKM(rhAttr, curve),
 		},
 	}
 
@@ -823,7 +824,7 @@ func TestW3CCredSkElsewhere(t *testing.T) {
 	assert.NoError(t, err)
 
 	// audit with AuditNymEid - it should succeed with the right nym and randomness
-	err = signer.AuditNymRh(ipk, rhIndex, sig, `_:c14n0 <cbdccard:5_rh> "111" .`, rNym, types.AuditExpectSignature)
+	err = signer.AuditNymRh(ipk, rhIndex, sig, string(rhAttr), rNym, types.AuditExpectSignature)
 	assert.NoError(t, err)
 }
 
