@@ -34,7 +34,7 @@ func (c *Cred) Sign(key types.IssuerSecretKey, credentialRequest []byte, attribu
 		return nil, fmt.Errorf("ParseBlindedMessages failed [%w]", err)
 	}
 
-	msgsZr := attributesToSignatureMessage(nil, attributes, c.Curve)
+	msgsZr := attributesToSignatureMessage(attributes, c.Curve, UserSecretKeyIndex)
 
 	sig, err := BlindSign(msgsZr, len(attributes)+1, blindedMsg.C, isk.SK.FR.Bytes(), c.Curve)
 	if err != nil {
