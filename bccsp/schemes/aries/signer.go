@@ -389,7 +389,7 @@ func (s *Signer) Sign(
 	///////////////////
 
 	// increment the index to cater for the index for `sk`
-	if eidIndex > int(credential.SkPos) {
+	if eidIndex >= int(credential.SkPos) {
 		eidIndex++
 	}
 
@@ -403,7 +403,7 @@ func (s *Signer) Sign(
 	///////////////////
 
 	// increment the index to cater for the index for `sk`
-	if rhIndex > int(credential.SkPos) {
+	if rhIndex >= int(credential.SkPos) {
 		rhIndex++
 	}
 
@@ -649,12 +649,12 @@ func (s *Signer) Verify(
 	//////////////////////
 
 	// increment the index to cater for the index for `sk`
-	if eidIndex > skIndex {
+	if eidIndex >= skIndex {
 		eidIndex++
 	}
 
 	// increment the index to cater for the index for `sk`
-	if rhIndex > skIndex {
+	if rhIndex >= skIndex {
 		rhIndex++
 	}
 

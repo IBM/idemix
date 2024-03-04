@@ -636,6 +636,9 @@ func TestW3CCredSkElsewhere(t *testing.T) {
 
 	for _, idcs := range [][]int{
 		{24, 27, 26},
+		{0, 0, 1},
+		{0, 1, 0},
+		{3, 9, 7},
 	} {
 		skIndex := idcs[0]                    // this is an index into the `messagesBytes` array
 		rhIndex, eidIndex := idcs[1], idcs[2] // these are indices into the `messagesBytes` *without* the usk attribute
