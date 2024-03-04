@@ -483,7 +483,7 @@ func (s *Signer) Verify(
 	key types.IssuerPublicKey,
 	signature, msg []byte,
 	attributes []types.IdemixAttribute,
-	rhIndex, eidIndex int,
+	rhIndex, eidIndex, skIndex int,
 	_ *ecdsa.PublicKey,
 	_ int,
 	verType types.VerificationType,
@@ -493,6 +493,8 @@ func (s *Signer) Verify(
 	if !ok {
 		return fmt.Errorf("invalid issuer public key, expected *IssuerPublicKey, got [%T]", ipk)
 	}
+
+	lib := bbs12381g2pub.NewBBSLib(s.Curve)
 
 	sig := &Signature{}
 	err := proto.Unmarshal(signature, sig)
@@ -530,14 +532,14 @@ func (s *Signer) Verify(
 	verifyRHNym := (verType == types.BestEffort && sig.NymRh != nil) || verType == types.ExpectEidNymRhNym
 	verifyEIDNym := (verType == types.BestEffort && sig.NymEid != nil) || verType == types.ExpectEidNym || verType == types.ExpectEidNymRhNym || verType == types.ExpectSmartcard || verifyRHNym
 
-	messages := attributesToSignatureMessage(nil, attributes, s.Curve)
+	messages := attributesToSignatureMessage(attributes, s.Curve, skIndex)
 
 	payload, err := bbs12381g2pub.ParsePoKPayload(sig.MainSignature)
 	if err != nil {
 		return fmt.Errorf("parse signature proof: %w", err)
 	}
 
-	signatureProof, err := bbs12381g2pub.NewBBSLib(s.Curve).ParseSignatureProof(sig.MainSignature[payload.LenInBytes():])
+	signatureProof, err := lib.ParseSignatureProof(sig.MainSignature[payload.LenInBytes():])
 	if err != nil {
 		return fmt.Errorf("parse signature proof: %w", err)
 	}
@@ -553,7 +555,7 @@ func (s *Signer) Verify(
 
 	var nymProof *bbs12381g2pub.ProofG1
 	if verType != types.ExpectSmartcard {
-		nymProof, err = bbs12381g2pub.NewBBSLib(s.Curve).ParseProofG1(sig.NymProof)
+		nymProof, err = lib.ParseProofG1(sig.NymProof)
 		if err != nil {
 			return fmt.Errorf("parse nym proof: %w", err)
 		}
@@ -562,7 +564,7 @@ func (s *Signer) Verify(
 	var nymEidProof *bbs12381g2pub.ProofG1
 	var NymEid *math.G1
 	if verifyEIDNym {
-		nymEidProof, err = bbs12381g2pub.NewBBSLib(s.Curve).ParseProofG1(sig.NymEidProof)
+		nymEidProof, err = lib.ParseProofG1(sig.NymEidProof)
 		if err != nil {
 			return fmt.Errorf("parse nym proof: %w", err)
 		}
@@ -576,7 +578,7 @@ func (s *Signer) Verify(
 	var rhNymProof *bbs12381g2pub.ProofG1
 	var RhNym *math.G1
 	if verifyRHNym {
-		rhNymProof, err = bbs12381g2pub.NewBBSLib(s.Curve).ParseProofG1(sig.NymRhProof)
+		rhNymProof, err = lib.ParseProofG1(sig.NymRhProof)
 		if err != nil {
 			return fmt.Errorf("parse rh proof: %w", err)
 		}
@@ -646,10 +648,20 @@ func (s *Signer) Verify(
 	// Verify responses //
 	//////////////////////
 
+	// increment the index to cater for the index for `sk`
+	if eidIndex > skIndex {
+		eidIndex++
+	}
+
+	// increment the index to cater for the index for `sk`
+	if rhIndex > skIndex {
+		rhIndex++
+	}
+
 	// audit eid nym if data provided and verification requested
 	if (verifyEIDNym || verifyRHNym) && meta != nil {
 		if meta.EidNymAuditData != nil {
-			ne := ipk.PKwG.H[eidIndex+1].Mul2(
+			ne := ipk.PKwG.H[eidIndex].Mul2(
 				meta.EidNymAuditData.Attr,
 				ipk.PKwG.H0, meta.EidNymAuditData.Rand)
 
@@ -676,7 +688,7 @@ func (s *Signer) Verify(
 	// audit rh nym if data provided and verification requested
 	if verifyRHNym && meta != nil {
 		if meta.RhNymAuditData != nil {
-			rn := ipk.PKwG.H[rhIndex+1].Mul2(
+			rn := ipk.PKwG.H[rhIndex].Mul2(
 				meta.RhNymAuditData.Attr,
 				ipk.PKwG.H0, meta.RhNymAuditData.Rand,
 			)
@@ -703,12 +715,12 @@ func (s *Signer) Verify(
 
 	if verType != types.ExpectSmartcard {
 		// verify that `sk` in the Nym is the same as the one in the signature
-		if !nymProof.Responses[AttributeIndexInNym].Equals(signatureProof.ProofVC2.Responses[IndexOffsetVC2Attributes+UserSecretKeyIndex]) {
+		if !nymProof.Responses[AttributeIndexInNym].Equals(signatureProof.ProofVC2.Responses[IndexOffsetVC2Attributes+skIndex]) {
 			return fmt.Errorf("failed equality proof for sk")
 		}
 
 		// verify the proof of knowledge of the Nym
-		err = nymProof.Verify([]*math.G1{ipk.PKwG.H0, ipk.PKwG.H[UserSecretKeyIndex]}, Nym, proofChallenge)
+		err = nymProof.Verify([]*math.G1{ipk.PKwG.H0, ipk.PKwG.H[skIndex]}, Nym, proofChallenge)
 		if err != nil {
 			return fmt.Errorf("verify nym proof: %w", err)
 		}
@@ -721,7 +733,7 @@ func (s *Signer) Verify(
 		}
 
 		// verify the proof of knowledge of the Nym
-		err = nymEidProof.Verify([]*math.G1{ipk.PKwG.H0, ipk.PKwG.H[eidIndex+1]}, NymEid, proofChallenge)
+		err = nymEidProof.Verify([]*math.G1{ipk.PKwG.H0, ipk.PKwG.H[eidIndex]}, NymEid, proofChallenge)
 		if err != nil {
 			return fmt.Errorf("verify nym eid proof: %w", err)
 		}
@@ -734,7 +746,7 @@ func (s *Signer) Verify(
 		}
 
 		// verify the proof of knowledge of the Rh
-		err = rhNymProof.Verify([]*math.G1{ipk.PKwG.H0, ipk.PKwG.H[rhIndex+1]}, RhNym, proofChallenge)
+		err = rhNymProof.Verify([]*math.G1{ipk.PKwG.H0, ipk.PKwG.H[rhIndex]}, RhNym, proofChallenge)
 		if err != nil {
 			return fmt.Errorf("verify nym eid proof: %w", err)
 		}
