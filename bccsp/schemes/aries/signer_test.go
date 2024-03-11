@@ -639,11 +639,35 @@ func TestW3CCredSkElsewhere(t *testing.T) {
 		{0, 0, 1},
 		{0, 1, 0},
 		{3, 9, 7},
+		{24, 0, 1},
+		{24, 1, 0},
+		{24, 25, 26},
+		{26, 25, 24},
+		{25, 26, 24},
+		{25, 24, 26},
+		{0, 1, len(messagesBytes) - 2},
+		{0, len(messagesBytes) - 3, len(messagesBytes) - 2},
+		{len(messagesBytes) - 2, len(messagesBytes) - 3, 0},
+		{len(messagesBytes) - 2, 0, len(messagesBytes) - 3},
 	} {
 		skIndex := idcs[0]                    // this is an index into the `messagesBytes` array
 		rhIndex, eidIndex := idcs[1], idcs[2] // these are indices into the `messagesBytes` *without* the usk attribute
-		eidAttr := messagesBytes[eidIndex+1]
-		rhAttr := messagesBytes[rhIndex+1]
+
+		eidIndexInBases := eidIndex
+		rhIndexInBases := rhIndex
+
+		// increment the index to cater for the index for `sk`
+		if eidIndexInBases >= skIndex {
+			eidIndexInBases++
+		}
+
+		// increment the index to cater for the index for `sk`
+		if rhIndexInBases >= skIndex {
+			rhIndexInBases++
+		}
+
+		eidAttr := messagesBytes[eidIndexInBases]
+		rhAttr := messagesBytes[rhIndexInBases]
 
 		t.Run("run", func(t *testing.T) {
 			pkBytes, err := hex.DecodeString(pkHex)
@@ -739,7 +763,7 @@ func TestW3CCredSkElsewhere(t *testing.T) {
 
 			cb := bbs12381g2pub.NewCommitmentBuilder(2)
 			cb.Add(ipk.(*aries.IssuerPublicKey).PKwG.H0, m.EidNymAuditData.Rand)
-			cb.Add(ipk.(*aries.IssuerPublicKey).PKwG.H[eidIndex+1], bbs12381g2pub.FrFromOKM(eidAttr, curve))
+			cb.Add(ipk.(*aries.IssuerPublicKey).PKwG.H[eidIndexInBases], bbs12381g2pub.FrFromOKM(eidAttr, curve))
 			assert.True(t, cb.Build().Equals(m.EidNymAuditData.Nym))
 
 			err = signer.Verify(ipk, sig, []byte("silliness"), idemixAttrs, rhIndex, eidIndex, skIndex, nil, 0, types.ExpectEidNym, nil)
@@ -753,7 +777,7 @@ func TestW3CCredSkElsewhere(t *testing.T) {
 
 			cb = bbs12381g2pub.NewCommitmentBuilder(2)
 			cb.Add(ipk.(*aries.IssuerPublicKey).PKwG.H0, rNym)
-			cb.Add(ipk.(*aries.IssuerPublicKey).PKwG.H[eidIndex+1], bbs12381g2pub.FrFromOKM(eidAttr, curve))
+			cb.Add(ipk.(*aries.IssuerPublicKey).PKwG.H[eidIndexInBases], bbs12381g2pub.FrFromOKM(eidAttr, curve))
 			nym := cb.Build()
 
 			meta := &types.IdemixSignerMetadata{
@@ -777,7 +801,7 @@ func TestW3CCredSkElsewhere(t *testing.T) {
 			assert.NoError(t, err)
 
 			// audit with AuditNymEid - it should succeed with the right nym and randomness
-			err = signer.AuditNymEid(ipk, eidIndex, sig, string(eidAttr), rNym, types.AuditExpectSignature)
+			err = signer.AuditNymEid(ipk, eidIndex, skIndex, sig, string(eidAttr), rNym, types.AuditExpectSignature)
 			assert.NoError(t, err)
 
 			/////////////////////
@@ -789,12 +813,12 @@ func TestW3CCredSkElsewhere(t *testing.T) {
 
 			cb = bbs12381g2pub.NewCommitmentBuilder(2)
 			cb.Add(ipk.(*aries.IssuerPublicKey).PKwG.H0, m.EidNymAuditData.Rand)
-			cb.Add(ipk.(*aries.IssuerPublicKey).PKwG.H[eidIndex+1], m.EidNymAuditData.Attr)
+			cb.Add(ipk.(*aries.IssuerPublicKey).PKwG.H[eidIndexInBases], m.EidNymAuditData.Attr)
 			assert.True(t, cb.Build().Equals(m.EidNymAuditData.Nym))
 
 			cb = bbs12381g2pub.NewCommitmentBuilder(2)
 			cb.Add(ipk.(*aries.IssuerPublicKey).PKwG.H0, m.RhNymAuditData.Rand)
-			cb.Add(ipk.(*aries.IssuerPublicKey).PKwG.H[rhIndex+1], m.RhNymAuditData.Attr)
+			cb.Add(ipk.(*aries.IssuerPublicKey).PKwG.H[rhIndexInBases], m.RhNymAuditData.Attr)
 			assert.True(t, cb.Build().Equals(m.RhNymAuditData.Nym))
 
 			err = signer.Verify(ipk, sig, []byte("tome"), idemixAttrs, rhIndex, eidIndex, skIndex, nil, 0, types.ExpectEidNymRhNym, nil)
@@ -808,7 +832,7 @@ func TestW3CCredSkElsewhere(t *testing.T) {
 
 			cb = bbs12381g2pub.NewCommitmentBuilder(2)
 			cb.Add(ipk.(*aries.IssuerPublicKey).PKwG.H0, rNym)
-			cb.Add(ipk.(*aries.IssuerPublicKey).PKwG.H[rhIndex+1], bbs12381g2pub.FrFromOKM(rhAttr, curve))
+			cb.Add(ipk.(*aries.IssuerPublicKey).PKwG.H[rhIndexInBases], bbs12381g2pub.FrFromOKM(rhAttr, curve))
 			nym = cb.Build()
 
 			meta = &types.IdemixSignerMetadata{
@@ -831,7 +855,7 @@ func TestW3CCredSkElsewhere(t *testing.T) {
 			assert.NoError(t, err)
 
 			// audit with AuditNymEid - it should succeed with the right nym and randomness
-			err = signer.AuditNymRh(ipk, rhIndex, sig, string(rhAttr), rNym, types.AuditExpectSignature)
+			err = signer.AuditNymRh(ipk, rhIndex, skIndex, sig, string(rhAttr), rNym, types.AuditExpectSignature)
 			assert.NoError(t, err)
 		})
 	}
@@ -1049,39 +1073,39 @@ func TestSigner(t *testing.T) {
 	assert.EqualError(t, err, "signature invalid: nym eid validation failed, does not match metadata")
 
 	// audit with AuditNymEid - it should succeed with the right nym and randomness
-	err = signer.AuditNymEid(ipk, eidIndex, sig, "nymeid", rNym, types.AuditExpectSignature)
+	err = signer.AuditNymEid(ipk, eidIndex, 0, sig, "nymeid", rNym, types.AuditExpectSignature)
 	assert.NoError(t, err)
 
 	// audit with AuditNymEid - it should fail with the wrong nym
-	err = signer.AuditNymEid(ipk, eidIndex, sig, "not so much the nymeid", rNym, types.AuditExpectSignature)
+	err = signer.AuditNymEid(ipk, eidIndex, 0, sig, "not so much the nymeid", rNym, types.AuditExpectSignature)
 	assert.EqualError(t, err, "eid nym does not match")
 
 	// audit with AuditNymEid - it should fail with the wrong randomness
-	err = signer.AuditNymEid(ipk, eidIndex, sig, "nymeid", curve.NewRandomZr(rand), types.AuditExpectSignature)
+	err = signer.AuditNymEid(ipk, eidIndex, 0, sig, "nymeid", curve.NewRandomZr(rand), types.AuditExpectSignature)
 	assert.EqualError(t, err, "eid nym does not match")
 
 	// audit with AuditNymEid - it should succeed with the right nym and randomness
-	err = signer.AuditNymEid(ipk, eidIndex, nym.Bytes(), "nymeid", rNym, types.AuditExpectEidNym)
+	err = signer.AuditNymEid(ipk, eidIndex, 0, nym.Bytes(), "nymeid", rNym, types.AuditExpectEidNym)
 	assert.NoError(t, err)
 
 	// audit with AuditNymEid - it should fail with the wrong nym
-	err = signer.AuditNymEid(ipk, eidIndex, nym.Bytes(), "not so much the nymeid", rNym, types.AuditExpectEidNym)
+	err = signer.AuditNymEid(ipk, eidIndex, 0, nym.Bytes(), "not so much the nymeid", rNym, types.AuditExpectEidNym)
 	assert.EqualError(t, err, "eid nym does not match")
 
 	// audit with AuditNymEid - it should fail with the wrong randomness
-	err = signer.AuditNymEid(ipk, eidIndex, nym.Bytes(), "nymeid", curve.NewRandomZr(rand), types.AuditExpectEidNym)
+	err = signer.AuditNymEid(ipk, eidIndex, 0, nym.Bytes(), "nymeid", curve.NewRandomZr(rand), types.AuditExpectEidNym)
 	assert.EqualError(t, err, "eid nym does not match")
 
 	// audit with AuditNymEid - it should succeed with the right nym and randomness
-	err = signer.AuditNymEid(ipk, eidIndex, nym.Bytes(), "nymeid", rNym, types.AuditExpectEidNymRhNym)
+	err = signer.AuditNymEid(ipk, eidIndex, 0, nym.Bytes(), "nymeid", rNym, types.AuditExpectEidNymRhNym)
 	assert.NoError(t, err)
 
 	// audit with AuditNymEid - it should fail with the wrong nym
-	err = signer.AuditNymEid(ipk, eidIndex, nym.Bytes(), "not so much the nymeid", rNym, types.AuditExpectEidNymRhNym)
+	err = signer.AuditNymEid(ipk, eidIndex, 0, nym.Bytes(), "not so much the nymeid", rNym, types.AuditExpectEidNymRhNym)
 	assert.EqualError(t, err, "eid nym does not match")
 
 	// audit with AuditNymEid - it should fail with the wrong randomness
-	err = signer.AuditNymEid(ipk, eidIndex, nym.Bytes(), "nymeid", curve.NewRandomZr(rand), types.AuditExpectEidNymRhNym)
+	err = signer.AuditNymEid(ipk, eidIndex, 0, nym.Bytes(), "nymeid", curve.NewRandomZr(rand), types.AuditExpectEidNymRhNym)
 	assert.EqualError(t, err, "eid nym does not match")
 
 	//////////////////////
@@ -1200,31 +1224,31 @@ func TestSigner(t *testing.T) {
 	assert.EqualError(t, err, "signature invalid: nym rh validation failed, does not match metadata")
 
 	// audit with AuditNymEid - it should succeed with the right nym and randomness
-	err = signer.AuditNymRh(ipk, rhIndex, sig, "nymrh", rNym, types.AuditExpectSignature)
+	err = signer.AuditNymRh(ipk, rhIndex, 0, sig, "nymrh", rNym, types.AuditExpectSignature)
 	assert.NoError(t, err)
 
 	// audit with AuditNymEid - it should fail with the wrong nym
-	err = signer.AuditNymRh(ipk, rhIndex, sig, "not so much the nymrh", rNym, types.AuditExpectSignature)
+	err = signer.AuditNymRh(ipk, rhIndex, 0, sig, "not so much the nymrh", rNym, types.AuditExpectSignature)
 	assert.EqualError(t, err, "rh nym does not match")
 
 	// audit with AuditNymEid - it should fail with the wrong randomness
-	err = signer.AuditNymRh(ipk, rhIndex, sig, "nymrh", curve.NewRandomZr(rand), types.AuditExpectSignature)
+	err = signer.AuditNymRh(ipk, rhIndex, 0, sig, "nymrh", curve.NewRandomZr(rand), types.AuditExpectSignature)
 	assert.EqualError(t, err, "rh nym does not match")
 
 	// audit with AuditNymEid - it should succeed with the right nym and randomness
-	err = signer.AuditNymRh(ipk, rhIndex, nym.Bytes(), "nymrh", rNym, types.AuditExpectEidNymRhNym)
+	err = signer.AuditNymRh(ipk, rhIndex, 0, nym.Bytes(), "nymrh", rNym, types.AuditExpectEidNymRhNym)
 	assert.NoError(t, err)
 
 	// audit with AuditNymEid - it should fail with the wrong nym
-	err = signer.AuditNymRh(ipk, rhIndex, nym.Bytes(), "not so much the nymrh", rNym, types.AuditExpectEidNymRhNym)
+	err = signer.AuditNymRh(ipk, rhIndex, 0, nym.Bytes(), "not so much the nymrh", rNym, types.AuditExpectEidNymRhNym)
 	assert.EqualError(t, err, "rh nym does not match")
 
 	// audit with AuditNymEid - it should fail with the wrong randomness
-	err = signer.AuditNymRh(ipk, rhIndex, nym.Bytes(), "nymrh", curve.NewRandomZr(rand), types.AuditExpectEidNymRhNym)
+	err = signer.AuditNymRh(ipk, rhIndex, 0, nym.Bytes(), "nymrh", curve.NewRandomZr(rand), types.AuditExpectEidNymRhNym)
 	assert.EqualError(t, err, "rh nym does not match")
 
 	// audit with AuditNymEid - it should fail with AuditExpectEidNym
-	err = signer.AuditNymRh(ipk, rhIndex, nym.Bytes(), "nymrh", rNym, types.AuditExpectEidNym)
+	err = signer.AuditNymRh(ipk, rhIndex, 0, nym.Bytes(), "nymrh", rNym, types.AuditExpectEidNym)
 	assert.EqualError(t, err, "invalid audit type [1]")
 
 	/////////////////////
