@@ -14,12 +14,12 @@ import (
 	"github.com/IBM/idemix/bccsp/schemes/aries"
 	math "github.com/IBM/mathlib"
 	ml "github.com/IBM/mathlib"
-	"github.com/ale-linux/aries-framework-go/component/kmscrypto/crypto/primitive/bbs12381g2pub"
+	"github.com/hyperledger/aries-bbs-go/bbs"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-func generateKeyPairRandom(curve *math.Curve) (*bbs12381g2pub.PublicKey, *bbs12381g2pub.PrivateKey, error) {
+func generateKeyPairRandom(curve *math.Curve) (*bbs.PublicKey, *bbs.PrivateKey, error) {
 	seed := make([]byte, 32)
 
 	_, err := rand.Read(seed)
@@ -27,7 +27,7 @@ func generateKeyPairRandom(curve *math.Curve) (*bbs12381g2pub.PublicKey, *bbs123
 		panic(err)
 	}
 
-	return bbs12381g2pub.NewBBSLib(curve).GenerateKeyPair(sha256.New, seed)
+	return bbs.NewBBSLib(curve).GenerateKeyPair(sha256.New, seed)
 }
 
 func TestBlindSignMessages(t *testing.T) {
@@ -55,13 +55,13 @@ func TestBlindSignMessages(t *testing.T) {
 		[]byte("message4"),
 	}
 
-	msgToSign := []*bbs12381g2pub.SignatureMessage{
+	msgToSign := []*bbs.SignatureMessage{
 		{
-			FR:  bbs12381g2pub.FrFromOKM([]byte("message2"), curve),
+			FR:  bbs.FrFromOKM([]byte("message2"), curve),
 			Idx: 1,
 		},
 		{
-			FR:  bbs12381g2pub.FrFromOKM([]byte("message3"), curve),
+			FR:  bbs.FrFromOKM([]byte("message3"), curve),
 			Idx: 2,
 		},
 	}
@@ -85,7 +85,7 @@ func TestBlindSignMessages(t *testing.T) {
 	err = aries.VerifyBlinding(blindedMessagesBitmap, bm.C, bm.PoK, pubKey, []byte("nonce578"), curve)
 	assert.NoError(t, err)
 
-	bls := bbs12381g2pub.New(curve)
+	bls := bbs.New(curve)
 
 	privKeyBytes, err := privKey.Marshal()
 	require.NoError(t, err)
@@ -122,9 +122,9 @@ func TestBlindSignZr(t *testing.T) {
 		nil,
 	}
 
-	msgToSign := []*bbs12381g2pub.SignatureMessage{
+	msgToSign := []*bbs.SignatureMessage{
 		{
-			FR:  bbs12381g2pub.FrFromOKM([]byte("message2"), curve),
+			FR:  bbs.FrFromOKM([]byte("message2"), curve),
 			Idx: 1,
 		},
 	}
@@ -155,7 +155,7 @@ func TestBlindSignZr(t *testing.T) {
 	require.NotEmpty(t, signatureBytes)
 	require.Len(t, signatureBytes, 112)
 
-	signature, err := bbs12381g2pub.NewBBSLib(curve).ParseSignature(signatureBytes)
+	signature, err := bbs.NewBBSLib(curve).ParseSignature(signatureBytes)
 	require.NoError(t, err)
 
 	messagesCount := 2
@@ -163,7 +163,7 @@ func TestBlindSignZr(t *testing.T) {
 	publicKeyWithGenerators, err := pubKey.ToPublicKeyWithGenerators(messagesCount)
 	require.NoError(t, err)
 
-	messagesZr := []*bbs12381g2pub.SignatureMessage{
+	messagesZr := []*bbs.SignatureMessage{
 		{FR: zr, Idx: 0},
 		msgToSign[0],
 	}
