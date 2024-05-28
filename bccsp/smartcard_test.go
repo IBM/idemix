@@ -20,8 +20,8 @@ import (
 	"github.com/IBM/idemix/bccsp/types"
 	"github.com/IBM/idemix/idemixmsp"
 	math "github.com/IBM/mathlib"
-	"github.com/ale-linux/aries-framework-go/component/kmscrypto/crypto/primitive/bbs12381g2pub"
 	"github.com/golang/protobuf/proto"
+	"github.com/hyperledger/aries-bbs-go/bbs"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -119,7 +119,7 @@ func TestSmartcardHybrid(t *testing.T) {
 	sc.H0 = ipk.PKwG.H0
 	sc.H1 = ipk.PKwG.H[0]
 	sc.H2 = ipk.PKwG.H[3]
-	sc.EID = bbs12381g2pub.FrFromOKM([]byte(conf.EnrollmentId), curve)
+	sc.EID = bbs.FrFromOKM([]byte(conf.EnrollmentId), curve)
 	sc.Uid_sk = curve.NewZrFromBytes(conf.Sk)
 
 	/*******************************************************************************/
@@ -174,7 +174,7 @@ func TestSmartcardHybrid(t *testing.T) {
 		EidNymAuditData: &types.AttrNymAuditData{
 			Nym:  nymEid,
 			Rand: rNymEid,
-			Attr: bbs12381g2pub.FrFromOKM([]byte(conf.EnrollmentId), curve),
+			Attr: bbs.FrFromOKM([]byte(conf.EnrollmentId), curve),
 		},
 	}
 
@@ -243,7 +243,7 @@ func TestSmartcardCSP(t *testing.T) {
 	sc.H0 = ipk.PKwG.H0
 	sc.H1 = ipk.PKwG.H[0]
 	sc.H2 = ipk.PKwG.H[3]
-	sc.EID = bbs12381g2pub.FrFromOKM([]byte(conf.EnrollmentId), curve)
+	sc.EID = bbs.FrFromOKM([]byte(conf.EnrollmentId), curve)
 	sc.Uid_sk = curve.NewZrFromBytes(conf.Sk)
 
 	/*******************************************************************************/
@@ -307,7 +307,7 @@ func TestSmartcardCSP(t *testing.T) {
 			EidNymAuditData: &types.AttrNymAuditData{
 				Nym:  nymEid,
 				Rand: rNymEid,
-				Attr: bbs12381g2pub.FrFromOKM([]byte(conf.EnrollmentId), curve),
+				Attr: bbs.FrFromOKM([]byte(conf.EnrollmentId), curve),
 			},
 		},
 	}
@@ -374,7 +374,7 @@ func TestSmartcardCSP(t *testing.T) {
 			EidNymAuditData: &types.AttrNymAuditData{
 				Nym:  nymEid,
 				Rand: rNymEid,
-				Attr: bbs12381g2pub.FrFromOKM([]byte(conf.EnrollmentId), curve),
+				Attr: bbs.FrFromOKM([]byte(conf.EnrollmentId), curve),
 			},
 		},
 	}
@@ -437,7 +437,7 @@ func TestSmartcardCSP(t *testing.T) {
 		EidNymAuditData: &types.AttrNymAuditData{
 			Nym:  nymEid,
 			Rand: rNymEid,
-			Attr: bbs12381g2pub.FrFromOKM([]byte(conf.EnrollmentId), curve),
+			Attr: bbs.FrFromOKM([]byte(conf.EnrollmentId), curve),
 		},
 	}
 

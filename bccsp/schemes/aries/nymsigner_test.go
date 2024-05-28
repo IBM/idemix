@@ -10,7 +10,7 @@ import (
 
 	"github.com/IBM/idemix/bccsp/schemes/aries"
 	math "github.com/IBM/mathlib"
-	"github.com/ale-linux/aries-framework-go/component/kmscrypto/crypto/primitive/bbs12381g2pub"
+	"github.com/hyperledger/aries-bbs-go/bbs"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -46,7 +46,7 @@ func TestNymSigner(t *testing.T) {
 	for skPos := range attrs {
 		signer.UserSecretKeyIndex = skPos
 
-		cb := bbs12381g2pub.NewCommitmentBuilder(2)
+		cb := bbs.NewCommitmentBuilder(2)
 		cb.Add(ipk.PKwG.H0, rNym)
 		cb.Add(ipk.PKwG.H[skPos], sk)
 		nym := cb.Build()

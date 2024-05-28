@@ -14,8 +14,8 @@ import (
 	bccsp "github.com/IBM/idemix/bccsp/types"
 	im "github.com/IBM/idemix/idemixmsp"
 	math "github.com/IBM/mathlib"
-	"github.com/ale-linux/aries-framework-go/component/kmscrypto/crypto/primitive/bbs12381g2pub"
 	"github.com/golang/protobuf/proto"
+	"github.com/hyperledger/aries-bbs-go/bbs"
 	"github.com/pkg/errors"
 )
 
@@ -79,7 +79,7 @@ func GenerateSignerConfigAries(
 
 	credentialSigner := &aries.Cred{
 		Curve: curve,
-		Bls:   bbs12381g2pub.New(curve),
+		BBS:   bbs.New(curve),
 	}
 
 	revocationAuthority := &aries.RevocationAuthority{
