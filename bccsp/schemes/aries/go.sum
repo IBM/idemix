@@ -4,8 +4,6 @@ github.com/IBM/idemix/bccsp/types v0.0.0-20240612072411-114d281b442d h1:cv8IVW3e
 github.com/IBM/idemix/bccsp/types v0.0.0-20240612072411-114d281b442d/go.mod h1:IMIJ8WcUpBmV4gcOO/BYKuFYpdXCPYZjpNhFSUlO9b8=
 github.com/IBM/mathlib v0.0.3-0.20231011094432-44ee0eb539da h1:qqGozq4tF6EOVnWoTgBoJGudRKKZXSAYnEtDggzTnsw=
 github.com/IBM/mathlib v0.0.3-0.20231011094432-44ee0eb539da/go.mod h1:Tco9QzE3fQzjMS7nPbHDeFfydAzctStf1Pa8hsh6Hjs=
-github.com/ale-linux/aries-framework-go/component/kmscrypto v0.0.0-20231023164747-f3f972769504 h1:sQyFeDcHVHWJ3IeE437NSJjv0+J/6MvGQOJew4X+Cuw=
-github.com/ale-linux/aries-framework-go/component/kmscrypto v0.0.0-20231023164747-f3f972769504/go.mod h1:z5xq4Ji1RQojJLZzKeZH5+LKCVZxgQRZpQ4xAJWi8r0=
 github.com/bits-and-blooms/bitset v1.13.0 h1:bAQ9OPNFYbGHV6Nez0tmNI0RiEu7/hxlYJRUA0wFAVE=
 github.com/bits-and-blooms/bitset v1.13.0/go.mod h1:7hO7Gc7Pp1vODcmWvKMRA9BNmbv6a/7QIWpPxHddWR8=
 github.com/btcsuite/btcutil v1.0.3-0.20201208143702-a53e38424cce h1:YtWJF7RHm2pYCvA5t0RPmAaLUhREsKuKd+SLhxFbFeQ=
@@ -21,6 +19,8 @@ github.com/golang/protobuf v1.5.4/go.mod h1:lnTiLA8Wa4RWRcIUkrtSVa5nRhsEGBg48fD6
 github.com/google/go-cmp v0.5.5 h1:Khx7svrCpmxxtHBq5j2mp/xVjsi8hQMfNLvJFAlrGgU=
 github.com/google/go-cmp v0.5.5/go.mod h1:v8dTdLbMG2kIc/vJvl+f65V22dbkXbowE6jgT/gNBxE=
 github.com/google/subcommands v1.2.0/go.mod h1:ZjhPrFU+Olkh9WazFPsl27BQ4UPiG37m3yTrtFlrHVk=
+github.com/hyperledger/aries-bbs-go v0.0.0-20240528084656-761671ea73bc h1:3Ykk6MtyfnlzMOQry9zkxsoLWpCWZwDPqehO/BJwArM=
+github.com/hyperledger/aries-bbs-go v0.0.0-20240528084656-761671ea73bc/go.mod h1:Kofn6A6WWea1ZM8Rys5aBW9dszwJ7Ywa0kyyYL0TPYw=
 github.com/hyperledger/fabric-amcl v0.0.0-20230602173724-9e02669dceb2 h1:B1Nt8hKb//KvgGRprk0h1t4lCnwhE9/ryb1WqfZbV+M=
 github.com/hyperledger/fabric-amcl v0.0.0-20230602173724-9e02669dceb2/go.mod h1:X+DIyUsaTmalOpmpQfIvFZjKHQedrURQ5t4YqquX7lE=
 github.com/kilic/bls12-381 v0.1.0 h1:encrdjqKMEvabVQ7qYOKu1OvhqpK4s47wDYtNiPtlp4=

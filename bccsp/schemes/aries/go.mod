@@ -6,8 +6,8 @@ require (
 	github.com/IBM/idemix/bccsp/schemes/weak-bb v0.0.0-20240612072411-114d281b442d
 	github.com/IBM/idemix/bccsp/types v0.0.0-20240612072411-114d281b442d
 	github.com/IBM/mathlib v0.0.3-0.20231011094432-44ee0eb539da
-	github.com/ale-linux/aries-framework-go/component/kmscrypto v0.0.0-20231023164747-f3f972769504
 	github.com/golang/protobuf v1.5.4
+	github.com/hyperledger/aries-bbs-go v0.0.0-20240528084656-761671ea73bc
 	github.com/pkg/errors v0.9.1
 	github.com/stretchr/testify v1.9.0
 )

@@ -10,11 +10,12 @@ import (
 	"crypto/aes"
 	"crypto/rand"
 	"encoding/hex"
+	"errors"
 	"testing"
 
 	"github.com/IBM/idemix/bccsp/schemes/aries"
 	math "github.com/IBM/mathlib"
-	"github.com/ale-linux/aries-framework-go/component/kmscrypto/crypto/primitive/bbs12381g2pub"
+	"github.com/hyperledger/aries-bbs-go/bbs"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -70,8 +71,113 @@ func getSmartcard(t *testing.T) (*aries.Smartcard, *math.Curve) {
 	}, c
 }
 
+type defaultVC2SignatureProvider struct {
+	r  *math.Zr
+	bl *bbs.BBSLib
+}
+
+func (p *defaultVC2SignatureProvider) New(d *math.G1, r3 *math.Zr, pubKey *bbs.PublicKeyWithGenerators, sPrime *math.Zr,
+	messages []*bbs.SignatureMessage, revealedMessages map[int]*bbs.SignatureMessage) (*bbs.ProverCommittedG1, []*math.Zr) {
+	messagesCount := len(messages)
+	committing2 := p.bl.NewProverCommittingG1()
+	baseSecretsCount := 2
+	secrets2 := make([]*math.Zr, 0, baseSecretsCount+messagesCount)
+
+	committing2.Commit(d)
+
+	r3D := r3.Copy()
+	r3D.Neg()
+
+	secrets2 = append(secrets2, r3D)
+
+	committing2.Commit(pubKey.H0)
+
+	sPrime = sPrime.Minus(p.r)
+
+	secrets2 = append(secrets2, sPrime)
+
+	for _, msg := range messages {
+		if _, ok := revealedMessages[msg.Idx]; ok {
+			continue
+		}
+
+		committing2.Commit(pubKey.H[msg.Idx])
+
+		sourceFR := msg.FR
+		hiddenFRCopy := sourceFR.Copy()
+
+		secrets2 = append(secrets2, hiddenFRCopy)
+	}
+
+	pokVC2 := committing2.Finish()
+
+	return pokVC2, secrets2
+}
+
+type defaultVC2ProofVerifier struct {
+	curve *math.Curve
+	nym   *math.G1
+}
+
+func (v *defaultVC2ProofVerifier) Verify(challenge *math.Zr, pubKey *bbs.PublicKeyWithGenerators,
+	revealedMessages map[int]*bbs.SignatureMessage, messages []*bbs.SignatureMessage, ProofVC2 *bbs.ProofG1,
+	d *math.G1) error {
+	revealedMessagesCount := len(revealedMessages)
+
+	basesVC2 := make([]*math.G1, 0, 2+pubKey.MessagesCount-revealedMessagesCount)
+	basesVC2 = append(basesVC2, d, pubKey.H0)
+
+	basesDisclosed := make([]*math.G1, 0, 1+revealedMessagesCount)
+	exponents := make([]*math.Zr, 0, 1+revealedMessagesCount)
+
+	basesDisclosed = append(basesDisclosed, v.curve.GenG1)
+	exponents = append(exponents, v.curve.NewZrFromInt(1))
+
+	revealedMessagesInd := 0
+
+	for i := range pubKey.H {
+		if i == 0 {
+			continue
+		}
+
+		if _, ok := revealedMessages[i]; ok {
+			basesDisclosed = append(basesDisclosed, pubKey.H[i])
+			exponents = append(exponents, messages[revealedMessagesInd].FR)
+			revealedMessagesInd++
+		} else {
+			basesVC2 = append(basesVC2, pubKey.H[i])
+		}
+	}
+
+	basesDisclosed = append(basesDisclosed, v.nym)
+	exponents = append(exponents, v.curve.NewZrFromInt(1))
+
+	// TODO: expose 0
+	pr := v.curve.GenG1.Copy()
+	pr.Sub(v.curve.GenG1)
+
+	for i := 0; i < len(basesDisclosed); i++ {
+		b := basesDisclosed[i]
+		s := exponents[i]
+
+		g := b.Mul(bbs.FrToRepr(s))
+		pr.Add(g)
+	}
+
+	pr.Neg()
+
+	err := ProofVC2.Verify(basesVC2, pr, challenge)
+	if err != nil {
+		return errors.New("bad signature")
+	}
+
+	return nil
+}
+
 func TestAll(t *testing.T) {
 	sc, curve := getSmartcard(t)
+
+	bl := bbs.NewBBSLib(curve)
 
 	pubKey, privKey, err := generateKeyPairRandom(curve)
 	assert.NoError(t, err)
@@ -80,6 +186,12 @@ func TestAll(t *testing.T) {
 	assert.NoError(t, err)
 
 	pkwg, err := pubKey.ToPublicKeyWithGenerators(5)
+	assert.NoError(t, err)
+
+	// convert public key
+	pkbbs, err := bbs.NewBBSLib(curve).UnmarshalPublicKey(pubKey.PointG2.Compressed())
+	assert.NoError(t, err)
+	pkwgbbs, err := pkbbs.ToPublicKeyWithGenerators(5)
 	assert.NoError(t, err)
 
 	sc.H0 = pkwg.H0
@@ -98,22 +210,22 @@ func TestAll(t *testing.T) {
 	ou, role, eid, rh := "ou", "role", "eid", "rh"
 	messagesCount := 5 // includes the sk
 
-	sig_, err := aries.BlindSign([]*bbs12381g2pub.SignatureMessage{
+	sig_, err := aries.BlindSign([]*bbs.SignatureMessage{
 		{
 			Idx: 1,
-			FR:  bbs12381g2pub.FrFromOKM([]byte(ou), curve),
+			FR:  bbs.FrFromOKM([]byte(ou), curve),
 		},
 		{
 			Idx: 2,
-			FR:  bbs12381g2pub.FrFromOKM([]byte(role), curve),
+			FR:  bbs.FrFromOKM([]byte(role), curve),
 		},
 		{
 			Idx: 3,
-			FR:  bbs12381g2pub.FrFromOKM([]byte(eid), curve),
+			FR:  bbs.FrFromOKM([]byte(eid), curve),
 		},
 		{
 			Idx: 4,
-			FR:  bbs12381g2pub.FrFromOKM([]byte(rh), curve),
+			FR:  bbs.FrFromOKM([]byte(rh), curve),
 		},
 	}, messagesCount, B, privKeyBytes, curve)
 	assert.NoError(t, err)
@@ -121,65 +233,213 @@ func TestAll(t *testing.T) {
 	sigBytes, err := aries.UnblindSign(sig_, r, curve)
 	assert.NoError(t, err)
 
-	sig, err := bbs12381g2pub.NewBBSLib(curve).ParseSignature(sigBytes)
+	sig, err := bbs.NewBBSLib(curve).ParseSignature(sigBytes)
 	assert.NoError(t, err)
 
-	messagesFr := []*bbs12381g2pub.SignatureMessage{
+	messagesFr := []*bbs.SignatureMessage{
 		{
 			Idx: 0,
 			FR:  sc.Uid_sk,
 		},
 		{
 			Idx: 1,
-			FR:  bbs12381g2pub.FrFromOKM([]byte(ou), curve),
+			FR:  bbs.FrFromOKM([]byte(ou), curve),
 		},
 		{
 			Idx: 2,
-			FR:  bbs12381g2pub.FrFromOKM([]byte(role), curve),
+			FR:  bbs.FrFromOKM([]byte(role), curve),
 		},
 		{
 			Idx: 3,
-			FR:  bbs12381g2pub.FrFromOKM([]byte(eid), curve),
+			FR:  bbs.FrFromOKM([]byte(eid), curve),
 		},
 		{
 			Idx: 4,
-			FR:  bbs12381g2pub.FrFromOKM([]byte(rh), curve),
+			FR:  bbs.FrFromOKM([]byte(rh), curve),
 		},
 	}
 
-	err = sig.Verify(messagesFr, pkwg)
+	err = sig.Verify(messagesFr, pkwgbbs)
 	assert.NoError(t, err)
 
 	/*********************************************************************/
 	/*********************************************************************/
 
-	pok_, err := bbs12381g2pub.NewBBSLib(curve).NewPoKOfSignature(sig, messagesFr, []int{1, 2}, pkwg)
+	pok_, err := bbs.NewBBSLib(curve).NewPoKOfSignature(sig, messagesFr, []int{1, 2}, pkwg)
 	assert.NoError(t, err)
 
 	c := curve.NewRandomZr(rand.Reader)
 
 	pok := pok_.GenerateProof(c)
 
-	err = pok.Verify(c, pkwg, map[int]*bbs12381g2pub.SignatureMessage{1: {}, 2: {}}, []*bbs12381g2pub.SignatureMessage{messagesFr[1], messagesFr[2]})
+	pokbytes := pok.ToBytes()
+	pok, err = bbs.NewBBSLib(curve).ParseSignatureProof(pokbytes)
+	assert.NoError(t, err)
+
+	err = pok.Verify(c, pkwg, map[int]*bbs.SignatureMessage{1: {}, 2: {}}, []*bbs.SignatureMessage{messagesFr[1], messagesFr[2]})
 	assert.NoError(t, err)
 
 	/*********************************************************************/
 
 	/*********************************************************************/
 
+	// convert messages
+	messagesFrbbs := []*bbs.SignatureMessage{
+		{
+			Idx: 0,
+			FR:  sc.Uid_sk,
+		},
+		{
+			Idx: 1,
+			FR:  bbs.FrFromOKM([]byte(ou), curve),
+		},
+		{
+			Idx: 2,
+			FR:  bbs.FrFromOKM([]byte(role), curve),
+		},
+		{
+			Idx: 3,
+			FR:  bbs.FrFromOKM([]byte(eid), curve),
+		},
+		{
+			Idx: 4,
+			FR:  bbs.FrFromOKM([]byte(rh), curve),
+		},
+	}
+
 	C := B.Copy()
 	C.Sub(sc.H0.Mul(r))
 	assert.True(t, C.Equals(sc.H1.Mul(sc.Uid_sk)))
 
-	pok_, err = bbs12381g2pub.NewBBSLib(curve).NewPoKOfSignatureExt(sig, messagesFr[1:], []int{0, 1}, pkwg, B, r, C)
+	p := &bbs.PoKOfSignatureProvider{
+		VC2SignatureProvider: &defaultVC2SignatureProvider{
+			r:  r,
+			bl: bbs.NewBBSLib(curve),
+		},
+		Curve: curve,
+		Bl:    bbs.NewBBSLib(curve),
+	}
+
+	// compute b without the first message
+	b := bbs.ComputeB(sig.S, messagesFrbbs[1:], pkwg, curve)
+
+	// add the first message
+	b.Add(C)
+
+	pok_, err = p.PoKOfSignatureB(sig, messagesFr[1:], []int{0, 1}, pkwgbbs, b)
 	assert.NoError(t, err)
 
 	c = curve.NewRandomZr(rand.Reader)
 
 	pok = pok_.GenerateProof(c)
 
-	err = pok.VerifyExt(c, pkwg, map[int]*bbs12381g2pub.SignatureMessage{1: {}, 2: {}}, []*bbs12381g2pub.SignatureMessage{messagesFr[1], messagesFr[2]}, B)
+	pok.VC2ProofVerifier = &defaultVC2ProofVerifier{
+		curve: curve,
+		nym:   B,
+	}
+
+	err = pok.Verify(c, pkwgbbs, map[int]*bbs.SignatureMessage{1: {}, 2: {}}, []*bbs.SignatureMessage{messagesFr[1], messagesFr[2]})
 	assert.NoError(t, err)
+
+	////////////////////////////////////////////////////////////////////////////////////////////////////
+	///////////////////////////////////////COMPATIBILITY WITH OLD CODE//////////////////////////////////
+	////////////////////////////////////////////////////////////////////////////////////////////////////
+
+	// convert signature
+	sigbbs, err := bl.ParseSignature(sigBytes)
+	assert.NoError(t, err)
+
+	// convert POK
+	proof := pok_.GenerateProof(c)
+	payload := bbs.NewPoKPayload(messagesCount, []int{1, 2})
+	payloadBytes, err := payload.ToBytes()
+	assert.NoError(t, err)
+	signatureProofBytes := append(payloadBytes, proof.ToBytes()...)
+	payload, err = bbs.ParsePoKPayload(signatureProofBytes)
+	assert.NoError(t, err)
+	signatureProof, err := bl.ParseSignatureProof(signatureProofBytes[payload.LenInBytes():])
+	assert.NoError(t, err)
+
+	// set custom verifier on the new POK
+	signatureProof.VC2ProofVerifier = &defaultVC2ProofVerifier{
+		curve: curve,
+		nym:   B,
+	}
+
+	// verify with other verifier
+	err = signatureProof.Verify(c, pkwg, map[int]*bbs.SignatureMessage{1: {}, 2: {}}, []*bbs.SignatureMessage{
+		{
+			FR:  messagesFr[1].FR,
+			Idx: messagesFr[1].Idx,
+		},
+		{
+			FR:  messagesFr[2].FR,
+			Idx: messagesFr[2].Idx,
+		}},
+	)
+	assert.NoError(t, err)
+
+	p = &bbs.PoKOfSignatureProvider{
+		VC2SignatureProvider: &defaultVC2SignatureProvider{
+			r:  r,
+			bl: bl,
+		},
+		Curve: curve,
+		Bl:    bl,
+	}
+
+	// compute b without the first message
+	b = bbs.ComputeB(sig.S, messagesFrbbs[1:], pkwg, curve)
+
+	// add the first message
+	b.Add(C)
+
+	// create proof with new code
+	pokSignature, err := p.PoKOfSignatureB(sigbbs, messagesFrbbs[1:], []int{0, 1}, pkwg, b)
+	assert.NoError(t, err)
+	proofbbs := pokSignature.GenerateProof(c)
+
+	// set custom verifier on the new POK
+	proofbbs.VC2ProofVerifier = &defaultVC2ProofVerifier{
+		curve: curve,
+		nym:   B,
+	}
+
+	// verify proof with new code
+	err = proofbbs.Verify(c, pkwg, map[int]*bbs.SignatureMessage{1: {}, 2: {}}, []*bbs.SignatureMessage{
+		{
+			FR:  messagesFr[1].FR,
+			Idx: messagesFr[1].Idx,
+		},
+		{
+			FR:  messagesFr[2].FR,
+			Idx: messagesFr[2].Idx,
+		}},
+	)
+	assert.NoError(t, err)
+
+	// convert POK
+	payloadnew := bbs.NewPoKPayload(messagesCount, []int{1, 2})
+	payloadBytesnew, err := payloadnew.ToBytes()
+	assert.NoError(t, err)
+	signatureProofBytesnew := append(payloadBytesnew, proofbbs.ToBytes()...)
+	payloadnew, err = bbs.ParsePoKPayload(signatureProofBytesnew)
+	assert.NoError(t, err)
+	signatureProofnew, err := bbs.NewBBSLib(curve).ParseSignatureProof(signatureProofBytesnew[payloadnew.LenInBytes():])
+	assert.NoError(t, err)
+
+	// set custom verifier on the new POK
+	signatureProofnew.VC2ProofVerifier = &defaultVC2ProofVerifier{
+		curve: curve,
+		nym:   B,
+	}
+
+	// verify proof with old code
+	err = signatureProofnew.Verify(c, pkwgbbs, map[int]*bbs.SignatureMessage{1: {}, 2: {}}, []*bbs.SignatureMessage{messagesFr[1], messagesFr[2]})
+	assert.NoError(t, err)
+	////////////////////////////////////////////////////////////////////////////////////////////////////
+	////////////////////////////////////////////////////////////////////////////////////////////////////
+	////////////////////////////////////////////////////////////////////////////////////////////////////
 
 	/*********************************************************************/
 
@@ -187,7 +447,7 @@ func TestAll(t *testing.T) {
 
 	r1, r2 := curve.NewRandomZr(rand.Reader), curve.NewRandomZr(rand.Reader)
 
-	b := computeB(sig.S, messagesFr, pkwg, curve)
+	b = computeB(sig.S, messagesFr, pkwgbbs, curve)
 	aPrime := sig.A.Mul(r1)
 
 	aBarDenom := aPrime.Mul(sig.E)
@@ -199,7 +459,7 @@ func TestAll(t *testing.T) {
 	r2D.Neg()
 
 	commitmentBasesCount := 2
-	cb := bbs12381g2pub.NewCommitmentBuilder(commitmentBasesCount)
+	cb := bbs.NewCommitmentBuilder(commitmentBasesCount)
 	cb.Add(b, r1)
 	cb.Add(pkwg.H0, r2D)
 
@@ -252,12 +512,12 @@ func TestAll(t *testing.T) {
 	/*      custom validation here     */
 	/***********************************/
 
-	revealedMessages := make(map[int]*bbs12381g2pub.SignatureMessage, 2)
+	revealedMessages := make(map[int]*bbs.SignatureMessage, 2)
 	revealedMessages[1] = messagesFr[1]
 	revealedMessages[2] = messagesFr[2]
 
 	// DELTA: we pass sPrime.Minus(r) as sPrime and drop the first message in messagesFr
-	pokVC2, secrets2 := newModifiedVC2Signature(d, r3, pkwg, sPrime.Minus(r), messagesFr[1:], revealedMessages, curve)
+	pokVC2, secrets2 := newModifiedVC2Signature(d, r3, pkwgbbs, sPrime.Minus(r), messagesFr[1:], revealedMessages, curve)
 
 	/*************/
 
@@ -315,10 +575,10 @@ func TestAll(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-func computeB(s *math.Zr, messages []*bbs12381g2pub.SignatureMessage, key *bbs12381g2pub.PublicKeyWithGenerators, curve *math.Curve) *math.G1 {
+func computeB(s *math.Zr, messages []*bbs.SignatureMessage, key *bbs.PublicKeyWithGenerators, curve *math.Curve) *math.G1 {
 	const basesOffset = 2
 
-	cb := bbs12381g2pub.NewCommitmentBuilder(len(messages) + basesOffset)
+	cb := bbs.NewCommitmentBuilder(len(messages) + basesOffset)
 
 	cb.Add(curve.GenG1, curve.NewZrFromInt(1))
 	cb.Add(key.H0, s)
@@ -333,15 +593,15 @@ func computeB(s *math.Zr, messages []*bbs12381g2pub.SignatureMessage, key *bbs12
 func newModifiedVC2Signature(
 	d *math.G1,
 	r3 *math.Zr,
-	pubKey *bbs12381g2pub.PublicKeyWithGenerators,
+	pubKey *bbs.PublicKeyWithGenerators,
 	sPrime *math.Zr,
-	messages []*bbs12381g2pub.SignatureMessage,
-	revealedMessages map[int]*bbs12381g2pub.SignatureMessage,
+	messages []*bbs.SignatureMessage,
+	revealedMessages map[int]*bbs.SignatureMessage,
 	curve *math.Curve,
-) (*bbs12381g2pub.ProverCommittedG1, []*math.Zr) {
+) (*bbs.ProverCommittedG1, []*math.Zr) {
 
 	messagesCount := len(messages)
-	committing2 := bbs12381g2pub.NewBBSLib(curve).NewProverCommittingG1()
+	committing2 := bbs.NewBBSLib(curve).NewProverCommittingG1()
 	baseSecretsCount := 2
 	secrets2 := make([]*math.Zr, 0, baseSecretsCount+messagesCount)
 

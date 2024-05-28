@@ -7,13 +7,14 @@ package aries
 
 import (
 	"crypto/ecdsa"
+	"errors"
 	"fmt"
 	"io"
 
 	"github.com/IBM/idemix/bccsp/types"
 	math "github.com/IBM/mathlib"
-	"github.com/ale-linux/aries-framework-go/component/kmscrypto/crypto/primitive/bbs12381g2pub"
 	"github.com/golang/protobuf/proto"
+	"github.com/hyperledger/aries-bbs-go/bbs"
 )
 
 // AttributeIndexInNym is the index of the blinding factor of the attribute in a Nym commitment
@@ -32,23 +33,125 @@ type Signer struct {
 	Rng   io.Reader
 }
 
+type vc2SmartcardSignatureProvider struct {
+	r  *math.Zr
+	bl *bbs.BBSLib
+}
+
+func (p *vc2SmartcardSignatureProvider) New(d *math.G1, r3 *math.Zr, pubKey *bbs.PublicKeyWithGenerators, sPrime *math.Zr,
+	messages []*bbs.SignatureMessage, revealedMessages map[int]*bbs.SignatureMessage) (*bbs.ProverCommittedG1, []*math.Zr) {
+	messagesCount := len(messages)
+	committing2 := p.bl.NewProverCommittingG1()
+	baseSecretsCount := 2
+	secrets2 := make([]*math.Zr, 0, baseSecretsCount+messagesCount)
+
+	committing2.Commit(d)
+
+	r3D := r3.Copy()
+	r3D.Neg()
+
+	secrets2 = append(secrets2, r3D)
+
+	committing2.Commit(pubKey.H0)
+
+	sPrime = sPrime.Minus(p.r)
+
+	secrets2 = append(secrets2, sPrime)
+
+	for _, msg := range messages {
+		if _, ok := revealedMessages[msg.Idx]; ok {
+			continue
+		}
+
+		committing2.Commit(pubKey.H[msg.Idx])
+
+		sourceFR := msg.FR
+		hiddenFRCopy := sourceFR.Copy()
+
+		secrets2 = append(secrets2, hiddenFRCopy)
+	}
+
+	pokVC2 := committing2.Finish()
+
+	return pokVC2, secrets2
+}
+
+type vc2SmartcardProofVerifier struct {
+	curve *math.Curve
+	nym   *math.G1
+}
+
+func (v *vc2SmartcardProofVerifier) Verify(challenge *math.Zr, pubKey *bbs.PublicKeyWithGenerators,
+	revealedMessages map[int]*bbs.SignatureMessage, messages []*bbs.SignatureMessage, ProofVC2 *bbs.ProofG1,
+	d *math.G1) error {
+	revealedMessagesCount := len(revealedMessages)
+
+	basesVC2 := make([]*math.G1, 0, 2+pubKey.MessagesCount-revealedMessagesCount)
+	basesVC2 = append(basesVC2, d, pubKey.H0)
+
+	basesDisclosed := make([]*math.G1, 0, 1+revealedMessagesCount)
+	exponents := make([]*math.Zr, 0, 1+revealedMessagesCount)
+
+	basesDisclosed = append(basesDisclosed, v.curve.GenG1)
+	exponents = append(exponents, v.curve.NewZrFromInt(1))
+
+	revealedMessagesInd := 0
+
+	for i := range pubKey.H {
+		if i == 0 {
+			continue
+		}
+
+		if _, ok := revealedMessages[i]; ok {
+			basesDisclosed = append(basesDisclosed, pubKey.H[i])
+			exponents = append(exponents, messages[revealedMessagesInd].FR)
+			revealedMessagesInd++
+		} else {
+			basesVC2 = append(basesVC2, pubKey.H[i])
+		}
+	}
+
+	basesDisclosed = append(basesDisclosed, v.nym)
+	exponents = append(exponents, v.curve.NewZrFromInt(1))
+
+	pr := v.curve.GenG1.Copy()
+	pr.Sub(v.curve.GenG1)
+
+	for i := 0; i < len(basesDisclosed); i++ {
+		b := basesDisclosed[i]
+		s := exponents[i]
+
+		g := b.Mul(bbs.FrToRepr(s))
+		pr.Add(g)
+	}
+
+	pr.Neg()
+
+	err := ProofVC2.Verify(basesVC2, pr, challenge)
+	if err != nil {
+		return errors.New("bad signature")
+	}
+
+	return nil
+}
+
 func (s *Signer) getPoKOfSignature(
 	credential *Credential,
 	attributes []types.IdemixAttribute,
 	sk *math.Zr,
-	ipk *bbs12381g2pub.PublicKeyWithGenerators,
+	ipk *bbs.PublicKeyWithGenerators,
 	sigtype types.SignatureType,
 	Nym *math.G1,
 	RNym *math.Zr,
-) (*bbs12381g2pub.PoKOfSignature, []*bbs12381g2pub.SignatureMessage, error) {
-	signature, err := bbs12381g2pub.NewBBSLib(s.Curve).ParseSignature(credential.Cred)
+) (*bbs.PoKOfSignature, []*bbs.SignatureMessage, error) {
+	signature, err := bbs.NewBBSLib(s.Curve).ParseSignature(credential.Cred)
 	if err != nil {
 		return nil, nil, fmt.Errorf("parse signature: %w", err)
 	}
 
 	messagesFr := credential.toSignatureMessage(sk, s.Curve)
 
-	var pokOS *bbs12381g2pub.PoKOfSignature
+	var pokOS *bbs.PoKOfSignature
 	if sigtype == types.Smartcard {
 		// this mode implements the protocol from https://eprint.iacr.org/2023/853.
 		// The protocol is between 3 parties, a user, a smartcard and a
@@ -62,22 +165,35 @@ func (s *Signer) getPoKOfSignature(
 		// been proven by the smartcard in a separate proof.
 		C := Nym.Copy()
 		C.Sub(ipk.H0.Mul(RNym))
-		messagesFrNoSk := append(append([]*bbs12381g2pub.SignatureMessage{}, messagesFr[:credential.SkPos]...), messagesFr[credential.SkPos+1:]...)
-		pokOS, err = bbs12381g2pub.NewBBSLib(s.Curve).NewPoKOfSignatureExt(signature, messagesFrNoSk, revealedAttributesIndexNoSk(attributes), ipk, Nym, RNym, C)
+		messagesFrNoSk := append(append([]*bbs.SignatureMessage{}, messagesFr[:credential.SkPos]...), messagesFr[credential.SkPos+1:]...)
+		p := &bbs.PoKOfSignatureProvider{
+			VC2SignatureProvider: &vc2SmartcardSignatureProvider{
+				r:  RNym,
+				bl: bbs.NewBBSLib(s.Curve),
+			},
+			Curve: s.Curve,
+			Bl:    bbs.NewBBSLib(s.Curve),
+		}
+
+		// compute b without the first message
+		b := bbs.ComputeB(signature.S, messagesFrNoSk, ipk, s.Curve)
+		b.Add(C)
+
+		pokOS, err = p.PoKOfSignatureB(signature, messagesFrNoSk, revealedAttributesIndexNoSk(attributes), ipk, b)
 	} else {
-		pokOS, err = bbs12381g2pub.NewBBSLib(s.Curve).NewPoKOfSignatureExt(signature, messagesFr, revealedAttributesIndex(attributes), ipk, nil, nil, nil)
+		pokOS, err = bbs.NewBBSLib(s.Curve).NewPoKOfSignature(signature, messagesFr, revealedAttributesIndex(attributes), ipk)
 	}
 	if err != nil {
-		return nil, nil, fmt.Errorf("bbs12381g2pub.NewPoKOfSignature error: %w", err)
+		return nil, nil, fmt.Errorf("bbs.NewPoKOfSignature error: %w", err)
 	}
 
 	return pokOS, messagesFr, nil
 }
 
 func (s *Signer) getChallengeHash(
-	pokSignature *bbs12381g2pub.PoKOfSignature,
+	pokSignature *bbs.PoKOfSignature,
 	Nym *math.G1,
-	commitNym *bbs12381g2pub.ProverCommittedG1,
+	commitNym *bbs.ProverCommittedG1,
 	eid *attributeCommitment,
 	rh *attributeCommitment,
 	msg []byte,
@@ -121,33 +237,33 @@ func (s *Signer) getChallengeHash(
 	}
 
 	// hash the nonce
-	proofNonce := bbs12381g2pub.ParseProofNonce(msg, s.Curve)
+	proofNonce := bbs.ParseProofNonce(msg, s.Curve)
 	proofNonceBytes := proofNonce.ToBytes()
 	challengeBytes = append(challengeBytes, proofNonceBytes...)
 
-	c := bbs12381g2pub.FrFromOKM(challengeBytes, s.Curve)
+	c := bbs.FrFromOKM(challengeBytes, s.Curve)
 
 	Nonce := s.Curve.NewRandomZr(s.Rng)
 
 	challengeBytes = c.Bytes()
 	challengeBytes = append(challengeBytes, Nonce.Bytes()...)
 
-	return bbs12381g2pub.FrFromOKM(challengeBytes, s.Curve), Nonce
+	return bbs.FrFromOKM(challengeBytes, s.Curve), Nonce
 }
 
 func (s *Signer) packageProof(
 	attributes []types.IdemixAttribute,
 	Nym *math.G1,
-	proof *bbs12381g2pub.PoKOfSignatureProof,
-	proofNym *bbs12381g2pub.ProofG1,
+	proof *bbs.PoKOfSignatureProof,
+	proofNym *bbs.ProofG1,
 	nymEid *attributeCommitment,
-	proofNymEid *bbs12381g2pub.ProofG1,
+	proofNymEid *bbs.ProofG1,
 	rhNym *attributeCommitment,
-	proofRhNym *bbs12381g2pub.ProofG1,
+	proofRhNym *bbs.ProofG1,
 	cri *CredentialRevocationInformation,
 	nonce *math.Zr,
 ) ([]byte, error) {
-	payload := bbs12381g2pub.NewPoKPayload(len(attributes)+1, revealedAttributesIndex(attributes))
+	payload := bbs.NewPoKPayload(len(attributes)+1, revealedAttributesIndex(attributes))
 
 	payloadBytes, err := payload.ToBytes()
 	if err != nil {
@@ -189,10 +305,10 @@ func (s *Signer) packageProof(
 
 func (s *Signer) getCommitNym(
 	ipk *IssuerPublicKey,
-	pokSignature *bbs12381g2pub.PoKOfSignature,
+	pokSignature *bbs.PoKOfSignature,
 	sigType types.SignatureType,
 	userSecretKeyIndex int,
-) *bbs12381g2pub.ProverCommittedG1 {
+) *bbs.ProverCommittedG1 {
 
 	if sigType == types.Smartcard {
 		return nil
@@ -200,7 +316,7 @@ func (s *Signer) getCommitNym(
 
 	// Nym is H0^{RNym} \cdot H[0]^{sk}
 
-	commit := bbs12381g2pub.NewBBSLib(s.Curve).NewProverCommittingG1()
+	commit := bbs.NewBBSLib(s.Curve).NewProverCommittingG1()
 	commit.Commit(ipk.PKwG.H0)
 	commit.Commit(ipk.PKwG.H[userSecretKeyIndex])
 	// we force the same blinding factor used in PokVC2 to prove equality.
@@ -216,7 +332,7 @@ func (s *Signer) getCommitNym(
 
 type attributeCommitment struct {
 	index int
-	proof *bbs12381g2pub.ProverCommittedG1
+	proof *bbs.ProverCommittedG1
 	comm  *math.G1
 	r     *math.Zr
 }
@@ -247,7 +363,7 @@ func nymEidAttrCommitmentEnabled(sigType types.SignatureType) bool {
 
 func (s *Signer) getAttributeCommitment(
 	ipk *IssuerPublicKey,
-	pokSignature *bbs12381g2pub.PoKOfSignature,
+	pokSignature *bbs.PoKOfSignature,
 	attr *math.Zr,
 	idxInBases int,
 	enabled bool,
@@ -261,7 +377,7 @@ func (s *Signer) getAttributeCommitment(
 	var Nym *math.G1
 	var R *math.Zr
 
-	cb := bbs12381g2pub.NewCommitmentBuilder(2)
+	cb := bbs.NewCommitmentBuilder(2)
 
 	if auditData != nil {
 		if !attr.Equals(auditData.Attr) {
@@ -290,7 +406,7 @@ func (s *Signer) getAttributeCommitment(
 		return nil, fmt.Errorf("error determining index for attribute: %w", err)
 	}
 
-	commit := bbs12381g2pub.NewBBSLib(s.Curve).NewProverCommittingG1()
+	commit := bbs.NewBBSLib(s.Curve).NewProverCommittingG1()
 	commit.Commit(ipk.PKwG.H0)
 	commit.Commit(ipk.PKwG.H[idxInBases])
 
@@ -306,9 +422,9 @@ func (s *Signer) getAttributeCommitment(
 }
 
 func (s *Signer) indexOfAttributeInCommitment(
-	c *bbs12381g2pub.ProverCommittedG1,
+	c *bbs.ProverCommittedG1,
 	indexInPk int,
-	ipk *bbs12381g2pub.PublicKeyWithGenerators,
+	ipk *bbs.PublicKeyWithGenerators,
 ) (int, error) {
 
 	// this is the base used in the public key for the attribute; no +1 since we assume that the caller has already catered for that
@@ -435,17 +551,17 @@ func (s *Signer) Sign(
 	// 1) main
 	proof := pokSignature.GenerateProof(proofChallenge)
 	// 2) Nym
-	var proofNym *bbs12381g2pub.ProofG1
+	var proofNym *bbs.ProofG1
 	if commitNym != nil {
 		proofNym = commitNym.GenerateProof(proofChallenge, []*math.Zr{RNym, sk})
 	}
 	// 3) NymEid
-	var proofNymEid *bbs12381g2pub.ProofG1
+	var proofNymEid *bbs.ProofG1
 	if nymEid != nil {
 		proofNymEid = nymEid.proof.GenerateProof(proofChallenge, []*math.Zr{nymEid.r, messagesFr[eidIndex].FR})
 	}
 	// 4) RhNym
-	var proofRhNym *bbs12381g2pub.ProofG1
+	var proofRhNym *bbs.ProofG1
 	if rhNym != nil {
 		proofRhNym = rhNym.proof.GenerateProof(proofChallenge, []*math.Zr{rhNym.r, messagesFr[rhIndex].FR})
 	}
@@ -504,7 +620,7 @@ func (s *Signer) Verify(
 		return fmt.Errorf("invalid issuer public key, expected *IssuerPublicKey, got [%T]", ipk)
 	}
 
-	lib := bbs12381g2pub.NewBBSLib(s.Curve)
+	lib := bbs.NewBBSLib(s.Curve)
 
 	sig := &Signature{}
 	err := proto.Unmarshal(signature, sig)
@@ -544,7 +660,7 @@ func (s *Signer) Verify(
 
 	messages := attributesToSignatureMessage(attributes, s.Curve, skIndex)
 
-	payload, err := bbs12381g2pub.ParsePoKPayload(sig.MainSignature)
+	payload, err := bbs.ParsePoKPayload(sig.MainSignature)
 	if err != nil {
 		return fmt.Errorf("parse signature proof: %w", err)
 	}
@@ -563,7 +679,7 @@ func (s *Signer) Verify(
 		return fmt.Errorf("parse nym commit: %w", err)
 	}
 
-	var nymProof *bbs12381g2pub.ProofG1
+	var nymProof *bbs.ProofG1
 	if verType != types.ExpectSmartcard {
 		nymProof, err = lib.ParseProofG1(sig.NymProof)
 		if err != nil {
@@ -571,7 +687,7 @@ func (s *Signer) Verify(
 		}
 	}
 
-	var nymEidProof *bbs12381g2pub.ProofG1
+	var nymEidProof *bbs.ProofG1
 	var NymEid *math.G1
 	if verifyEIDNym {
 		nymEidProof, err = lib.ParseProofG1(sig.NymEidProof)
@@ -585,7 +701,7 @@ func (s *Signer) Verify(
 		}
 	}
 
-	var rhNymProof *bbs12381g2pub.ProofG1
+	var rhNymProof *bbs.ProofG1
 	var RhNym *math.G1
 	if verifyRHNym {
 		rhNymProof, err = lib.ParseProofG1(sig.NymRhProof)
@@ -615,7 +731,7 @@ func (s *Signer) Verify(
 		challengeBytes = []byte(signLabel)
 	}
 
-	revealedMessages := make(map[int]*bbs12381g2pub.SignatureMessage)
+	revealedMessages := make(map[int]*bbs.SignatureMessage)
 	for i := range payload.Revealed {
 		revealedMessages[payload.Revealed[i]] = messages[i]
 	}
@@ -623,7 +739,7 @@ func (s *Signer) Verify(
 	if verType == types.ExpectSmartcard {
 		// we add this so that GetBytesForChallenge thinks we disclose attr 0 and doesn't add its base to the ZKP chall
 		// we will remove it later
-		revealedMessages[0] = &bbs12381g2pub.SignatureMessage{}
+		revealedMessages[0] = &bbs.SignatureMessage{}
 	}
 	challengeBytes = append(challengeBytes, signatureProof.GetBytesForChallenge(revealedMessages, ipk.PKwG)...)
 	if verType == types.ExpectSmartcard {
@@ -645,14 +761,14 @@ func (s *Signer) Verify(
 		challengeBytes = append(challengeBytes, rhNymProof.Commitment.Bytes()...)
 	}
 
-	proofNonce := bbs12381g2pub.ParseProofNonce(msg, s.Curve)
+	proofNonce := bbs.ParseProofNonce(msg, s.Curve)
 	proofNonceBytes := proofNonce.ToBytes()
 	challengeBytes = append(challengeBytes, proofNonceBytes...)
-	proofChallenge := bbs12381g2pub.FrFromOKM(challengeBytes, s.Curve)
+	proofChallenge := bbs.FrFromOKM(challengeBytes, s.Curve)
 
 	challengeBytes = proofChallenge.Bytes()
 	challengeBytes = append(challengeBytes, sig.Nonce...)
-	proofChallenge = bbs12381g2pub.FrFromOKM(challengeBytes, s.Curve)
+	proofChallenge = bbs.FrFromOKM(challengeBytes, s.Curve)
 
 	//////////////////////
 	// Verify responses //
@@ -763,11 +879,14 @@ func (s *Signer) Verify(
 	}
 
 	// verify the proof of knowledge of the signature
-	if verType != types.ExpectSmartcard {
-		return signatureProof.Verify(proofChallenge, ipk.PKwG, revealedMessages, messages)
-	} else {
-		return signatureProof.VerifyExt(proofChallenge, ipk.PKwG, revealedMessages, messages, Nym)
+	if verType == types.ExpectSmartcard {
+		signatureProof.VC2ProofVerifier = &vc2SmartcardProofVerifier{
+			curve: s.Curve,
+			nym:   Nym,
+		}
 	}
+
+	return signatureProof.Verify(proofChallenge, ipk.PKwG, revealedMessages, messages)
 }
 
 // AuditNymEid permits the auditing of the nym eid generated by a signer
@@ -809,7 +928,7 @@ func (s *Signer) AuditNymEid(
 		return fmt.Errorf("invalid audit type [%d]", verType)
 	}
 
-	eidAttr := bbs12381g2pub.FrFromOKM([]byte(enrollmentID), s.Curve)
+	eidAttr := bbs.FrFromOKM([]byte(enrollmentID), s.Curve)
 
 	if eidIndex >= skIndex {
 		eidIndex++
@@ -861,7 +980,7 @@ func (s *Signer) AuditNymRh(
 		return fmt.Errorf("invalid audit type [%d]", verType)
 	}
 
-	rhAttr := bbs12381g2pub.FrFromOKM([]byte(revocationHandle), s.Curve)
+	rhAttr := bbs.FrFromOKM([]byte(revocationHandle), s.Curve)
 
 	if rhIndex >= skIndex {
 		rhIndex++

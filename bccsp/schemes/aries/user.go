@@ -11,7 +11,7 @@ import (
 
 	"github.com/IBM/idemix/bccsp/types"
 	math "github.com/IBM/mathlib"
-	"github.com/ale-linux/aries-framework-go/component/kmscrypto/crypto/primitive/bbs12381g2pub"
+	"github.com/hyperledger/aries-bbs-go/bbs"
 	"github.com/pkg/errors"
 )
 
@@ -49,7 +49,7 @@ func (u *User) MakeNym(sk *math.Zr, key types.IssuerPublicKey) (*math.G1, *math.
 
 	rNym := u.Curve.NewRandomZr(u.Rng)
 
-	cb := bbs12381g2pub.NewCommitmentBuilder(2)
+	cb := bbs.NewCommitmentBuilder(2)
 	cb.Add(ipk.PKwG.H0, rNym)
 	cb.Add(ipk.PKwG.H[u.UserSecretKeyIndex], sk)
 	nym := cb.Build()

@@ -15,8 +15,8 @@ import (
 	"github.com/IBM/idemix/bccsp/schemes/aries"
 	"github.com/IBM/idemix/bccsp/types"
 	math "github.com/IBM/mathlib"
-	"github.com/ale-linux/aries-framework-go/component/kmscrypto/crypto/primitive/bbs12381g2pub"
 	"github.com/golang/protobuf/proto"
+	"github.com/hyperledger/aries-bbs-go/bbs"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -35,10 +35,10 @@ func TestSmartcardSigner(t *testing.T) {
 	ou, role, eid, rh := "ou", 34, "eid", "rh"
 	messagesCount := 5 // includes the sk
 
-	msgsZr := []*bbs12381g2pub.SignatureMessage{
+	msgsZr := []*bbs.SignatureMessage{
 		{
 			Idx: 1,
-			FR:  bbs12381g2pub.FrFromOKM([]byte(ou), curve),
+			FR:  bbs.FrFromOKM([]byte(ou), curve),
 		},
 		{
 			Idx: 2,
@@ -46,18 +46,18 @@ func TestSmartcardSigner(t *testing.T) {
 		},
 		{
 			Idx: 3,
-			FR:  bbs12381g2pub.FrFromOKM([]byte(eid), curve),
+			FR:  bbs.FrFromOKM([]byte(eid), curve),
 		},
 		{
 			Idx: 4,
-			FR:  bbs12381g2pub.FrFromOKM([]byte(rh), curve),
+			FR:  bbs.FrFromOKM([]byte(rh), curve),
 		},
 	}
 
 	sc.H0 = pkwg.H0
 	sc.H1 = pkwg.H[0]
 	sc.H2 = pkwg.H[3]
-	sc.EID = bbs12381g2pub.FrFromOKM([]byte(eid), curve)
+	sc.EID = bbs.FrFromOKM([]byte(eid), curve)
 
 	proofBytes, err := sc.NymSign(nil)
 	assert.NoError(t, err)
@@ -89,7 +89,7 @@ func TestSmartcardSigner(t *testing.T) {
 
 	issuerProto := &aries.Issuer{curve}
 	credProto := &aries.Cred{
-		Bls:   bbs12381g2pub.New(curve),
+		BBS:   bbs.New(curve),
 		Curve: curve,
 	}
 
@@ -221,14 +221,14 @@ func TestSmartcardSigner(t *testing.T) {
 	// supply as eid nym the one received from the smartcard
 
 	rNymEid, NymEid := sc.NymEid()
-	assert.True(t, NymEid.Equals(sc.H0.Mul2(rNymEid, sc.H2, bbs12381g2pub.FrFromOKM([]byte(eid), curve))))
+	assert.True(t, NymEid.Equals(sc.H0.Mul2(rNymEid, sc.H2, bbs.FrFromOKM([]byte(eid), curve))))
 
 	meta := &types.IdemixSignerMetadata{
 		EidNym: NymEid.Bytes(),
 		EidNymAuditData: &types.AttrNymAuditData{
 			Nym:  NymEid,
 			Rand: rNymEid,
-			Attr: bbs12381g2pub.FrFromOKM([]byte(eid), curve),
+			Attr: bbs.FrFromOKM([]byte(eid), curve),
 		},
 	}
 
@@ -284,7 +284,7 @@ func TestSmartcardSigner1(t *testing.T) {
 	sc.H0 = ipk.(*aries.IssuerPublicKey).PKwG.H0
 	sc.H1 = ipk.(*aries.IssuerPublicKey).PKwG.H[0]
 	sc.H2 = ipk.(*aries.IssuerPublicKey).PKwG.H[3]
-	sc.EID = bbs12381g2pub.FrFromOKM([]byte(eid), curve)
+	sc.EID = bbs.FrFromOKM([]byte(eid), curve)
 	sc.Uid_sk = curve.NewZrFromBytes(conf.Sk)
 
 	// make nym eid
@@ -376,7 +376,7 @@ func idemixScSign(
 		EidNymAuditData: &types.AttrNymAuditData{
 			Nym:  NymEid,
 			Rand: rNymEid,
-			Attr: bbs12381g2pub.FrFromOKM([]byte(eid), sc.Curve),
+			Attr: bbs.FrFromOKM([]byte(eid), sc.Curve),
 		},
 	}
 
@@ -444,7 +444,7 @@ func TestW3CCred(t *testing.T) {
 	sigBytes, err := base64.StdEncoding.DecodeString(sigBase64)
 	assert.NoError(t, err)
 
-	bls := bbs12381g2pub.New(math.Curves[math.BLS12_381_BBS])
+	bls := bbs.New(curve)
 
 	err = bls.Verify(messagesBytes, sigBytes, pkBytes)
 	assert.NoError(t, err)
@@ -482,10 +482,10 @@ func TestW3CCred(t *testing.T) {
 
 	attributes := make([][]byte, len(attributeNames))
 	for i, msg := range messagesBytes[1:] {
-		attributes[i] = bbs12381g2pub.FrFromOKM(msg, curve).Bytes()
+		attributes[i] = bbs.FrFromOKM(msg, curve).Bytes()
 	}
 
-	sk := bbs12381g2pub.FrFromOKM(messagesBytes[0], curve)
+	sk := bbs.FrFromOKM(messagesBytes[0], curve)
 
 	cred := &aries.Credential{
 		Cred:  sigBytes,
@@ -495,7 +495,7 @@ func TestW3CCred(t *testing.T) {
 	assert.NoError(t, err)
 
 	credProto := &aries.Cred{
-		Bls:   bbs12381g2pub.New(curve),
+		BBS:   bbs.New(curve),
 		Curve: curve,
 	}
 
@@ -553,9 +553,9 @@ func TestW3CCred(t *testing.T) {
 	sig, m, err := signer.Sign(credBytes, sk, Nym, RNmy, ipk, idemixAttrs, []byte("silliness"), rhIndex, eidIndex, nil, types.EidNym, nil)
 	assert.NoError(t, err)
 
-	cb := bbs12381g2pub.NewCommitmentBuilder(2)
+	cb := bbs.NewCommitmentBuilder(2)
 	cb.Add(ipk.(*aries.IssuerPublicKey).PKwG.H0, m.EidNymAuditData.Rand)
-	cb.Add(ipk.(*aries.IssuerPublicKey).PKwG.H[eidIndex+1], bbs12381g2pub.FrFromOKM([]byte(`_:c14n0 <cbdccard:4_eid> "alice.remote" .`), curve))
+	cb.Add(ipk.(*aries.IssuerPublicKey).PKwG.H[eidIndex+1], bbs.FrFromOKM([]byte(`_:c14n0 <cbdccard:4_eid> "alice.remote" .`), curve))
 	assert.True(t, cb.Build().Equals(m.EidNymAuditData.Nym))
 
 	err = signer.Verify(ipk, sig, []byte("silliness"), idemixAttrs, rhIndex, eidIndex, 0, nil, 0, types.ExpectEidNym, nil)
@@ -675,7 +675,7 @@ func TestW3CCredSkElsewhere(t *testing.T) {
 			sigBytes, err := base64.StdEncoding.DecodeString(sigBase64)
 			assert.NoError(t, err)
 
-			bls := bbs12381g2pub.New(math.Curves[math.BLS12_381_BBS])
+			bls := bbs.New(math.Curves[math.BLS12_381_BBS])
 
 			err = bls.Verify(messagesBytes, sigBytes, pkBytes)
 			assert.NoError(t, err)
@@ -686,11 +686,11 @@ func TestW3CCredSkElsewhere(t *testing.T) {
 				if i == skIndex {
 					continue
 				}
-				attributes[j] = bbs12381g2pub.FrFromOKM(msg, curve).Bytes()
+				attributes[j] = bbs.FrFromOKM(msg, curve).Bytes()
 				j++
 			}
 
-			sk := bbs12381g2pub.FrFromOKM(messagesBytes[skIndex], curve)
+			sk := bbs.FrFromOKM(messagesBytes[skIndex], curve)
 
 			cred := &aries.Credential{
 				Cred:  sigBytes,
@@ -701,7 +701,7 @@ func TestW3CCredSkElsewhere(t *testing.T) {
 			assert.NoError(t, err)
 
 			credProto := &aries.Cred{
-				Bls:   bbs12381g2pub.New(curve),
+				BBS:   bbs.New(curve),
 				Curve: curve,
 			}
 
@@ -761,9 +761,9 @@ func TestW3CCredSkElsewhere(t *testing.T) {
 			sig, m, err := signer.Sign(credBytes, sk, Nym, RNmy, ipk, idemixAttrs, []byte("silliness"), rhIndex, eidIndex, nil, types.EidNym, nil)
 			assert.NoError(t, err)
 
-			cb := bbs12381g2pub.NewCommitmentBuilder(2)
+			cb := bbs.NewCommitmentBuilder(2)
 			cb.Add(ipk.(*aries.IssuerPublicKey).PKwG.H0, m.EidNymAuditData.Rand)
-			cb.Add(ipk.(*aries.IssuerPublicKey).PKwG.H[eidIndexInBases], bbs12381g2pub.FrFromOKM(eidAttr, curve))
+			cb.Add(ipk.(*aries.IssuerPublicKey).PKwG.H[eidIndexInBases], bbs.FrFromOKM(eidAttr, curve))
 			assert.True(t, cb.Build().Equals(m.EidNymAuditData.Nym))
 
 			err = signer.Verify(ipk, sig, []byte("silliness"), idemixAttrs, rhIndex, eidIndex, skIndex, nil, 0, types.ExpectEidNym, nil)
@@ -775,9 +775,9 @@ func TestW3CCredSkElsewhere(t *testing.T) {
 
 			rNym := curve.NewRandomZr(rand)
 
-			cb = bbs12381g2pub.NewCommitmentBuilder(2)
+			cb = bbs.NewCommitmentBuilder(2)
 			cb.Add(ipk.(*aries.IssuerPublicKey).PKwG.H0, rNym)
-			cb.Add(ipk.(*aries.IssuerPublicKey).PKwG.H[eidIndexInBases], bbs12381g2pub.FrFromOKM(eidAttr, curve))
+			cb.Add(ipk.(*aries.IssuerPublicKey).PKwG.H[eidIndexInBases], bbs.FrFromOKM(eidAttr, curve))
 			nym := cb.Build()
 
 			meta := &types.IdemixSignerMetadata{
@@ -785,7 +785,7 @@ func TestW3CCredSkElsewhere(t *testing.T) {
 				EidNymAuditData: &types.AttrNymAuditData{
 					Nym:  nym,
 					Rand: rNym,
-					Attr: bbs12381g2pub.FrFromOKM(eidAttr, curve),
+					Attr: bbs.FrFromOKM(eidAttr, curve),
 				},
 			}
 
@@ -811,12 +811,12 @@ func TestW3CCredSkElsewhere(t *testing.T) {
 			sig, m, err = signer.Sign(credBytes, sk, Nym, RNmy, ipk, idemixAttrs, []byte("tome"), rhIndex, eidIndex, nil, types.EidNymRhNym, nil)
 			assert.NoError(t, err)
 
-			cb = bbs12381g2pub.NewCommitmentBuilder(2)
+			cb = bbs.NewCommitmentBuilder(2)
 			cb.Add(ipk.(*aries.IssuerPublicKey).PKwG.H0, m.EidNymAuditData.Rand)
 			cb.Add(ipk.(*aries.IssuerPublicKey).PKwG.H[eidIndexInBases], m.EidNymAuditData.Attr)
 			assert.True(t, cb.Build().Equals(m.EidNymAuditData.Nym))
 
-			cb = bbs12381g2pub.NewCommitmentBuilder(2)
+			cb = bbs.NewCommitmentBuilder(2)
 			cb.Add(ipk.(*aries.IssuerPublicKey).PKwG.H0, m.RhNymAuditData.Rand)
 			cb.Add(ipk.(*aries.IssuerPublicKey).PKwG.H[rhIndexInBases], m.RhNymAuditData.Attr)
 			assert.True(t, cb.Build().Equals(m.RhNymAuditData.Nym))
@@ -830,9 +830,9 @@ func TestW3CCredSkElsewhere(t *testing.T) {
 
 			rNym = curve.NewRandomZr(rand)
 
-			cb = bbs12381g2pub.NewCommitmentBuilder(2)
+			cb = bbs.NewCommitmentBuilder(2)
 			cb.Add(ipk.(*aries.IssuerPublicKey).PKwG.H0, rNym)
-			cb.Add(ipk.(*aries.IssuerPublicKey).PKwG.H[rhIndexInBases], bbs12381g2pub.FrFromOKM(rhAttr, curve))
+			cb.Add(ipk.(*aries.IssuerPublicKey).PKwG.H[rhIndexInBases], bbs.FrFromOKM(rhAttr, curve))
 			nym = cb.Build()
 
 			meta = &types.IdemixSignerMetadata{
@@ -840,7 +840,7 @@ func TestW3CCredSkElsewhere(t *testing.T) {
 				RhNymAuditData: &types.AttrNymAuditData{
 					Nym:  nym,
 					Rand: rNym,
-					Attr: bbs12381g2pub.FrFromOKM(rhAttr, curve),
+					Attr: bbs.FrFromOKM(rhAttr, curve),
 				},
 			}
 
@@ -865,7 +865,7 @@ func TestSigner(t *testing.T) {
 	curve := math.Curves[math.BLS12_381_BBS]
 
 	credProto := &aries.Cred{
-		Bls:   bbs12381g2pub.New(curve),
+		BBS:   bbs.New(curve),
 		Curve: curve,
 	}
 	issuerProto := &aries.Issuer{curve}
@@ -959,7 +959,7 @@ func TestSigner(t *testing.T) {
 	Nym, RNmy, err := userProto.MakeNym(sk, ipk)
 	assert.NoError(t, err)
 
-	// commit := bbs12381g2pub.NewProverCommittingG1()
+	// commit := bbs.NewProverCommittingG1()
 	// commit.Commit(ipk.(*aries.IssuerPublicKey).PKwG.H0)
 	// commit.Commit(ipk.(*aries.IssuerPublicKey).PKwG.H[0])
 	// commitNym := commit.Finish()
@@ -987,7 +987,7 @@ func TestSigner(t *testing.T) {
 	sig, m, err := signer.Sign(cred, sk, Nym, RNmy, ipk, idemixAttrs, []byte("silliness"), rhIndex, eidIndex, nil, types.EidNym, nil)
 	assert.NoError(t, err)
 
-	cb := bbs12381g2pub.NewCommitmentBuilder(2)
+	cb := bbs.NewCommitmentBuilder(2)
 	cb.Add(ipk.(*aries.IssuerPublicKey).PKwG.H0, m.EidNymAuditData.Rand)
 	cb.Add(ipk.(*aries.IssuerPublicKey).PKwG.H[eidIndex+1], m.EidNymAuditData.Attr)
 	assert.True(t, cb.Build().Equals(m.EidNymAuditData.Nym))
@@ -1001,9 +1001,9 @@ func TestSigner(t *testing.T) {
 
 	rNym := curve.NewRandomZr(rand)
 
-	cb = bbs12381g2pub.NewCommitmentBuilder(2)
+	cb = bbs.NewCommitmentBuilder(2)
 	cb.Add(ipk.(*aries.IssuerPublicKey).PKwG.H0, rNym)
-	cb.Add(ipk.(*aries.IssuerPublicKey).PKwG.H[eidIndex+1], bbs12381g2pub.FrFromOKM([]byte("nymeid"), curve))
+	cb.Add(ipk.(*aries.IssuerPublicKey).PKwG.H[eidIndex+1], bbs.FrFromOKM([]byte("nymeid"), curve))
 	nym := cb.Build()
 
 	meta := &types.IdemixSignerMetadata{
@@ -1011,7 +1011,7 @@ func TestSigner(t *testing.T) {
 		EidNymAuditData: &types.AttrNymAuditData{
 			Nym:  nym,
 			Rand: rNym,
-			Attr: bbs12381g2pub.FrFromOKM([]byte("nymeid"), curve),
+			Attr: bbs.FrFromOKM([]byte("nymeid"), curve),
 		},
 	}
 
@@ -1063,7 +1063,7 @@ func TestSigner(t *testing.T) {
 		EidNymAuditData: &types.AttrNymAuditData{
 			Nym:  curve.GenG1.Mul(curve.NewRandomZr(rand)),
 			Rand: rNym,
-			Attr: bbs12381g2pub.FrFromOKM([]byte("nymeid"), curve),
+			Attr: bbs.FrFromOKM([]byte("nymeid"), curve),
 		},
 	}
 
@@ -1114,7 +1114,7 @@ func TestSigner(t *testing.T) {
 
 	rNym = curve.NewRandomZr(rand)
 
-	cb = bbs12381g2pub.NewCommitmentBuilder(2)
+	cb = bbs.NewCommitmentBuilder(2)
 	cb.Add(ipk.(*aries.IssuerPublicKey).PKwG.H0, rNym)
 	cb.Add(ipk.(*aries.IssuerPublicKey).PKwG.H[eidIndex+1], curve.HashToZr([]byte("Not the nymeid")))
 	nym = cb.Build()
@@ -1124,7 +1124,7 @@ func TestSigner(t *testing.T) {
 		EidNymAuditData: &types.AttrNymAuditData{
 			Nym:  nym,
 			Rand: rNym,
-			Attr: bbs12381g2pub.FrFromOKM([]byte("nymeid"), curve),
+			Attr: bbs.FrFromOKM([]byte("nymeid"), curve),
 		},
 	}
 
@@ -1138,12 +1138,12 @@ func TestSigner(t *testing.T) {
 	sig, m, err = signer.Sign(cred, sk, Nym, RNmy, ipk, idemixAttrs, []byte("tome"), rhIndex, eidIndex, nil, types.EidNymRhNym, nil)
 	assert.NoError(t, err)
 
-	cb = bbs12381g2pub.NewCommitmentBuilder(2)
+	cb = bbs.NewCommitmentBuilder(2)
 	cb.Add(ipk.(*aries.IssuerPublicKey).PKwG.H0, m.EidNymAuditData.Rand)
 	cb.Add(ipk.(*aries.IssuerPublicKey).PKwG.H[eidIndex+1], m.EidNymAuditData.Attr)
 	assert.True(t, cb.Build().Equals(m.EidNymAuditData.Nym))
 
-	cb = bbs12381g2pub.NewCommitmentBuilder(2)
+	cb = bbs.NewCommitmentBuilder(2)
 	cb.Add(ipk.(*aries.IssuerPublicKey).PKwG.H0, m.RhNymAuditData.Rand)
 	cb.Add(ipk.(*aries.IssuerPublicKey).PKwG.H[rhIndex+1], m.RhNymAuditData.Attr)
 	assert.True(t, cb.Build().Equals(m.RhNymAuditData.Nym))
@@ -1157,9 +1157,9 @@ func TestSigner(t *testing.T) {
 
 	rNym = curve.NewRandomZr(rand)
 
-	cb = bbs12381g2pub.NewCommitmentBuilder(2)
+	cb = bbs.NewCommitmentBuilder(2)
 	cb.Add(ipk.(*aries.IssuerPublicKey).PKwG.H0, rNym)
-	cb.Add(ipk.(*aries.IssuerPublicKey).PKwG.H[rhIndex+1], bbs12381g2pub.FrFromOKM([]byte("nymrh"), curve))
+	cb.Add(ipk.(*aries.IssuerPublicKey).PKwG.H[rhIndex+1], bbs.FrFromOKM([]byte("nymrh"), curve))
 	nym = cb.Build()
 
 	meta = &types.IdemixSignerMetadata{
@@ -1167,7 +1167,7 @@ func TestSigner(t *testing.T) {
 		RhNymAuditData: &types.AttrNymAuditData{
 			Nym:  nym,
 			Rand: rNym,
-			Attr: bbs12381g2pub.FrFromOKM([]byte("nymrh"), curve),
+			Attr: bbs.FrFromOKM([]byte("nymrh"), curve),
 		},
 	}
 
@@ -1215,7 +1215,7 @@ func TestSigner(t *testing.T) {
 		RhNymAuditData: &types.AttrNymAuditData{
 			Nym:  curve.GenG1.Mul(curve.NewRandomZr(rand)),
 			Rand: rNym,
-			Attr: bbs12381g2pub.FrFromOKM([]byte("nymrh"), curve),
+			Attr: bbs.FrFromOKM([]byte("nymrh"), curve),
 		},
 	}
 
@@ -1257,7 +1257,7 @@ func TestSigner(t *testing.T) {
 
 	rNym = curve.NewRandomZr(rand)
 
-	cb = bbs12381g2pub.NewCommitmentBuilder(2)
+	cb = bbs.NewCommitmentBuilder(2)
 	cb.Add(ipk.(*aries.IssuerPublicKey).PKwG.H0, rNym)
 	cb.Add(ipk.(*aries.IssuerPublicKey).PKwG.H[rhIndex+1], curve.NewZrFromInt(37))
 	nym = cb.Build()
@@ -1267,7 +1267,7 @@ func TestSigner(t *testing.T) {
 		RhNymAuditData: &types.AttrNymAuditData{
 			Nym:  nym,
 			Rand: rNym,
-			Attr: bbs12381g2pub.FrFromOKM([]byte("nymrh"), curve),
+			Attr: bbs.FrFromOKM([]byte("nymrh"), curve),
 		},
 	}
 

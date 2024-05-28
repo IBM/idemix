@@ -14,7 +14,7 @@ import (
 	idemix "github.com/IBM/idemix/bccsp/schemes/dlog/crypto"
 	bccsp "github.com/IBM/idemix/bccsp/types"
 	math "github.com/IBM/mathlib"
-	"github.com/ale-linux/aries-framework-go/component/kmscrypto/crypto/primitive/bbs12381g2pub"
+	"github.com/hyperledger/aries-bbs-go/bbs"
 	"github.com/pkg/errors"
 )
 
@@ -252,7 +252,7 @@ func NewAries(keyStore bccsp.KeyStore, curve *math.Curve, _translator idemix.Tra
 		&handlers.CredentialSigner{
 			Credential: &aries.Cred{
 				Curve: curve,
-				Bls:   bbs12381g2pub.New(curve),
+				BBS:   bbs.New(curve),
 			},
 		})
 	base.AddWrapper(reflect.TypeOf(handlers.NewRevocationSecretKey(nil, true)),
@@ -291,7 +291,7 @@ func NewAries(keyStore bccsp.KeyStore, curve *math.Curve, _translator idemix.Tra
 		&handlers.CredentialVerifier{
 			Credential: &aries.Cred{
 				Curve: curve,
-				Bls:   bbs12381g2pub.New(curve),
+				BBS:   bbs.New(curve),
 			},
 		})
 	base.AddWrapper(reflect.TypeOf(handlers.NewRevocationPublicKey(nil)),
