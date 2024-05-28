@@ -12,7 +12,7 @@ import (
 
 	"github.com/IBM/idemix/bccsp/types"
 	math "github.com/IBM/mathlib"
-	"github.com/ale-linux/aries-framework-go/component/kmscrypto/crypto/primitive/bbs12381g2pub"
+	"github.com/hyperledger/aries-bbs-go/bbs"
 )
 
 // TODO:
@@ -23,8 +23,8 @@ const UserSecretKeyIndex = 0
 
 // IssuerPublicKey is the issuer public key
 type IssuerPublicKey struct {
-	PK   *bbs12381g2pub.PublicKey
-	PKwG *bbs12381g2pub.PublicKeyWithGenerators
+	PK   *bbs.PublicKey
+	PKwG *bbs.PublicKeyWithGenerators
 	// N is the number of attributes; it *does not* include the user secret key
 	N int
 }
@@ -43,7 +43,7 @@ func (i *IssuerPublicKey) Hash() []byte {
 // IssuerSecretKey is the issuer secret key
 type IssuerSecretKey struct {
 	IssuerPublicKey
-	SK *bbs12381g2pub.PrivateKey
+	SK *bbs.PrivateKey
 }
 
 // Bytes returns the byte representation of this key
@@ -70,7 +70,7 @@ func (i *Issuer) NewKey(AttributeNames []string) (types.IssuerSecretKey, error) 
 		return nil, fmt.Errorf("rand.Read failed [%w]", err)
 	}
 
-	PK, SK, err := bbs12381g2pub.NewBBSLib(i.Curve).GenerateKeyPair(sha256.New, seed)
+	PK, SK, err := bbs.NewBBSLib(i.Curve).GenerateKeyPair(sha256.New, seed)
 	if err != nil {
 		return nil, fmt.Errorf("GenerateKeyPair failed [%w]", err)
 	}
@@ -93,7 +93,7 @@ func (i *Issuer) NewKey(AttributeNames []string) (types.IssuerSecretKey, error) 
 // NewPublicKeyFromBytes converts the passed bytes to an Issuer key
 // It makes sure that the so obtained  key has the passed attributes, if specified
 func (i *Issuer) NewKeyFromBytes(raw []byte, attributes []string) (types.IssuerSecretKey, error) {
-	SK, err := bbs12381g2pub.NewBBSLib(i.Curve).UnmarshalPrivateKey(raw)
+	SK, err := bbs.NewBBSLib(i.Curve).UnmarshalPrivateKey(raw)
 	if err != nil {
 		return nil, fmt.Errorf("UnmarshalPrivateKey failed [%w]", err)
 	}
@@ -118,7 +118,7 @@ func (i *Issuer) NewKeyFromBytes(raw []byte, attributes []string) (types.IssuerS
 // NewPublicKeyFromBytes converts the passed bytes to an Issuer public key
 // It makes sure that the so obtained public key has the passed attributes, if specified
 func (i *Issuer) NewPublicKeyFromBytes(raw []byte, attributes []string) (types.IssuerPublicKey, error) {
-	PK, err := bbs12381g2pub.NewBBSLib(i.Curve).UnmarshalPublicKey(raw)
+	PK, err := bbs.NewBBSLib(i.Curve).UnmarshalPublicKey(raw)
 	if err != nil {
 		return nil, fmt.Errorf("UnmarshalPublicKey failed [%w]", err)
 	}

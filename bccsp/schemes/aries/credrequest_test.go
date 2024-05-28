@@ -12,13 +12,13 @@ import (
 	"github.com/IBM/idemix/bccsp/schemes/aries"
 	"github.com/IBM/idemix/bccsp/types"
 	math "github.com/IBM/mathlib"
-	"github.com/ale-linux/aries-framework-go/component/kmscrypto/crypto/primitive/bbs12381g2pub"
+	"github.com/hyperledger/aries-bbs-go/bbs"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestCredRequest(t *testing.T) {
 	credProto := &aries.Cred{
-		Bls:   bbs12381g2pub.New(math.Curves[math.BLS12_381_BBS]),
+		BBS:   bbs.New(math.Curves[math.BLS12_381_BBS]),
 		Curve: math.Curves[math.BLS12_381_BBS],
 	}
 	issuerProto := &aries.Issuer{math.Curves[math.BLS12_381_BBS]}

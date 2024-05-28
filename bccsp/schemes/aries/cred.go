@@ -10,13 +10,13 @@ import (
 
 	"github.com/IBM/idemix/bccsp/types"
 	math "github.com/IBM/mathlib"
-	"github.com/ale-linux/aries-framework-go/component/kmscrypto/crypto/primitive/bbs12381g2pub"
 	"github.com/golang/protobuf/proto"
+	"github.com/hyperledger/aries-bbs-go/bbs"
 	"github.com/pkg/errors"
 )
 
 type Cred struct {
-	Bls   *bbs12381g2pub.BBSG2Pub
+	BBS   *bbs.BBSG2Pub
 	Curve *math.Curve
 }
 
@@ -73,16 +73,16 @@ func (c *Cred) Verify(sk *math.Zr, key types.IssuerPublicKey, credBytes []byte, 
 		return fmt.Errorf("proto.Unmarshal failed [%w]", err)
 	}
 
-	sigma, err := bbs12381g2pub.NewBBSLib(c.Curve).ParseSignature(credential.Cred)
+	sigma, err := bbs.NewBBSLib(c.Curve).ParseSignature(credential.Cred)
 	if err != nil {
 		return fmt.Errorf("ParseSignature failed [%w]", err)
 	}
 
 	i := 0
-	sm := make([]*bbs12381g2pub.SignatureMessage, len(ipk.PKwG.H))
+	sm := make([]*bbs.SignatureMessage, len(ipk.PKwG.H))
 	for j := range ipk.PKwG.H {
 		if j == int(credential.SkPos) {
-			sm[j] = &bbs12381g2pub.SignatureMessage{
+			sm[j] = &bbs.SignatureMessage{
 				FR:  sk,
 				Idx: j,
 			}
@@ -90,7 +90,7 @@ func (c *Cred) Verify(sk *math.Zr, key types.IssuerPublicKey, credBytes []byte, 
 			continue
 		}
 
-		sm[j] = &bbs12381g2pub.SignatureMessage{
+		sm[j] = &bbs.SignatureMessage{
 			FR:  c.Curve.NewZrFromBytes(credential.Attrs[i]),
 			Idx: j,
 		}
@@ -99,7 +99,7 @@ func (c *Cred) Verify(sk *math.Zr, key types.IssuerPublicKey, credBytes []byte, 
 		case types.IdemixHiddenAttribute:
 			continue
 		case types.IdemixBytesAttribute:
-			fr := bbs12381g2pub.FrFromOKM(attributes[i].Value.([]byte), c.Curve)
+			fr := bbs.FrFromOKM(attributes[i].Value.([]byte), c.Curve)
 			if !fr.Equals(sm[j].FR) {
 				return errors.Errorf("credential does not contain the correct attribute value at position [%d]", i)
 			}
