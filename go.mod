@@ -3,9 +3,9 @@ module github.com/IBM/idemix
 go 1.19
 
 require (
-	github.com/IBM/idemix/bccsp/schemes/aries v0.0.0-20231108073447-b4e82d4bd076
-	github.com/IBM/idemix/bccsp/schemes/weak-bb v0.0.0-20231108073447-b4e82d4bd076
-	github.com/IBM/idemix/bccsp/types v0.0.0-20231108073447-b4e82d4bd076
+	github.com/IBM/idemix/bccsp/schemes/aries v0.0.0-20240606091414-f0660d0ebd86
+	github.com/IBM/idemix/bccsp/schemes/weak-bb v0.0.0-20240606091414-f0660d0ebd86
+	github.com/IBM/idemix/bccsp/types v0.0.0-20240606091414-f0660d0ebd86
 	github.com/IBM/mathlib v0.0.3-0.20231011094432-44ee0eb539da
 	github.com/ale-linux/aries-framework-go/component/kmscrypto v0.0.0-20231023164747-f3f972769504
 	github.com/alecthomas/template v0.0.0-20190718012654-fb15b899a751 // indirect
@@ -15,12 +15,14 @@ require (
 	github.com/onsi/ginkgo v1.14.0
 	github.com/onsi/gomega v1.10.1
 	github.com/pkg/errors v0.9.1
-	github.com/stretchr/testify v1.8.4 // includes ErrorContains
+	github.com/stretchr/testify v1.9.0 // includes ErrorContains
 	github.com/sykesm/zap-logfmt v0.0.2
 	go.uber.org/zap v1.16.0
 	google.golang.org/grpc v1.31.0
 	gopkg.in/alecthomas/kingpin.v2 v2.2.6
 )
+
+require github.com/hyperledger/aries-bbs-go v0.0.0-20240528084656-761671ea73bc
 
 require (
 	github.com/bits-and-blooms/bitset v1.7.0 // indirect
@@ -35,11 +37,11 @@ require (
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	go.uber.org/atomic v1.6.0 // indirect
 	go.uber.org/multierr v1.5.0 // indirect
-	golang.org/x/crypto v0.10.0 // indirect
+	golang.org/x/crypto v0.21.0 // indirect
 	golang.org/x/mod v0.9.0 // indirect
-	golang.org/x/net v0.10.0 // indirect
-	golang.org/x/sys v0.9.0 // indirect
-	golang.org/x/text v0.10.0 // indirect
+	golang.org/x/net v0.21.0 // indirect
+	golang.org/x/sys v0.18.0 // indirect
+	golang.org/x/text v0.14.0 // indirect
 	golang.org/x/xerrors v0.0.0-20191204190536-9bdfabe68543 // indirect
 	google.golang.org/protobuf v1.28.1 // indirect
 	gopkg.in/tomb.v1 v1.0.0-20141024135613-dd632973f1e7 // indirect
