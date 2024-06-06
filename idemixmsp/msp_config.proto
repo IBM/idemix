@@ -29,6 +29,9 @@ message IdemixMSPConfig {
     
     // curve_id indicates which Elliptic Curve should be used
     string curve_id = 6;
+
+    // schema contains the version of the schema used by this credential
+    string schema = 7;
  }
     
  // IdemixMSPSIgnerConfig contains the crypto material to set up an idemix signing identity
@@ -53,4 +56,10 @@ message IdemixMSPConfig {
 
     // RevocationHandle is the handle used to single out this credential and determine its revocation status
     string revocation_handle = 7;
+    
+    // curve_id indicates which Elliptic Curve should be used
+    string curve_id = 8;
+
+    // schema contains the version of the schema used by this credential
+    string schema = 9;
 }
