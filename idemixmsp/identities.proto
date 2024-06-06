@@ -32,4 +32,7 @@ message SerializedIdemixIdentity {
     
     // proof contains the cryptographic evidence that this identity is valid
     bytes proof = 5;
+
+    // schema contains the version of the schema used by this credential
+    string schema = 6;
 }
