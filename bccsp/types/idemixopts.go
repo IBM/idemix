@@ -298,6 +298,8 @@ type IdemixSignerOpts struct {
 	RhIndex int
 	// EidIndex contains the index of the EID attrbiute
 	EidIndex int
+	// SKIndex contains the index of the secret key
+	SKIndex int
 	// CRI contains the credential revocation information
 	CRI []byte
 	// Epoch is the revocation epoch the signature should be produced against
@@ -324,6 +326,7 @@ type EidNymAuditOpts struct {
 	EidIndex              int      // Index of enrollment ID attribute in signature
 	EnrollmentID          string   // Enrollment ID of identity
 	RNymEid               *math.Zr // Field element of randomness
+	SKIndex               int      // index of the secret key
 }
 
 func (o *EidNymAuditOpts) HashFunc() crypto.Hash {
@@ -336,6 +339,7 @@ type RhNymAuditOpts struct {
 	RhIndex               int      // Index of revocation handle attribute in signature
 	RevocationHandle      string   // Revocation handle of identity
 	RNymRh                *math.Zr // Field element of randomness
+	SKIndex               int      // index of the secret key
 }
 
 func (o *RhNymAuditOpts) HashFunc() crypto.Hash {

@@ -7,6 +7,7 @@ package handlers
 
 import (
 	"crypto/ecdsa"
+
 	"github.com/pkg/errors"
 
 	"github.com/IBM/idemix/bccsp/types"
@@ -91,6 +92,7 @@ func (v *Verifier) AuditNymEid(k bccsp.Key, signature, digest []byte, opts bccsp
 	err := v.SignatureScheme.AuditNymEid(
 		issuerPublicKey.pk,
 		signerOpts.EidIndex,
+		signerOpts.SKIndex,
 		signature,
 		signerOpts.EnrollmentID,
 		signerOpts.RNymEid,
@@ -121,6 +123,7 @@ func (v *Verifier) AuditNymRh(k bccsp.Key, signature, digest []byte, opts bccsp.
 	err := v.SignatureScheme.AuditNymRh(
 		issuerPublicKey.pk,
 		signerOpts.RhIndex,
+		signerOpts.SKIndex,
 		signature,
 		signerOpts.RevocationHandle,
 		signerOpts.RNymRh,
@@ -163,6 +166,7 @@ func (v *Verifier) Verify(k bccsp.Key, signature, digest []byte, opts bccsp.Sign
 		signerOpts.Attributes,
 		signerOpts.RhIndex,
 		signerOpts.EidIndex,
+		signerOpts.SKIndex,
 		rPK,
 		signerOpts.Epoch,
 		signerOpts.VerificationType,
