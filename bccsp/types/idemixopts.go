@@ -367,6 +367,8 @@ type IdemixNymSignerOpts struct {
 	// data about the nym returned by the smartcard implementation
 	NymG1 *math.G1
 	RNym  *math.Zr
+
+	SKIndex int // index of the secret key
 }
 
 // HashFunc returns an identifier for the hash function used to produce

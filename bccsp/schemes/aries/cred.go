@@ -16,8 +16,9 @@ import (
 )
 
 type Cred struct {
-	BBS   *bbs.BBSG2Pub
-	Curve *math.Curve
+	BBS                *bbs.BBSG2Pub
+	Curve              *math.Curve
+	UserSecretKeyIndex int
 }
 
 // Sign issues a new credential, which is the last step of the interactive issuance protocol
@@ -34,7 +35,7 @@ func (c *Cred) Sign(key types.IssuerSecretKey, credentialRequest []byte, attribu
 		return nil, fmt.Errorf("ParseBlindedMessages failed [%w]", err)
 	}
 
-	msgsZr := attributesToSignatureMessage(attributes, c.Curve, UserSecretKeyIndex)
+	msgsZr := attributesToSignatureMessage(attributes, c.Curve, c.UserSecretKeyIndex)
 
 	sig, err := BlindSign(msgsZr, len(attributes)+1, blindedMsg.C, isk.SK.FR.Bytes(), c.Curve)
 	if err != nil {

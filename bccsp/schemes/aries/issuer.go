@@ -18,9 +18,6 @@ import (
 // TODO:
 // * expose curve from aries so we can use always that curve
 
-// UserSecretKeyIndex is the index of `sk` among the attributes
-const UserSecretKeyIndex = 0
-
 // IssuerPublicKey is the issuer public key
 type IssuerPublicKey struct {
 	PK   *bbs.PublicKey

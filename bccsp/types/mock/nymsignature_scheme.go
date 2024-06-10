@@ -26,13 +26,14 @@ type NymSignatureScheme struct {
 		result1 []byte
 		result2 error
 	}
-	VerifyStub        func(types.IssuerPublicKey, *math.G1, []byte, []byte) error
+	VerifyStub        func(types.IssuerPublicKey, *math.G1, []byte, []byte, int) error
 	verifyMutex       sync.RWMutex
 	verifyArgsForCall []struct {
 		arg1 types.IssuerPublicKey
 		arg2 *math.G1
 		arg3 []byte
 		arg4 []byte
+		arg5 int
 	}
 	verifyReturns struct {
 		result1 error
@@ -117,7 +118,7 @@ func (fake *NymSignatureScheme) SignReturnsOnCall(i int, result1 []byte, result2
 	}{result1, result2}
 }
 
-func (fake *NymSignatureScheme) Verify(arg1 types.IssuerPublicKey, arg2 *math.G1, arg3 []byte, arg4 []byte) error {
+func (fake *NymSignatureScheme) Verify(arg1 types.IssuerPublicKey, arg2 *math.G1, arg3 []byte, arg4 []byte, arg5 int) error {
 	var arg3Copy []byte
 	if arg3 != nil {
 		arg3Copy = make([]byte, len(arg3))
@@ -135,13 +136,14 @@ func (fake *NymSignatureScheme) Verify(arg1 types.IssuerPublicKey, arg2 *math.G1
 		arg2 *math.G1
 		arg3 []byte
 		arg4 []byte
-	}{arg1, arg2, arg3Copy, arg4Copy})
+		arg5 int
+	}{arg1, arg2, arg3Copy, arg4Copy, arg5})
 	stub := fake.VerifyStub
 	fakeReturns := fake.verifyReturns
-	fake.recordInvocation("Verify", []interface{}{arg1, arg2, arg3Copy, arg4Copy})
+	fake.recordInvocation("Verify", []interface{}{arg1, arg2, arg3Copy, arg4Copy, arg5})
 	fake.verifyMutex.Unlock()
 	if stub != nil {
-		return stub(arg1, arg2, arg3, arg4)
+		return stub(arg1, arg2, arg3, arg4, arg5)
 	}
 	if specificReturn {
 		return ret.result1
@@ -155,17 +157,17 @@ func (fake *NymSignatureScheme) VerifyCallCount() int {
 	return len(fake.verifyArgsForCall)
 }
 
-func (fake *NymSignatureScheme) VerifyCalls(stub func(types.IssuerPublicKey, *math.G1, []byte, []byte) error) {
+func (fake *NymSignatureScheme) VerifyCalls(stub func(types.IssuerPublicKey, *math.G1, []byte, []byte, int) error) {
 	fake.verifyMutex.Lock()
 	defer fake.verifyMutex.Unlock()
 	fake.VerifyStub = stub
 }
 
-func (fake *NymSignatureScheme) VerifyArgsForCall(i int) (types.IssuerPublicKey, *math.G1, []byte, []byte) {
+func (fake *NymSignatureScheme) VerifyArgsForCall(i int) (types.IssuerPublicKey, *math.G1, []byte, []byte, int) {
 	fake.verifyMutex.RLock()
 	defer fake.verifyMutex.RUnlock()
 	argsForCall := fake.verifyArgsForCall[i]
-	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3, argsForCall.arg4
+	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3, argsForCall.arg4, argsForCall.arg5
 }
 
 func (fake *NymSignatureScheme) VerifyReturns(result1 error) {

@@ -175,7 +175,7 @@ type NymSignatureScheme interface {
 	Sign(sk *math.Zr, Nym *math.G1, RNym *math.Zr, ipk IssuerPublicKey, digest []byte) ([]byte, error)
 
 	// Verify verifies an idemix NymSignature
-	Verify(pk IssuerPublicKey, Nym *math.G1, signature, digest []byte) error
+	Verify(pk IssuerPublicKey, Nym *math.G1, signature, digest []byte, skIndex int) error
 }
 
 // SmartcardNymSignatureScheme is a local interface to decouple from the idemix implementation
