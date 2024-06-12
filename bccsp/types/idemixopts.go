@@ -355,6 +355,8 @@ type IdemixNymSignerOpts struct {
 	IsSmartcard bool
 
 	// Smartcard is a software smartcard used to support signing in s/w
+	// this field is only used in testing to emulate a real smartcard
+	// and may never be set in production.
 	Smartcard interface{}
 
 	// NymEid is the nym eid to use in the verification

@@ -17,6 +17,14 @@ import (
 	math "github.com/IBM/mathlib"
 )
 
+// Smartcard is an implementation of an idemix joint signature where one of
+// the attributes is only known to a smartcard. This structure plays a dual
+// role:
+//  1. emulation of the smartcard to be able to test verification without
+//     external hardware. (`PRF`, `NymEid`, `NymSign` methods). These
+//     functions are never used in production.
+//  2. implementation of the verification of signatures produced by a
+//     real smartcard (`NymVerify` method). This function is used in production.
 type Smartcard struct {
 	H0, H1, H2     *math.G1
 	Uid_sk, EID    *math.Zr
