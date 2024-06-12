@@ -477,7 +477,7 @@ func TestSmartcardCSP(t *testing.T) {
 		{
 			Type: types.IdemixHiddenAttribute,
 		},
-	}, 3, 2, nil, -1, types.ExpectSmartcard, &types.IdemixSignerMetadata{EidNym: nymEid.Bytes()})
+	}, 3, 2, 0, nil, -1, types.ExpectSmartcard, &types.IdemixSignerMetadata{EidNym: nymEid.Bytes()})
 	assert.NoError(t, err)
 
 	/*******************************************************************************/

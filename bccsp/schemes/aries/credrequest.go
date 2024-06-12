@@ -15,7 +15,8 @@ import (
 )
 
 type CredRequest struct {
-	Curve *math.Curve
+	Curve              *math.Curve
+	UserSecretKeyIndex int
 }
 
 // Sign creates a new Credential Request, the first message of the interactive credential issuance protocol
@@ -27,7 +28,7 @@ func (c *CredRequest) Blind(sk *math.Zr, key types.IssuerPublicKey, nonce []byte
 	}
 
 	zrs := make([]*math.Zr, ipk.N+1)
-	zrs[UserSecretKeyIndex] = sk
+	zrs[c.UserSecretKeyIndex] = sk
 
 	blindedMsg, err := BlindMessagesZr(zrs, ipk.PK, 1, nonce, c.Curve)
 	if err != nil {
@@ -45,7 +46,7 @@ func (c *CredRequest) BlindVerify(credRequest []byte, key types.IssuerPublicKey,
 	}
 
 	bitmap := make([]bool, ipk.N+1)
-	bitmap[UserSecretKeyIndex] = true
+	bitmap[c.UserSecretKeyIndex] = true
 
 	blindedMsg, err := ParseBlindedMessages(credRequest, c.Curve)
 	if err != nil {

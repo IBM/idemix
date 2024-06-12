@@ -18,8 +18,9 @@ import (
 const nymSigLabel = "nym-sig"
 
 type NymSigner struct {
-	Curve *math.Curve
-	Rng   io.Reader
+	Curve              *math.Curve
+	Rng                io.Reader
+	UserSecretKeyIndex int
 }
 
 // Sign creates a new idemix pseudonym signature
@@ -39,7 +40,7 @@ func (s *NymSigner) Sign(
 
 	commit := bbs12381g2pub.NewBBSLib(s.Curve).NewProverCommittingG1()
 	commit.Commit(ipk.PKwG.H0)
-	commit.Commit(ipk.PKwG.H[0])
+	commit.Commit(ipk.PKwG.H[s.UserSecretKeyIndex])
 	commitNym := commit.Finish()
 
 	challengeBytes := []byte(nymSigLabel)
@@ -68,6 +69,7 @@ func (s *NymSigner) Verify(
 	key types.IssuerPublicKey,
 	Nym *math.G1,
 	sigBytes, digest []byte,
+	skIndex int,
 ) error {
 	ipk, ok := key.(*IssuerPublicKey)
 	if !ok {
@@ -88,7 +90,7 @@ func (s *NymSigner) Verify(
 	challengeBytes := []byte(nymSigLabel)
 	challengeBytes = append(challengeBytes, Nym.Bytes()...)
 	challengeBytes = append(challengeBytes, ipk.PKwG.H0.Bytes()...)
-	challengeBytes = append(challengeBytes, ipk.PKwG.H[0].Bytes()...)
+	challengeBytes = append(challengeBytes, ipk.PKwG.H[skIndex].Bytes()...)
 	challengeBytes = append(challengeBytes, nymProof.Commitment.Bytes()...)
 	challengeBytes = append(challengeBytes, digest...)
 
@@ -98,5 +100,5 @@ func (s *NymSigner) Verify(
 	challengeBytes = append(challengeBytes, sig.Nonce...)
 	proofChallenge = bbs12381g2pub.FrFromOKM(challengeBytes, s.Curve)
 
-	return nymProof.Verify([]*math.G1{ipk.PKwG.H0, ipk.PKwG.H[0]}, Nym, proofChallenge)
+	return nymProof.Verify([]*math.G1{ipk.PKwG.H0, ipk.PKwG.H[skIndex]}, Nym, proofChallenge)
 }

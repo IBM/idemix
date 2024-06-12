@@ -16,8 +16,9 @@ import (
 )
 
 type Cred struct {
-	Bls   *bbs12381g2pub.BBSG2Pub
-	Curve *math.Curve
+	Bls                *bbs12381g2pub.BBSG2Pub
+	Curve              *math.Curve
+	UserSecretKeyIndex int
 }
 
 // Sign issues a new credential, which is the last step of the interactive issuance protocol
@@ -34,7 +35,7 @@ func (c *Cred) Sign(key types.IssuerSecretKey, credentialRequest []byte, attribu
 		return nil, fmt.Errorf("ParseBlindedMessages failed [%w]", err)
 	}
 
-	msgsZr := attributesToSignatureMessage(nil, attributes, c.Curve)
+	msgsZr := attributesToSignatureMessage(attributes, c.Curve, c.UserSecretKeyIndex)
 
 	sig, err := BlindSign(msgsZr, len(attributes)+1, blindedMsg.C, isk.SK.FR.Bytes(), c.Curve)
 	if err != nil {
@@ -78,15 +79,21 @@ func (c *Cred) Verify(sk *math.Zr, key types.IssuerPublicKey, credBytes []byte, 
 		return fmt.Errorf("ParseSignature failed [%w]", err)
 	}
 
-	sm := make([]*bbs12381g2pub.SignatureMessage, len(credential.Attrs)+1)
-	sm[0] = &bbs12381g2pub.SignatureMessage{
-		FR:  sk,
-		Idx: 0,
-	}
-	for i, v := range credential.Attrs {
-		sm[i+1] = &bbs12381g2pub.SignatureMessage{
-			FR:  c.Curve.NewZrFromBytes(v),
-			Idx: i + 1,
+	i := 0
+	sm := make([]*bbs12381g2pub.SignatureMessage, len(ipk.PKwG.H))
+	for j := range ipk.PKwG.H {
+		if j == int(credential.SkPos) {
+			sm[j] = &bbs12381g2pub.SignatureMessage{
+				FR:  sk,
+				Idx: j,
+			}
+
+			continue
+		}
+
+		sm[j] = &bbs12381g2pub.SignatureMessage{
+			FR:  c.Curve.NewZrFromBytes(credential.Attrs[i]),
+			Idx: j,
 		}
 
 		switch attributes[i].Type {
@@ -94,15 +101,17 @@ func (c *Cred) Verify(sk *math.Zr, key types.IssuerPublicKey, credBytes []byte, 
 			continue
 		case types.IdemixBytesAttribute:
 			fr := bbs12381g2pub.FrFromOKM(attributes[i].Value.([]byte), c.Curve)
-			if !fr.Equals(sm[i+1].FR) {
+			if !fr.Equals(sm[j].FR) {
 				return errors.Errorf("credential does not contain the correct attribute value at position [%d]", i)
 			}
 		case types.IdemixIntAttribute:
 			fr := c.Curve.NewZrFromInt(int64(attributes[i].Value.(int)))
-			if !fr.Equals(sm[i+1].FR) {
+			if !fr.Equals(sm[j].FR) {
 				return errors.Errorf("credential does not contain the correct attribute value at position [%d]", i)
 			}
 		}
+
+		i++
 	}
 
 	return sigma.Verify(sm, ipk.PKwG)
