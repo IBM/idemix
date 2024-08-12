@@ -21,8 +21,8 @@ import (
 	"path/filepath"
 
 	math "github.com/IBM/mathlib"
+	"github.com/alecthomas/kingpin/v2"
 	"github.com/pkg/errors"
-	"gopkg.in/alecthomas/kingpin.v2"
 
 	imsp "github.com/IBM/idemix"
 	idemix "github.com/IBM/idemix/bccsp/schemes/dlog/crypto"
