@@ -18,7 +18,7 @@ import (
 	"github.com/IBM/idemix/bccsp/types/mock"
 	math "github.com/IBM/mathlib"
 	"github.com/golang/protobuf/proto"
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
 

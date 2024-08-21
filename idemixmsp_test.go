@@ -14,7 +14,7 @@ import (
 	im "github.com/IBM/idemix/idemixmsp"
 	math "github.com/IBM/mathlib"
 	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric-protos-go/msp"
+	"github.com/hyperledger/fabric-protos-go-apiv2/msp"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/require"
 )

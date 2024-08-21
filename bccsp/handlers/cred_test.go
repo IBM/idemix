@@ -11,7 +11,7 @@ import (
 	"github.com/IBM/idemix/bccsp/handlers"
 	bccsp "github.com/IBM/idemix/bccsp/types"
 	"github.com/IBM/idemix/bccsp/types/mock"
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/pkg/errors"
 )
