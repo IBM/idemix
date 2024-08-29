@@ -27,6 +27,7 @@ const signLabel = "sign"
 const signWithEidNymLabel = "signWithEidNym"
 const signWithEidNymRhNymLabel = "signWithEidNymRhNym" // When the revocation handle is present the enrollment id must also be present
 const signWithSmartcardLabel = "signWithSmartcard"
+const signWithSmartcardNoNymsLabel = "signWithSmartcardNoNyms"
 
 type Signer struct {
 	Curve *math.Curve
@@ -152,7 +153,7 @@ func (s *Signer) getPoKOfSignature(
 	messagesFr := credential.toSignatureMessage(sk, s.Curve)
 
 	var pokOS *bbs.PoKOfSignature
-	if sigtype == types.Smartcard {
+	if sigtype == types.Smartcard || sigtype == types.SmartcardNoNyms {
 		// this mode implements the protocol from https://eprint.iacr.org/2023/853.
 		// The protocol is between 3 parties, a user, a smartcard and a
 		// verifier, where user and smartcard can jointly convince a
@@ -211,6 +212,8 @@ func (s *Signer) getChallengeHash(
 		challengeBytes = []byte(signWithEidNymRhNymLabel)
 	case types.Smartcard:
 		challengeBytes = []byte(signWithSmartcardLabel)
+	case types.SmartcardNoNyms:
+		challengeBytes = []byte(signWithSmartcardNoNymsLabel)
 	default:
 		panic("programming error")
 	}
@@ -220,7 +223,7 @@ func (s *Signer) getChallengeHash(
 
 	// hash the Nym and t-value
 	challengeBytes = append(challengeBytes, Nym.Bytes()...)
-	if sigType != types.Smartcard {
+	if sigType != types.Smartcard && sigType != types.SmartcardNoNyms {
 		challengeBytes = append(challengeBytes, commitNym.Commitment.Bytes()...)
 	}
 
@@ -310,7 +313,7 @@ func (s *Signer) getCommitNym(
 	userSecretKeyIndex int,
 ) *bbs.ProverCommittedG1 {
 
-	if sigType == types.Smartcard {
+	if sigType == types.Smartcard || sigType == types.SmartcardNoNyms {
 		return nil
 	}
 
@@ -358,7 +361,7 @@ func safeNymEidAuditDataAccess(metadata *types.IdemixSignerMetadata) *types.Attr
 }
 
 func nymEidAttrCommitmentEnabled(sigType types.SignatureType) bool {
-	return sigType != types.Standard
+	return sigType != types.Standard && sigType != types.SmartcardNoNyms
 }
 
 func (s *Signer) getAttributeCommitment(
@@ -646,7 +649,7 @@ func (s *Signer) Verify(
 		}
 	}
 
-	if verType == types.ExpectStandard {
+	if verType == types.ExpectStandard || verType == types.ExpectSmartcardNoNyms {
 		if len(sig.NymRh) != 0 || len(sig.NymRhProof) != 0 {
 			return fmt.Errorf("RhNym available but ExpectStandard required")
 		}
@@ -680,7 +683,7 @@ func (s *Signer) Verify(
 	}
 
 	var nymProof *bbs.ProofG1
-	if verType != types.ExpectSmartcard {
+	if verType != types.ExpectSmartcard && verType != types.ExpectSmartcardNoNyms {
 		nymProof, err = lib.ParseProofG1(sig.NymProof)
 		if err != nil {
 			return fmt.Errorf("parse nym proof: %w", err)
@@ -723,6 +726,8 @@ func (s *Signer) Verify(
 	var challengeBytes []byte
 	if verType == types.ExpectSmartcard {
 		challengeBytes = []byte(signWithSmartcardLabel)
+	} else if verType == types.ExpectSmartcardNoNyms {
+		challengeBytes = []byte(signWithSmartcardNoNymsLabel)
 	} else if verifyRHNym {
 		challengeBytes = []byte(signWithEidNymRhNymLabel)
 	} else if verifyEIDNym {
@@ -736,18 +741,18 @@ func (s *Signer) Verify(
 		revealedMessages[payload.Revealed[i]] = messages[i]
 	}
 
-	if verType == types.ExpectSmartcard {
+	if verType == types.ExpectSmartcard || verType == types.ExpectSmartcardNoNyms {
 		// we add this so that GetBytesForChallenge thinks we disclose attr 0 and doesn't add its base to the ZKP chall
 		// we will remove it later
 		revealedMessages[0] = &bbs.SignatureMessage{}
 	}
 	challengeBytes = append(challengeBytes, signatureProof.GetBytesForChallenge(revealedMessages, ipk.PKwG)...)
-	if verType == types.ExpectSmartcard {
+	if verType == types.ExpectSmartcard || verType == types.ExpectSmartcardNoNyms {
 		delete(revealedMessages, 0)
 	}
 
 	challengeBytes = append(challengeBytes, sig.Nym...)
-	if verType != types.ExpectSmartcard {
+	if verType != types.ExpectSmartcard && verType != types.ExpectSmartcardNoNyms {
 		challengeBytes = append(challengeBytes, nymProof.Commitment.Bytes()...)
 	}
 
@@ -839,7 +844,7 @@ func (s *Signer) Verify(
 		}
 	}
 
-	if verType != types.ExpectSmartcard {
+	if verType != types.ExpectSmartcard && verType != types.ExpectSmartcardNoNyms {
 		// verify that `sk` in the Nym is the same as the one in the signature
 		if !nymProof.Responses[AttributeIndexInNym].Equals(signatureProof.ProofVC2.Responses[IndexOffsetVC2Attributes+skIndex]) {
 			return fmt.Errorf("failed equality proof for sk")
@@ -879,7 +884,7 @@ func (s *Signer) Verify(
 	}
 
 	// verify the proof of knowledge of the signature
-	if verType == types.ExpectSmartcard {
+	if verType == types.ExpectSmartcard || verType == types.ExpectSmartcardNoNyms {
 		signatureProof.VC2ProofVerifier = &vc2SmartcardProofVerifier{
 			curve: s.Curve,
 			nym:   Nym,

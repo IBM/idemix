@@ -126,6 +126,12 @@ func TestSmartcardSigner(t *testing.T) {
 		Rng:   rand,
 	}
 
+	sig, _, err := signer.Sign(credBytes, nil, B, r, isk.Public(), idemixAttrs, []byte("silliness"), 0, 0, nil, types.SmartcardNoNyms, nil)
+	assert.NoError(t, err)
+
+	err = signer.Verify(isk.Public(), sig, []byte("silliness"), idemixAttrs, 0, 0, 0, nil, 0, types.ExpectSmartcardNoNyms, nil)
+	assert.NoError(t, err)
+
 	rhIndex, eidIndex := 3, 2
 
 	idemixAttrs = []types.IdemixAttribute{
@@ -145,7 +151,7 @@ func TestSmartcardSigner(t *testing.T) {
 		},
 	}
 
-	sig, _, err := signer.Sign(credBytes, nil, B, r, isk.Public(), idemixAttrs, []byte("silliness"), rhIndex, eidIndex, nil, types.Smartcard, nil)
+	sig, _, err = signer.Sign(credBytes, nil, B, r, isk.Public(), idemixAttrs, []byte("silliness"), rhIndex, eidIndex, nil, types.Smartcard, nil)
 	assert.NoError(t, err)
 
 	err = signer.Verify(isk.Public(), sig, []byte("silliness"), idemixAttrs, rhIndex, eidIndex, 0, nil, 0, types.ExpectSmartcard, nil)
