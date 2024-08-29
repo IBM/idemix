@@ -456,6 +456,8 @@ const (
 	EidNymRhNym
 	// Smartcard has a separate component do the nym signing
 	Smartcard
+	// SmartcardNoNyms has a separate component do the nym signing and has no extra commitments
+	SmartcardNoNyms
 )
 
 // VerificationType describes the type of verification that is required
@@ -472,8 +474,10 @@ const (
 	ExpectEidNym
 	// ExpectEidNymRhNym expects a SignatureType of EidNymRhNym
 	ExpectEidNymRhNym
-	// Smartcard has a separate component do the nym signing
+	// ExpectSmartcard has a separate component do the nym signing
 	ExpectSmartcard
+	// ExpectSmartcardNoNyms has a separate component do the nym signing and has no extra commitments
+	ExpectSmartcardNoNyms
 )
 
 // AuditVerificationType describes the type of audit verification that is required
