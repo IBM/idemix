@@ -154,6 +154,49 @@ func testAries() {
 			Expect(err).NotTo(HaveOccurred())
 		})
 
+		Describe("importing bases", func() {
+			var (
+				err           error
+				ikb           []byte
+				keyImportOpts *bccsp.IdemixIssuerPublicKeyImportOpts
+			)
+
+			BeforeEach(func() {
+				ikb, err = IssuerPublicKey.Bytes()
+				Expect(err).NotTo(HaveOccurred())
+
+				keyImportOpts = &bccsp.IdemixIssuerPublicKeyImportOpts{
+					AttributeNames:         AttributeNames,
+					CommitmentBasesRequest: bccsp.Dlog,
+					RhIndex:                4,
+					EidIndex:               3,
+					SKIndex:                0,
+					Temporary:              true,
+				}
+
+			})
+
+			It("returns the bases correctly", func() {
+				_, err = CSP.KeyImport(ikb, keyImportOpts)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(len(keyImportOpts.CommitmentBases)).To(Equal(3))
+			})
+
+			It("fails if two attributes have the same index", func() {
+				keyImportOpts.EidIndex = 0
+				_, err = CSP.KeyImport(ikb, keyImportOpts)
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(ContainSubstring("invalid indices 4, 0, 0"))
+			})
+
+			It("fails if an attribute index is too large", func() {
+				keyImportOpts.EidIndex = 7
+				_, err = CSP.KeyImport(ikb, keyImportOpts)
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(ContainSubstring("invalid indices 4, 7, 0"))
+			})
+		})
+
 		It("the environment is properly set", func() {
 			// Verify CredRequest
 			valid, err := CSP.Verify(
@@ -751,6 +794,28 @@ func testAries() {
 				Expect(err).NotTo(HaveOccurred())
 				Expect(valid).To(BeTrue())
 
+				// import the key, extract the generators and recompute the commitment
+				ikb, err := IssuerPublicKey.Bytes()
+				Expect(err).NotTo(HaveOccurred())
+
+				opts := &bccsp.IdemixIssuerPublicKeyImportOpts{
+					AttributeNames:         AttributeNames,
+					CommitmentBasesRequest: bccsp.Dlog,
+					RhIndex:                4,
+					EidIndex:               3,
+					SKIndex:                0,
+					Temporary:              true,
+				}
+
+				_, err = CSP.KeyImport(ikb, opts)
+				Expect(err).NotTo(HaveOccurred())
+
+				g := opts.CommitmentBases[bccsp.NymEid].([]*math.G1)[0]
+				h := opts.CommitmentBases[bccsp.NymEid].([]*math.G1)[1]
+
+				ned := g.Mul2(signOpts.Metadata.EidNymAuditData.Rand, h, signOpts.Metadata.EidNymAuditData.Attr)
+				Expect(ned.Equals(signOpts.Metadata.EidNymAuditData.Nym)).To(BeTrue())
+
 				valid, err = CSP.Verify(
 					IssuerPublicKey,
 					signOpts.Metadata.EidNymAuditData.Nym.Bytes(),
@@ -1284,6 +1349,28 @@ func testAries() {
 				)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(valid).To(BeTrue())
+
+				// import the key, extract the generators and recompute the commitment
+				ikb, err := IssuerPublicKey.Bytes()
+				Expect(err).NotTo(HaveOccurred())
+
+				opts := &bccsp.IdemixIssuerPublicKeyImportOpts{
+					AttributeNames:         AttributeNames,
+					CommitmentBasesRequest: bccsp.Dlog,
+					RhIndex:                4,
+					EidIndex:               3,
+					SKIndex:                0,
+					Temporary:              true,
+				}
+
+				_, err = CSP.KeyImport(ikb, opts)
+				Expect(err).NotTo(HaveOccurred())
+
+				g := opts.CommitmentBases[bccsp.NymRH].([]*math.G1)[0]
+				h := opts.CommitmentBases[bccsp.NymRH].([]*math.G1)[1]
+
+				ned := g.Mul2(signOpts.Metadata.RhNymAuditData.Rand, h, signOpts.Metadata.RhNymAuditData.Attr)
+				Expect(ned.Equals(signOpts.Metadata.RhNymAuditData.Nym)).To(BeTrue())
 
 				valid, err = CSP.Verify(
 					IssuerPublicKey,

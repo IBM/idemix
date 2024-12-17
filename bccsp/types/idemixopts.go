@@ -44,11 +44,38 @@ func (o *IdemixIssuerKeyGenOpts) Ephemeral() bool {
 	return o.Temporary
 }
 
+// CommitmentBasesRequest describes the request for commitment bases
+type CommitmentBasesRequest int
+
+const (
+	None CommitmentBasesRequest = iota
+	Dlog
+)
+
+// CommitmentType describes a commitment performed by the scheme
+type CommitmentType int
+
+const (
+	Nym CommitmentType = iota + 1
+	NymEid
+	NymRH
+)
+
 // IdemixIssuerPublicKeyImportOpts contains the options for importing of an Idemix issuer public key.
 type IdemixIssuerPublicKeyImportOpts struct {
 	Temporary bool
 	// AttributeNames is a list of attributes to ensure the import public key has
 	AttributeNames []string
+	// CommitmentBasesRequest describes the request for commitment bases
+	CommitmentBasesRequest CommitmentBasesRequest
+	// RhIndex is the index of attribute containing the revocation handler.
+	RhIndex int
+	// EidIndex contains the index of the EID attribute
+	EidIndex int
+	// SKIndex contains the index of the secret key
+	SKIndex int
+	// CommitmentBases contains the bases used for the various commitments
+	CommitmentBases map[CommitmentType]interface{}
 }
 
 // Algorithm returns the key generation algorithm identifier (to be used).
@@ -296,7 +323,7 @@ type IdemixSignerOpts struct {
 	// RhIndex is the index of attribute containing the revocation handler.
 	// Notice that this attributed cannot be disclosed
 	RhIndex int
-	// EidIndex contains the index of the EID attrbiute
+	// EidIndex contains the index of the EID attribute
 	EidIndex int
 	// SKIndex contains the index of the secret key
 	SKIndex int
