@@ -133,6 +133,17 @@ func (i *IssuerPublicKeyImporter) KeyImport(raw interface{}, opts bccsp.KeyImpor
 		return nil, err
 	}
 
+	if o.CommitmentBasesRequest == bccsp.None {
+		goto done
+	}
+
+	if bases, err := i.Issuer.Bases(pk, o.CommitmentBasesRequest, o.RhIndex, o.EidIndex, o.SKIndex); err != nil {
+		return nil, err
+	} else {
+		o.CommitmentBases = bases
+	}
+
+done:
 	return &issuerPublicKey{pk}, nil
 }
 

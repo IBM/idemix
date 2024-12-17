@@ -44,6 +44,10 @@ type Issuer interface {
 	// NewPublicKeyFromBytes converts the passed bytes to an Issuer public key
 	// It makes sure that the so obtained public key has the passed attributes, if specified
 	NewPublicKeyFromBytes(raw []byte, attributes []string) (IssuerPublicKey, error)
+
+	// Bases returns the bases used for committments produced by
+	// key `ipk` (when it is of an applicable type `ipkType`)
+	Bases(ipk IssuerPublicKey, ipkType CommitmentBasesRequest, RhIndex, EidIndex, SKIndex int) (map[CommitmentType]interface{}, error)
 }
 
 // User is a local interface to decouple from the idemix implementation

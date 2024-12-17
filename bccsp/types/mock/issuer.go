@@ -8,6 +8,23 @@ import (
 )
 
 type Issuer struct {
+	BasesStub        func(types.IssuerPublicKey, types.CommitmentBasesRequest, int, int, int) (map[types.CommitmentType]interface{}, error)
+	basesMutex       sync.RWMutex
+	basesArgsForCall []struct {
+		arg1 types.IssuerPublicKey
+		arg2 types.CommitmentBasesRequest
+		arg3 int
+		arg4 int
+		arg5 int
+	}
+	basesReturns struct {
+		result1 map[types.CommitmentType]interface{}
+		result2 error
+	}
+	basesReturnsOnCall map[int]struct {
+		result1 map[types.CommitmentType]interface{}
+		result2 error
+	}
 	NewKeyStub        func([]string) (types.IssuerSecretKey, error)
 	newKeyMutex       sync.RWMutex
 	newKeyArgsForCall []struct {
@@ -51,6 +68,74 @@ type Issuer struct {
 	}
 	invocations      map[string][][]interface{}
 	invocationsMutex sync.RWMutex
+}
+
+func (fake *Issuer) Bases(arg1 types.IssuerPublicKey, arg2 types.CommitmentBasesRequest, arg3 int, arg4 int, arg5 int) (map[types.CommitmentType]interface{}, error) {
+	fake.basesMutex.Lock()
+	ret, specificReturn := fake.basesReturnsOnCall[len(fake.basesArgsForCall)]
+	fake.basesArgsForCall = append(fake.basesArgsForCall, struct {
+		arg1 types.IssuerPublicKey
+		arg2 types.CommitmentBasesRequest
+		arg3 int
+		arg4 int
+		arg5 int
+	}{arg1, arg2, arg3, arg4, arg5})
+	stub := fake.BasesStub
+	fakeReturns := fake.basesReturns
+	fake.recordInvocation("Bases", []interface{}{arg1, arg2, arg3, arg4, arg5})
+	fake.basesMutex.Unlock()
+	if stub != nil {
+		return stub(arg1, arg2, arg3, arg4, arg5)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	return fakeReturns.result1, fakeReturns.result2
+}
+
+func (fake *Issuer) BasesCallCount() int {
+	fake.basesMutex.RLock()
+	defer fake.basesMutex.RUnlock()
+	return len(fake.basesArgsForCall)
+}
+
+func (fake *Issuer) BasesCalls(stub func(types.IssuerPublicKey, types.CommitmentBasesRequest, int, int, int) (map[types.CommitmentType]interface{}, error)) {
+	fake.basesMutex.Lock()
+	defer fake.basesMutex.Unlock()
+	fake.BasesStub = stub
+}
+
+func (fake *Issuer) BasesArgsForCall(i int) (types.IssuerPublicKey, types.CommitmentBasesRequest, int, int, int) {
+	fake.basesMutex.RLock()
+	defer fake.basesMutex.RUnlock()
+	argsForCall := fake.basesArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3, argsForCall.arg4, argsForCall.arg5
+}
+
+func (fake *Issuer) BasesReturns(result1 map[types.CommitmentType]interface{}, result2 error) {
+	fake.basesMutex.Lock()
+	defer fake.basesMutex.Unlock()
+	fake.BasesStub = nil
+	fake.basesReturns = struct {
+		result1 map[types.CommitmentType]interface{}
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *Issuer) BasesReturnsOnCall(i int, result1 map[types.CommitmentType]interface{}, result2 error) {
+	fake.basesMutex.Lock()
+	defer fake.basesMutex.Unlock()
+	fake.BasesStub = nil
+	if fake.basesReturnsOnCall == nil {
+		fake.basesReturnsOnCall = make(map[int]struct {
+			result1 map[types.CommitmentType]interface{}
+			result2 error
+		})
+	}
+	fake.basesReturnsOnCall[i] = struct {
+		result1 map[types.CommitmentType]interface{}
+		result2 error
+	}{result1, result2}
 }
 
 func (fake *Issuer) NewKey(arg1 []string) (types.IssuerSecretKey, error) {
@@ -275,6 +360,8 @@ func (fake *Issuer) NewPublicKeyFromBytesReturnsOnCall(i int, result1 types.Issu
 func (fake *Issuer) Invocations() map[string][][]interface{} {
 	fake.invocationsMutex.RLock()
 	defer fake.invocationsMutex.RUnlock()
+	fake.basesMutex.RLock()
+	defer fake.basesMutex.RUnlock()
 	fake.newKeyMutex.RLock()
 	defer fake.newKeyMutex.RUnlock()
 	fake.newKeyFromBytesMutex.RLock()

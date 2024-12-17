@@ -84,6 +84,10 @@ func (i *Issuer) NewKeyFromBytes(raw []byte, attributes []string) (res types.Iss
 	return
 }
 
+func (i *Issuer) Bases(ipk types.IssuerPublicKey, ipkType types.CommitmentBasesRequest, RhIndex, EidIndex, SKIndex int) (map[types.CommitmentType]interface{}, error) {
+	panic("not implemented")
+}
+
 func (i *Issuer) NewPublicKeyFromBytes(raw []byte, attributes []string) (res types.IssuerPublicKey, err error) {
 	defer func() {
 		if r := recover(); r != nil {
