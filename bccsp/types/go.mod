@@ -2,7 +2,7 @@ module github.com/IBM/idemix/bccsp/types
 
 go 1.22.6
 
-require github.com/IBM/mathlib v0.0.3-0.20231011094432-44ee0eb539da
+require github.com/IBM/mathlib v0.0.3-0.20241219051532-81539b287cf5
 
 require (
 	github.com/bits-and-blooms/bitset v1.13.0 // indirect
