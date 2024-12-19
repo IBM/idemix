@@ -1,8 +1,8 @@
 github.com/BurntSushi/toml v0.3.1/go.mod h1:xHWCNGjB5oqiDr8zfno3MHue2Ht5sIBksp03qcyfWMU=
 github.com/IBM/idemix/bccsp/schemes/weak-bb v0.0.0-20240820063231-23c21a416ee1 h1:/LQ8oNXkaSzk+0on7Blyd9vQWi802bIwXnNmvR3srmU=
 github.com/IBM/idemix/bccsp/schemes/weak-bb v0.0.0-20240820063231-23c21a416ee1/go.mod h1:OlxSkCgdOahDJzm8uyw45a9R7rehCC+0YGyh3gf0b40=
-github.com/IBM/mathlib v0.0.3-0.20231011094432-44ee0eb539da h1:qqGozq4tF6EOVnWoTgBoJGudRKKZXSAYnEtDggzTnsw=
-github.com/IBM/mathlib v0.0.3-0.20231011094432-44ee0eb539da/go.mod h1:Tco9QzE3fQzjMS7nPbHDeFfydAzctStf1Pa8hsh6Hjs=
+github.com/IBM/mathlib v0.0.3-0.20241219051532-81539b287cf5 h1:wfksZZMeYfPeqsXwiotUsbnOqGGpth6t8Ij4tJ/91kw=
+github.com/IBM/mathlib v0.0.3-0.20241219051532-81539b287cf5/go.mod h1:Tco9QzE3fQzjMS7nPbHDeFfydAzctStf1Pa8hsh6Hjs=
 github.com/alecthomas/kingpin/v2 v2.4.0 h1:f48lwail6p8zpO1bC4TxtqACaGqHYA22qkHjHpqDjYY=
 github.com/alecthomas/kingpin/v2 v2.4.0/go.mod h1:0gyi0zQnjuFk8xrkNKamJoyUo382HRL7ATRpFZCw6tE=
 github.com/alecthomas/units v0.0.0-20240626203959-61d1e3462e30 h1:t3eaIm0rUkzbrIewtiFmMK5RXHej2XnoXNhxVsAYUfg=
