@@ -3,7 +3,7 @@ module github.com/IBM/idemix/bccsp/schemes/weak-bb
 go 1.22.6
 
 require (
-	github.com/IBM/mathlib v0.0.3-0.20231011094432-44ee0eb539da
+	github.com/IBM/mathlib v0.0.3-0.20241219051532-81539b287cf5
 	github.com/pkg/errors v0.9.1
 )
 
