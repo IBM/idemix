@@ -9,11 +9,154 @@ package idemix
 import (
 	"testing"
 
+	idmx "github.com/IBM/idemix/bccsp"
+	"github.com/IBM/idemix/bccsp/schemes/dlog/crypto/translator/amcl"
 	bccsp "github.com/IBM/idemix/bccsp/types"
 	im "github.com/IBM/idemix/idemixmsp"
+	math "github.com/IBM/mathlib"
 	"github.com/golang/protobuf/proto"
 	"github.com/stretchr/testify/assert"
 )
+
+// Dummy is a read-only KeyStore that neither loads nor stores keys.
+type Dummy struct {
+}
+
+// ReadOnly returns true if this KeyStore is read only, false otherwise.
+// If ReadOnly is true then StoreKey will fail.
+func (ks *Dummy) ReadOnly() bool {
+	return true
+}
+
+// GetKey returns a key object whose SKI is the one passed.
+func (ks *Dummy) GetKey(ski []byte) (bccsp.Key, error) {
+	return nil, nil
+}
+
+// StoreKey stores the key k in this KeyStore.
+// If this KeyStore is read only then the method will fail.
+func (ks *Dummy) StoreKey(k bccsp.Key) error {
+	return nil
+}
+
+func TestWeird1(t *testing.T) {
+	curve := math.Curves[math.BLS12_381_BBS]
+	csp, err := idmx.NewAries(&Dummy{}, curve, &amcl.Fp256bn{C: curve}, true)
+	assert.NoError(t, err)
+
+	path := "./testdata/idmx/idemix/"
+	conf, err := GetIdemixMspConfigWithType(path, "id", IDEMIX_ARIES)
+	assert.NoError(t, err)
+
+	config := &im.IdemixMSPConfig{}
+	err = proto.Unmarshal(conf.Config, config)
+	assert.NoError(t, err)
+
+	issuerPublicKey, err := csp.KeyImport(
+		config.Ipk,
+		&bccsp.IdemixIssuerPublicKeyImportOpts{
+			Temporary: true,
+			AttributeNames: []string{
+				"AttributeNameOU",
+				"AttributeNameRole",
+				"AttributeNameEnrollmentId",
+				"AttributeNameRevocationHandle",
+			},
+		})
+	assert.NoError(t, err)
+
+	userKey, err := csp.KeyImport(config.Signer.Sk, &bccsp.IdemixUserSecretKeyImportOpts{})
+	assert.NoError(t, err)
+
+	valid, err := csp.Verify(
+		userKey,
+		config.Signer.Cred,
+		nil,
+		&bccsp.IdemixCredentialSignerOpts{
+			IssuerPK: issuerPublicKey,
+			Attributes: []bccsp.IdemixAttribute{
+				{Type: bccsp.IdemixHiddenAttribute},
+				{Type: bccsp.IdemixHiddenAttribute},
+				{Type: bccsp.IdemixBytesAttribute, Value: []byte(config.Signer.EnrollmentId)},
+				{Type: bccsp.IdemixBytesAttribute, Value: []byte(config.Signer.RevocationHandle)},
+			},
+		},
+	)
+	assert.NoError(t, err)
+	assert.True(t, valid)
+}
+
+func TestWeird(t *testing.T) {
+	msp, err := NewIdemixMspAries(MSPv1_3)
+	assert.NoError(t, err)
+
+	path := "./testdata/idmx/idemix/"
+	conf, err := GetIdemixMspConfigWithType(path, "id", IDEMIX_ARIES)
+	assert.NoError(t, err)
+
+	_ = conf
+
+	err = msp.Setup(conf)
+	assert.NoError(t, err)
+
+	id, err := msp.GetDefaultSigningIdentity()
+	assert.NoError(t, err)
+
+	idemixSigner := id.(*IdemixSigningIdentity)
+
+	config := &im.IdemixMSPConfig{}
+	err = proto.Unmarshal(conf.Config, config)
+	assert.NoError(t, err)
+
+	idemixMsp := msp.(*Idemixmsp)
+	csp := idemixMsp.csp
+
+	msg := []byte("Lost forever, now and ever\nTo this magical sound that I hear")
+
+	// STEP 1: Sign and Verify normally
+
+	signature, err := csp.Sign(
+		idemixSigner.UserKey,
+		msg,
+		&bccsp.IdemixSignerOpts{
+			Credential: idemixSigner.Cred,
+			Nym:        idemixSigner.NymKey,
+			IssuerPK:   idemixMsp.ipk,
+			Attributes: []bccsp.IdemixAttribute{
+				{Type: bccsp.IdemixHiddenAttribute},
+				{Type: bccsp.IdemixHiddenAttribute},
+				{Type: bccsp.IdemixHiddenAttribute},
+				{Type: bccsp.IdemixHiddenAttribute},
+			},
+			RhIndex:  AttributeIndexRevocationHandle,
+			EidIndex: AttributeIndexEnrollmentId,
+			Epoch:    0,
+			CRI:      config.Signer.CredentialRevocationInformation,
+		},
+	)
+	assert.NoError(t, err)
+
+	valid, err := csp.Verify(
+		idemixMsp.ipk,
+		signature,
+		msg,
+		&bccsp.IdemixSignerOpts{
+			RevocationPublicKey: idemixMsp.revocationPK,
+			Attributes: []bccsp.IdemixAttribute{
+				{Type: bccsp.IdemixHiddenAttribute},
+				{Type: bccsp.IdemixHiddenAttribute},
+				{Type: bccsp.IdemixHiddenAttribute},
+				{Type: bccsp.IdemixHiddenAttribute},
+			},
+			RhIndex:          AttributeIndexRevocationHandle,
+			EidIndex:         AttributeIndexEnrollmentId,
+			Epoch:            0,
+			VerificationType: bccsp.BestEffort,
+		},
+	)
+	assert.NoError(t, err)
+	assert.True(t, valid)
+}
 
 func TestAuditAries(t *testing.T) {
 	msp, err := NewIdemixMspAries(MSPv1_3)
