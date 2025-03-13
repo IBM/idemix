@@ -98,7 +98,7 @@ func (c *Cred) Verify(sk *math.Zr, key types.IssuerPublicKey, credBytes []byte, 
 
 		switch attributes[i].Type {
 		case types.IdemixHiddenAttribute:
-			continue
+			goto end
 		case types.IdemixBytesAttribute:
 			fr := bbs.FrFromOKM(attributes[i].Value.([]byte), c.Curve)
 			if !fr.Equals(sm[j].FR) {
@@ -110,7 +110,7 @@ func (c *Cred) Verify(sk *math.Zr, key types.IssuerPublicKey, credBytes []byte, 
 				return errors.Errorf("credential does not contain the correct attribute value at position [%d]", i)
 			}
 		}
-
+	end:
 		i++
 	}
 

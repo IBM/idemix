@@ -109,6 +109,27 @@ func TestCredRequest(t *testing.T) {
 
 	idemixAttrs = []types.IdemixAttribute{
 		{
+			Type: types.IdemixHiddenAttribute,
+		},
+		{
+			Type:  types.IdemixIntAttribute,
+			Value: 3,
+		},
+		{
+			Type:  types.IdemixBytesAttribute,
+			Value: []byte("msg3"),
+		},
+		{
+			Type: types.IdemixHiddenAttribute,
+		},
+	}
+
+	// verify succeeds when supplying hidden attrs and one of the hidden attrs is not the last
+	err = credProto.Verify(sk, ipk, cred, idemixAttrs)
+	assert.NoError(t, err)
+
+	idemixAttrs = []types.IdemixAttribute{
+		{
 			Type:  types.IdemixBytesAttribute,
 			Value: []byte("msg2"),
 		},
