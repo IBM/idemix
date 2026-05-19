@@ -3,9 +3,6 @@ module github.com/IBM/idemix
 go 1.22.6
 
 require (
-	github.com/IBM/idemix/bccsp/schemes/aries v0.0.0-20241220065751-dc7206770307
-	github.com/IBM/idemix/bccsp/schemes/weak-bb v0.0.0-20241220065751-dc7206770307
-	github.com/IBM/idemix/bccsp/types v0.0.0-20241220065751-dc7206770307
 	github.com/IBM/mathlib v0.0.3-0.20241219051532-81539b287cf5
 	github.com/alecthomas/kingpin/v2 v2.4.0
 	github.com/golang/protobuf v1.5.4
