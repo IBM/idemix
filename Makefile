@@ -9,7 +9,7 @@ checks: check-deps
 
 .PHONY: unit-tests
 unit-tests:
-	find . -name go.mod -execdir go test ./... \;
+	@go test ./...
 
 .PHONY: unit-tests-race
 unit-tests-race:
