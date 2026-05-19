@@ -24,9 +24,9 @@ import (
 	"github.com/alecthomas/kingpin/v2"
 	"github.com/pkg/errors"
 
-	imsp "github.com/IBM/idemix"
 	idemix "github.com/IBM/idemix/bccsp/schemes/dlog/crypto"
 	"github.com/IBM/idemix/bccsp/schemes/dlog/crypto/translator/amcl"
+	imsp "github.com/IBM/idemix/msp"
 	"github.com/IBM/idemix/tools/idemixgen/idemixca"
 	"github.com/IBM/idemix/tools/idemixgen/metadata"
 )

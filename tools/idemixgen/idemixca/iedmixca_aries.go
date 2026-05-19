@@ -9,10 +9,10 @@ package idemixca
 import (
 	"crypto/ecdsa"
 
-	imsp "github.com/IBM/idemix"
 	"github.com/IBM/idemix/bccsp/schemes/aries"
 	bccsp "github.com/IBM/idemix/bccsp/types"
-	im "github.com/IBM/idemix/idemixmsp"
+	imsp "github.com/IBM/idemix/msp"
+	im "github.com/IBM/idemix/msp/config"
 	math "github.com/IBM/mathlib"
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/aries-bbs-go/bbs"

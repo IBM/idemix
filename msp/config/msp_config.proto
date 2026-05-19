@@ -7,7 +7,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 syntax = "proto3";
-option go_package = "github.com/IBM/idemix/idemixmsp";
+option go_package = "github.com/IBM/idemix/msp/config";
 
 package idemixmsp;
 

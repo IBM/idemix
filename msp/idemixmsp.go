@@ -4,7 +4,7 @@ Copyright IBM Corp. All Rights Reserved.
 SPDX-License-Identifier: Apache-2.0
 */
 
-package idemix
+package msp
 
 import (
 	"bytes"
@@ -19,7 +19,7 @@ import (
 	"github.com/IBM/idemix/bccsp/schemes/dlog/crypto/translator/amcl"
 	bccsp "github.com/IBM/idemix/bccsp/types"
 	"github.com/IBM/idemix/common/flogging"
-	im "github.com/IBM/idemix/idemixmsp"
+	im "github.com/IBM/idemix/msp/config"
 	math "github.com/IBM/mathlib"
 	"github.com/golang/protobuf/proto"
 	m "github.com/hyperledger/fabric-protos-go-apiv2/msp"

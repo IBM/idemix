@@ -9,9 +9,9 @@ package idemixca
 import (
 	"crypto/ecdsa"
 
-	imsp "github.com/IBM/idemix"
 	idemix "github.com/IBM/idemix/bccsp/schemes/dlog/crypto"
-	im "github.com/IBM/idemix/idemixmsp"
+	imsp "github.com/IBM/idemix/msp"
+	im "github.com/IBM/idemix/msp/config"
 	math "github.com/IBM/mathlib"
 	"github.com/golang/protobuf/proto"
 	"github.com/pkg/errors"
