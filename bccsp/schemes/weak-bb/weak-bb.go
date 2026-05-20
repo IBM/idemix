@@ -4,6 +4,9 @@ Copyright IBM Corp. All Rights Reserved.
 SPDX-License-Identifier: Apache-2.0
 */
 
+// Deprecated: Package weakbb implements Weak Boneh-Boyen signatures for epoch-based
+// revocation. The dlog scheme's usage of this package will be removed in Phase 6.
+// The aries scheme will continue to use it.
 package weakbb
 
 import (
