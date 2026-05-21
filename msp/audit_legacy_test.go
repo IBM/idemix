@@ -4,13 +4,13 @@ Copyright IBM Corp. All Rights Reserved.
 SPDX-License-Identifier: Apache-2.0
 */
 
-package idemix
+package msp
 
 import (
 	"testing"
 
 	bccsp "github.com/IBM/idemix/bccsp/types"
-	im "github.com/IBM/idemix/idemixmsp"
+	im "github.com/IBM/idemix/msp/config"
 	"github.com/golang/protobuf/proto"
 	"github.com/stretchr/testify/assert"
 )

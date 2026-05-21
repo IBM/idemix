@@ -3,7 +3,7 @@ Copyright IBM Corp. All Rights Reserved.
 
 SPDX-License-Identifier: Apache-2.0
 */
-package idemix
+package msp
 
 import (
 	m "github.com/hyperledger/fabric-protos-go-apiv2/msp"

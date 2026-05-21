@@ -18,7 +18,7 @@ import (
 	"github.com/IBM/idemix/bccsp/schemes/aries"
 	"github.com/IBM/idemix/bccsp/schemes/dlog/crypto/translator/amcl"
 	"github.com/IBM/idemix/bccsp/types"
-	"github.com/IBM/idemix/idemixmsp"
+	"github.com/IBM/idemix/msp/config"
 	math "github.com/IBM/mathlib"
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/aries-bbs-go/bbs"
@@ -97,7 +97,7 @@ func TestSmartcardHybrid(t *testing.T) {
 	_ipk, err := issuer.NewPublicKeyFromBytes(readFile(t, "testdata/idemix/msp/IssuerPublicKey"), []string{"", "", "", ""})
 	assert.NoError(t, err)
 
-	conf := &idemixmsp.IdemixMSPSignerConfig{}
+	conf := &config.IdemixMSPSignerConfig{}
 	err = proto.Unmarshal(readFile(t, "testdata/idemix/user/SignerConfig"), conf)
 	assert.NoError(t, err)
 
@@ -221,7 +221,7 @@ func TestSmartcardCSP(t *testing.T) {
 	_ipk, err := issuer.NewPublicKeyFromBytes(readFile(t, "testdata/idemix/msp/IssuerPublicKey"), []string{"", "", "", ""})
 	assert.NoError(t, err)
 
-	conf := &idemixmsp.IdemixMSPSignerConfig{}
+	conf := &config.IdemixMSPSignerConfig{}
 	err = proto.Unmarshal(readFile(t, "testdata/idemix/user/SignerConfig"), conf)
 	assert.NoError(t, err)
 
