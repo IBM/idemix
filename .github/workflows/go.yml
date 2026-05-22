@@ -25,6 +25,24 @@ jobs:
     - name: Checks
       run: make checks
 
+    - name: Legacy guard
+      run: |
+        # Fail if new files import dlog or weak-bb outside known locations.
+        # Known files are listed in docs/LEGACY_REMOVAL_CHECKLIST.md.
+        KNOWN_DLOG_FILES="bccsp/bccsp.go|bccsp/bccsp_test.go|bccsp/aries_test.go|bccsp/legacy_test.go|bccsp/perf_test.go|bccsp/smartcard_test.go|bccsp/handlers/nym.go|bccsp/handlers/nymsigner_test.go|bccsp/handlers/signer_test.go|bccsp/handlers/user_test.go|bccsp/keystore/kvsbased.go|bccsp/keystore/kvsbased_test.go|msp/idemixmsp.go|msp/idemixmsp_test.go|tools/idemixgen/main.go|tools/idemixgen/idemixca/idemixca.go|tools/idemixgen/idemixca/idemixca_test.go"
+        KNOWN_WEAKBB_FILES="bccsp/schemes/aries/revocation.go|bccsp/schemes/dlog/crypto/revocation_authority.go|bccsp/schemes/dlog/crypto/idemix_test.go"
+        
+        NEW_DLOG=$(grep -rn "schemes/dlog" --include="*.go" . | grep -v "schemes/dlog/" | grep -v -E "$KNOWN_DLOG_FILES" | grep -v "_test.go:" || true)
+        NEW_WEAKBB=$(grep -rn "schemes/weak-bb" --include="*.go" . | grep -v "schemes/weak-bb/" | grep -v -E "$KNOWN_WEAKBB_FILES" || true)
+        
+        if [ -n "$NEW_DLOG" ] || [ -n "$NEW_WEAKBB" ]; then
+          echo "❌ New legacy imports detected! Do not add new dlog/weak-bb imports."
+          echo "$NEW_DLOG"
+          echo "$NEW_WEAKBB"
+          exit 1
+        fi
+        echo "✅ No new legacy imports found."
+
     - name: Unit Tests
       run: make unit-tests
 
