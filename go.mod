@@ -42,3 +42,5 @@ require (
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	rsc.io/tmplfunc v0.0.3 // indirect
 )
+
+replace github.com/hyperledger/aries-bbs-go => github.com/neetance/aries-bbs-go v0.0.0-20260523145523-32965e3d8c55
