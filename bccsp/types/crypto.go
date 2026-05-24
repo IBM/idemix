@@ -7,7 +7,6 @@ package types
 
 import (
 	"crypto"
-	"hash"
 )
 
 // KeyStore represents a storage system for cryptographic keys.
@@ -84,23 +83,10 @@ type KeyImportOpts interface {
 	Ephemeral() bool
 }
 
-// HashOpts contains options for hashing with a CSP.
-type HashOpts interface {
-
-	// Algorithm returns the hash algorithm identifier (to be used).
-	Algorithm() string
-}
-
 // SignerOpts contains options for signing with a CSP.
 type SignerOpts interface {
 	crypto.SignerOpts
 }
-
-// EncrypterOpts contains options for encrypting with a CSP.
-type EncrypterOpts interface{}
-
-// DecrypterOpts contains options for decrypting with a CSP.
-type DecrypterOpts interface{}
 
 // BCCSP is the blockchain cryptographic service provider that offers
 // the implementation of cryptographic standards and algorithms.
@@ -121,14 +107,6 @@ type BCCSP interface {
 	// the Subject Key Identifier ski.
 	GetKey(ski []byte) (k Key, err error)
 
-	// Hash hashes messages msg using options opts.
-	// If opts is nil, the default hash function will be used.
-	Hash(msg []byte, opts HashOpts) (hash []byte, err error)
-
-	// GetHash returns and instance of hash.Hash using options opts.
-	// If opts is nil, the default hash function will be returned.
-	GetHash(opts HashOpts) (h hash.Hash, err error)
-
 	// Sign signs digest using key k.
 	// The opts argument should be appropriate for the algorithm used.
 	//
@@ -140,12 +118,4 @@ type BCCSP interface {
 	// Verify verifies signature against key k and digest
 	// The opts argument should be appropriate for the algorithm used.
 	Verify(k Key, signature, digest []byte, opts SignerOpts) (valid bool, err error)
-
-	// Encrypt encrypts plaintext using key k.
-	// The opts argument should be appropriate for the algorithm used.
-	Encrypt(k Key, plaintext []byte, opts EncrypterOpts) (ciphertext []byte, err error)
-
-	// Decrypt decrypts ciphertext using key k.
-	// The opts argument should be appropriate for the algorithm used.
-	Decrypt(k Key, ciphertext []byte, opts DecrypterOpts) (plaintext []byte, err error)
 }
