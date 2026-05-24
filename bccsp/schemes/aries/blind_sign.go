@@ -13,7 +13,7 @@ import (
 
 	math "github.com/IBM/mathlib"
 	ml "github.com/IBM/mathlib"
-	"github.com/hyperledger/aries-bbs-go/bbs"
+	"github.com/IBM/idemix/bbs"
 )
 
 // BlindedMessages represents a set of messages prepared

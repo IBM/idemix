@@ -6,7 +6,6 @@ require (
 	github.com/IBM/mathlib v0.0.3-0.20241219051532-81539b287cf5
 	github.com/alecthomas/kingpin/v2 v2.4.0
 	github.com/golang/protobuf v1.5.4
-	github.com/hyperledger/aries-bbs-go v0.0.0-20240528084656-761671ea73bc
 	github.com/hyperledger/fabric-protos-go-apiv2 v0.3.3
 	github.com/onsi/ginkgo/v2 v2.13.2
 	github.com/onsi/gomega v1.31.0
@@ -15,6 +14,11 @@ require (
 	github.com/sykesm/zap-logfmt v0.0.4
 	go.uber.org/zap v1.27.0
 	google.golang.org/grpc v1.65.0
+)
+
+require (
+	github.com/btcsuite/btcutil v1.0.2
+	golang.org/x/crypto v0.26.0
 )
 
 require (
@@ -33,7 +37,6 @@ require (
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/xhit/go-str2duration/v2 v2.1.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
-	golang.org/x/crypto v0.26.0 // indirect
 	golang.org/x/net v0.28.0 // indirect
 	golang.org/x/sys v0.24.0 // indirect
 	golang.org/x/text v0.17.0 // indirect

@@ -21,7 +21,7 @@ import (
 	"github.com/IBM/idemix/msp/config"
 	math "github.com/IBM/mathlib"
 	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/aries-bbs-go/bbs"
+	"github.com/IBM/idemix/bbs"
 	"github.com/stretchr/testify/assert"
 )
 
