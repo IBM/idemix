@@ -8,13 +8,13 @@ package idemix
 import (
 	"reflect"
 
+	"github.com/IBM/idemix/bbs"
 	"github.com/IBM/idemix/bccsp/handlers"
 	"github.com/IBM/idemix/bccsp/schemes/aries"
 	"github.com/IBM/idemix/bccsp/schemes/dlog/bridge"
 	idemix "github.com/IBM/idemix/bccsp/schemes/dlog/crypto"
 	bccsp "github.com/IBM/idemix/bccsp/types"
 	math "github.com/IBM/mathlib"
-	"github.com/IBM/idemix/bbs"
 	"github.com/pkg/errors"
 )
 

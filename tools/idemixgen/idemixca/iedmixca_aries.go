@@ -9,13 +9,13 @@ package idemixca
 import (
 	"crypto/ecdsa"
 
+	"github.com/IBM/idemix/bbs"
 	"github.com/IBM/idemix/bccsp/schemes/aries"
 	bccsp "github.com/IBM/idemix/bccsp/types"
 	imsp "github.com/IBM/idemix/msp"
 	im "github.com/IBM/idemix/msp/config"
 	math "github.com/IBM/mathlib"
 	"github.com/golang/protobuf/proto"
-	"github.com/IBM/idemix/bbs"
 	"github.com/pkg/errors"
 )
 

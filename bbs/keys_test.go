@@ -12,9 +12,9 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/IBM/idemix/bbs"
 	ml "github.com/IBM/mathlib"
 	"github.com/btcsuite/btcutil/base58"
-	"github.com/IBM/idemix/bbs"
 	"github.com/stretchr/testify/require"
 )
 

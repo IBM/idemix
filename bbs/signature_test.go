@@ -9,8 +9,8 @@ package bbs_test
 import (
 	"testing"
 
-	ml "github.com/IBM/mathlib"
 	"github.com/IBM/idemix/bbs"
+	ml "github.com/IBM/mathlib"
 	"github.com/stretchr/testify/require"
 )
 

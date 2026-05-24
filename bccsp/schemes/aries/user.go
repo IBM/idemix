@@ -9,9 +9,9 @@ package aries
 import (
 	"io"
 
+	"github.com/IBM/idemix/bbs"
 	"github.com/IBM/idemix/bccsp/types"
 	math "github.com/IBM/mathlib"
-	"github.com/IBM/idemix/bbs"
 	"github.com/pkg/errors"
 )
 

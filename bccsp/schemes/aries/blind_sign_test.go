@@ -11,10 +11,10 @@ import (
 	"crypto/sha256"
 	"testing"
 
+	"github.com/IBM/idemix/bbs"
 	"github.com/IBM/idemix/bccsp/schemes/aries"
 	math "github.com/IBM/mathlib"
 	ml "github.com/IBM/mathlib"
-	"github.com/IBM/idemix/bbs"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

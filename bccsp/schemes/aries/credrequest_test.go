@@ -9,10 +9,10 @@ package aries_test
 import (
 	"testing"
 
+	"github.com/IBM/idemix/bbs"
 	"github.com/IBM/idemix/bccsp/schemes/aries"
 	"github.com/IBM/idemix/bccsp/types"
 	math "github.com/IBM/mathlib"
-	"github.com/IBM/idemix/bbs"
 	"github.com/stretchr/testify/assert"
 )
 
