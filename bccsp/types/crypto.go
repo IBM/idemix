@@ -53,9 +53,6 @@ type Key interface {
 // KeyGenOpts contains options for key-generation with a CSP.
 type KeyGenOpts interface {
 
-	// Algorithm returns the key generation algorithm identifier (to be used).
-	Algorithm() string
-
 	// Ephemeral returns true if the key to generate has to be ephemeral,
 	// false otherwise.
 	Ephemeral() bool
@@ -64,9 +61,6 @@ type KeyGenOpts interface {
 // KeyDerivOpts contains options for key-derivation with a CSP.
 type KeyDerivOpts interface {
 
-	// Algorithm returns the key derivation algorithm identifier (to be used).
-	Algorithm() string
-
 	// Ephemeral returns true if the key to derived has to be ephemeral,
 	// false otherwise.
 	Ephemeral() bool
@@ -74,9 +68,6 @@ type KeyDerivOpts interface {
 
 // KeyImportOpts contains options for importing the raw material of a key with a CSP.
 type KeyImportOpts interface {
-
-	// Algorithm returns the key importation algorithm identifier (to be used).
-	Algorithm() string
 
 	// Ephemeral returns true if the key generated has to be ephemeral,
 	// false otherwise.
