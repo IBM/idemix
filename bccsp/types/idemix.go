@@ -22,7 +22,7 @@ type IssuerPublicKey interface {
 	Hash() []byte
 }
 
-// IssuerPublicKey is the issuer secret key
+// IssuerSecretKey is the issuer secret key
 type IssuerSecretKey interface {
 
 	// Bytes returns the byte representation of this key
@@ -37,16 +37,16 @@ type Issuer interface {
 	// NewKey generates a new idemix issuer key w.r.t the passed attribute names.
 	NewKey(AttributeNames []string) (IssuerSecretKey, error)
 
-	// NewPublicKeyFromBytes converts the passed bytes to an Issuer key
-	// It makes sure that the so obtained  key has the passed attributes, if specified
+	// NewKeyFromBytes converts the passed bytes to an Issuer secret key.
+	// It makes sure that the so obtained key has the passed attributes, if specified
 	NewKeyFromBytes(raw []byte, attributes []string) (IssuerSecretKey, error)
 
-	// NewPublicKeyFromBytes converts the passed bytes to an Issuer public key
+	// NewPublicKeyFromBytes converts the passed bytes to an Issuer public key.
 	// It makes sure that the so obtained public key has the passed attributes, if specified
 	NewPublicKeyFromBytes(raw []byte, attributes []string) (IssuerPublicKey, error)
 
-	// Bases returns the bases used for committments produced by
-	// key `ipk` (when it is of an applicable type `ipkType`)
+	// Bases returns the bases used for commitments produced by
+	// key ipk (when it is of an applicable type ipkType)
 	Bases(ipk IssuerPublicKey, ipkType CommitmentBasesRequest, RhIndex, EidIndex, SKIndex int) (map[CommitmentType]interface{}, error)
 }
 
@@ -92,7 +92,7 @@ type BlindCredRequest interface {
 	Unblind(signature, blinding []byte) ([]byte, error)
 }
 
-// CredRequest is a local interface to decouple from the idemix implementation
+// Credential is a local interface to decouple from the idemix implementation
 // of the issuance of credentials.
 type Credential interface {
 
