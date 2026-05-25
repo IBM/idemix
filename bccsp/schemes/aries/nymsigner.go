@@ -9,10 +9,10 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/IBM/idemix/bbs"
 	"github.com/IBM/idemix/bccsp/types"
 	math "github.com/IBM/mathlib"
 	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/aries-bbs-go/bbs"
 )
 
 const nymSigLabel = "nym-sig"

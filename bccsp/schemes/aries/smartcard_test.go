@@ -13,9 +13,9 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/IBM/idemix/bbs"
 	"github.com/IBM/idemix/bccsp/schemes/aries"
 	math "github.com/IBM/mathlib"
-	"github.com/hyperledger/aries-bbs-go/bbs"
 	"github.com/stretchr/testify/assert"
 )
 

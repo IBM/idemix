@@ -13,6 +13,7 @@ import (
 	"os"
 	"testing"
 
+	"github.com/IBM/idemix/bbs"
 	idemix "github.com/IBM/idemix/bccsp"
 	"github.com/IBM/idemix/bccsp/handlers"
 	"github.com/IBM/idemix/bccsp/schemes/aries"
@@ -21,7 +22,6 @@ import (
 	"github.com/IBM/idemix/msp/config"
 	math "github.com/IBM/mathlib"
 	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/aries-bbs-go/bbs"
 	"github.com/stretchr/testify/assert"
 )
 

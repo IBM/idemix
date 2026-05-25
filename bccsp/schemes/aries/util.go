@@ -7,9 +7,9 @@ SPDX-License-Identifier: Apache-2.0
 package aries
 
 import (
+	"github.com/IBM/idemix/bbs"
 	"github.com/IBM/idemix/bccsp/types"
 	math "github.com/IBM/mathlib"
-	"github.com/hyperledger/aries-bbs-go/bbs"
 )
 
 func attributesToSignatureMessage(attributes []types.IdemixAttribute, curve *math.Curve, skPos int) []*bbs.SignatureMessage {

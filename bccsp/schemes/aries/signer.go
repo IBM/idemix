@@ -11,10 +11,10 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/IBM/idemix/bbs"
 	"github.com/IBM/idemix/bccsp/types"
 	math "github.com/IBM/mathlib"
 	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/aries-bbs-go/bbs"
 )
 
 // AttributeIndexInNym is the index of the blinding factor of the attribute in a Nym commitment

@@ -10,9 +10,9 @@ import (
 	"crypto/sha256"
 	"fmt"
 
+	"github.com/IBM/idemix/bbs"
 	"github.com/IBM/idemix/bccsp/types"
 	math "github.com/IBM/mathlib"
-	"github.com/hyperledger/aries-bbs-go/bbs"
 )
 
 // TODO:
