@@ -15,11 +15,6 @@ import (
 type RevocationAlgorithm int32
 
 const (
-	// IDEMIX constant to identify Idemix related algorithms
-	IDEMIX = "IDEMIX"
-)
-
-const (
 	// AlgNoRevocation means no revocation support
 	AlgNoRevocation RevocationAlgorithm = iota
 )
@@ -31,11 +26,6 @@ type IdemixIssuerKeyGenOpts struct {
 	Temporary bool
 	// AttributeNames is a list of attributes
 	AttributeNames []string
-}
-
-// Algorithm returns the key generation algorithm identifier (to be used).
-func (*IdemixIssuerKeyGenOpts) Algorithm() string {
-	return IDEMIX
 }
 
 // Ephemeral returns true if the key to generate has to be ephemeral,
@@ -78,11 +68,6 @@ type IdemixIssuerPublicKeyImportOpts struct {
 	CommitmentBases map[CommitmentType]interface{}
 }
 
-// Algorithm returns the key generation algorithm identifier (to be used).
-func (*IdemixIssuerPublicKeyImportOpts) Algorithm() string {
-	return IDEMIX
-}
-
 // Ephemeral returns true if the key to generate has to be ephemeral,
 // false otherwise.
 func (o *IdemixIssuerPublicKeyImportOpts) Ephemeral() bool {
@@ -96,11 +81,6 @@ type IdemixIssuerKeyImportOpts struct {
 	AttributeNames []string
 }
 
-// Algorithm returns the key generation algorithm identifier (to be used).
-func (*IdemixIssuerKeyImportOpts) Algorithm() string {
-	return IDEMIX
-}
-
 // Ephemeral returns true if the key to generate has to be ephemeral,
 // false otherwise.
 func (o *IdemixIssuerKeyImportOpts) Ephemeral() bool {
@@ -112,11 +92,6 @@ type IdemixUserSecretKeyGenOpts struct {
 	Temporary bool
 }
 
-// Algorithm returns the key generation algorithm identifier (to be used).
-func (*IdemixUserSecretKeyGenOpts) Algorithm() string {
-	return IDEMIX
-}
-
 // Ephemeral returns true if the key to generate has to be ephemeral,
 // false otherwise.
 func (o *IdemixUserSecretKeyGenOpts) Ephemeral() bool {
@@ -126,11 +101,6 @@ func (o *IdemixUserSecretKeyGenOpts) Ephemeral() bool {
 // IdemixUserSecretKeyImportOpts contains the options for importing of an Idemix credential secret key.
 type IdemixUserSecretKeyImportOpts struct {
 	Temporary bool
-}
-
-// Algorithm returns the key generation algorithm identifier (to be used).
-func (*IdemixUserSecretKeyImportOpts) Algorithm() string {
-	return IDEMIX
 }
 
 // Ephemeral returns true if the key to generate has to be ephemeral,
@@ -146,11 +116,6 @@ type IdemixNymKeyDerivationOpts struct {
 	Temporary bool
 	// IssuerPK is the public-key of the issuer
 	IssuerPK Key
-}
-
-// Algorithm returns the key derivation algorithm identifier (to be used).
-func (*IdemixNymKeyDerivationOpts) Algorithm() string {
-	return IDEMIX
 }
 
 // Ephemeral returns true if the key to derive has to be ephemeral,
@@ -171,11 +136,6 @@ type IdemixNymPublicKeyImportOpts struct {
 	Temporary bool
 }
 
-// Algorithm returns the key derivation algorithm identifier (to be used).
-func (*IdemixNymPublicKeyImportOpts) Algorithm() string {
-	return IDEMIX
-}
-
 // Ephemeral returns true if the key to derive has to be ephemeral,
 // false otherwise.
 func (o *IdemixNymPublicKeyImportOpts) Ephemeral() bool {
@@ -186,11 +146,6 @@ func (o *IdemixNymPublicKeyImportOpts) Ephemeral() bool {
 type IdemixNymKeyImportOpts struct {
 	// Temporary tells if the key is ephemeral
 	Temporary bool
-}
-
-// Algorithm returns the key derivation algorithm identifier (to be used).
-func (*IdemixNymKeyImportOpts) Algorithm() string {
-	return IDEMIX
 }
 
 // Ephemeral returns true if the key to derive has to be ephemeral,
@@ -413,11 +368,6 @@ type IdemixRevocationKeyGenOpts struct {
 	Temporary bool
 }
 
-// Algorithm returns the key generation algorithm identifier (to be used).
-func (*IdemixRevocationKeyGenOpts) Algorithm() string {
-	return IDEMIX
-}
-
 // Ephemeral returns true if the key to generate has to be ephemeral,
 // false otherwise.
 func (o *IdemixRevocationKeyGenOpts) Ephemeral() bool {
@@ -429,11 +379,6 @@ type IdemixRevocationPublicKeyImportOpts struct {
 	Temporary bool
 }
 
-// Algorithm returns the key generation algorithm identifier (to be used).
-func (*IdemixRevocationPublicKeyImportOpts) Algorithm() string {
-	return IDEMIX
-}
-
 // Ephemeral returns true if the key to generate has to be ephemeral,
 // false otherwise.
 func (o *IdemixRevocationPublicKeyImportOpts) Ephemeral() bool {
@@ -443,11 +388,6 @@ func (o *IdemixRevocationPublicKeyImportOpts) Ephemeral() bool {
 // IdemixRevocationKeyImportOpts contains the options for importing of an Idemix revocation key pair.
 type IdemixRevocationKeyImportOpts struct {
 	Temporary bool
-}
-
-// Algorithm returns the key generation algorithm identifier (to be used).
-func (*IdemixRevocationKeyImportOpts) Algorithm() string {
-	return IDEMIX
 }
 
 // Ephemeral returns true if the key to generate has to be ephemeral,

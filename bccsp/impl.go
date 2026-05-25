@@ -124,7 +124,7 @@ func (csp *CSP) KeyGen(opts bccsp.KeyGenOpts) (k bccsp.Key, err error) {
 		// Store the key
 		err = csp.ks.StoreKey(k)
 		if err != nil {
-			return nil, errors.Wrapf(err, "Failed storing key [%s]", opts.Algorithm())
+			return nil, errors.Wrapf(err, "Failed storing key [%v]", reflect.TypeOf(opts))
 		}
 	}
 
@@ -157,7 +157,7 @@ func (csp *CSP) KeyDeriv(k bccsp.Key, opts bccsp.KeyDerivOpts) (dk bccsp.Key, er
 		// Store the key
 		err = csp.ks.StoreKey(k)
 		if err != nil {
-			return nil, errors.Wrapf(err, "Failed storing key [%s]", opts.Algorithm())
+			return nil, errors.Wrapf(err, "Failed storing key [%v]", reflect.TypeOf(opts))
 		}
 	}
 
