@@ -205,8 +205,9 @@ const (
 )
 
 var mspTypeStrings = map[ProviderType]string{
-	FABRIC: "bccsp",
-	IDEMIX: "idemix",
+	FABRIC:       "bccsp",
+	IDEMIX:       "idemix",
+	IDEMIX_ARIES: "idemix-aries",
 }
 
 // ProviderTypeToString returns a string that represents the ProviderType integer
