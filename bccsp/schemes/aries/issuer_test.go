@@ -12,10 +12,11 @@ import (
 	"github.com/IBM/idemix/bccsp/schemes/aries"
 	math "github.com/IBM/mathlib"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestIssuer(t *testing.T) {
-	issuer := &aries.Issuer{math.Curves[math.BLS12_381_BBS]}
+	issuer := &aries.Issuer{Curve: math.Curves[math.BLS12_381_BBS]}
 
 	attrs := []string{
 		"attr1",
@@ -25,34 +26,42 @@ func TestIssuer(t *testing.T) {
 	}
 
 	isk, err := issuer.NewKey(attrs)
-	assert.NoError(t, err)
-	assert.NotNil(t, isk)
-
-	iskBytes, err := isk.Bytes()
-	assert.NoError(t, err)
-	assert.NotNil(t, iskBytes)
-
-	isk1, err := issuer.NewKeyFromBytes(iskBytes, attrs)
-	assert.NoError(t, err)
-	assert.NotNil(t, isk1)
-	assert.Equal(t, isk, isk1)
+	require.NoError(t, err)
+	require.NotNil(t, isk)
 
 	ipk := isk.Public()
-	assert.NotNil(t, ipk)
+	require.NotNil(t, ipk)
 
-	ipkBytes, err := ipk.Bytes()
-	assert.NoError(t, err)
-	assert.NotNil(t, ipkBytes)
+	t.Run("secret_key_roundtrip", func(t *testing.T) {
+		iskBytes, err := isk.Bytes()
+		require.NoError(t, err)
+		require.NotNil(t, iskBytes)
 
-	ipk1, err := issuer.NewPublicKeyFromBytes(ipkBytes, attrs)
-	assert.NoError(t, err)
-	assert.NotNil(t, ipk1)
-	assert.True(t, ipk.(*aries.IssuerPublicKey).PK.PointG2.Equals(ipk1.(*aries.IssuerPublicKey).PK.PointG2))
-	assert.Equal(t, ipk.(*aries.IssuerPublicKey).N, ipk1.(*aries.IssuerPublicKey).N)
+		isk1, err := issuer.NewKeyFromBytes(iskBytes, attrs)
+		assert.NoError(t, err)
+		assert.NotNil(t, isk1)
+		assert.Equal(t, isk, isk1)
+	})
 
-	_, err = issuer.NewKeyFromBytes([]byte("resistance is futile"), attrs)
-	assert.EqualError(t, err, "UnmarshalPrivateKey failed [invalid size of private key]")
+	t.Run("public_key_roundtrip", func(t *testing.T) {
+		ipkBytes, err := ipk.Bytes()
+		require.NoError(t, err)
+		require.NotNil(t, ipkBytes)
 
-	_, err = issuer.NewPublicKeyFromBytes([]byte("resresistance is futile"), attrs)
-	assert.EqualError(t, err, "UnmarshalPublicKey failed [invalid size of public key]")
+		ipk1, err := issuer.NewPublicKeyFromBytes(ipkBytes, attrs)
+		assert.NoError(t, err)
+		assert.NotNil(t, ipk1)
+		assert.True(t, ipk.(*aries.IssuerPublicKey).PK.PointG2.Equals(ipk1.(*aries.IssuerPublicKey).PK.PointG2))
+		assert.Equal(t, ipk.(*aries.IssuerPublicKey).N, ipk1.(*aries.IssuerPublicKey).N)
+	})
+
+	t.Run("invalid_secret_key_bytes", func(t *testing.T) {
+		_, err := issuer.NewKeyFromBytes([]byte("resistance is futile"), attrs)
+		assert.EqualError(t, err, "UnmarshalPrivateKey failed [invalid size of private key]")
+	})
+
+	t.Run("invalid_public_key_bytes", func(t *testing.T) {
+		_, err := issuer.NewPublicKeyFromBytes([]byte("resresistance is futile"), attrs)
+		assert.EqualError(t, err, "UnmarshalPublicKey failed [invalid size of public key]")
+	})
 }

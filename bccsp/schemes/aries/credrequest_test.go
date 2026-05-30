@@ -14,14 +14,17 @@ import (
 	"github.com/IBM/idemix/bccsp/types"
 	math "github.com/IBM/mathlib"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestCredRequest(t *testing.T) {
+	curve := math.Curves[math.BLS12_381_BBS]
+
 	credProto := &aries.Cred{
-		BBS:   bbs.New(math.Curves[math.BLS12_381_BBS]),
-		Curve: math.Curves[math.BLS12_381_BBS],
+		BBS:   bbs.New(curve),
+		Curve: curve,
 	}
-	issuerProto := &aries.Issuer{math.Curves[math.BLS12_381_BBS]}
+	issuerProto := &aries.Issuer{Curve: curve}
 
 	attrs := []string{
 		"attr1",
@@ -31,144 +34,88 @@ func TestCredRequest(t *testing.T) {
 	}
 
 	isk, err := issuerProto.NewKey(attrs)
-	assert.NoError(t, err)
-	assert.NotNil(t, isk)
+	require.NoError(t, err)
 
 	ipk := isk.Public()
 
-	cr := &aries.CredRequest{
-		Curve: math.Curves[math.BLS12_381_BBS],
-	}
+	cr := &aries.CredRequest{Curve: curve}
 
-	rand, err := math.Curves[math.BLS12_381_BBS].Rand()
-	assert.NoError(t, err)
+	rand, err := curve.Rand()
+	require.NoError(t, err)
 
 	userProto := &aries.User{
-		Curve: math.Curves[math.BLS12_381_BBS],
+		Curve: curve,
 		Rng:   rand,
 	}
 
 	sk, err := userProto.NewKey()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	credReq, blinding, err := cr.Blind(sk, ipk, []byte("la la land"))
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	err = cr.BlindVerify(credReq, ipk, []byte("la la land"))
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
-	idemixAttrs := []types.IdemixAttribute{
-		{
-			Type:  types.IdemixBytesAttribute,
-			Value: []byte("msg1"),
-		},
-		{
-			Type:  types.IdemixIntAttribute,
-			Value: 3,
-		},
-		{
-			Type:  types.IdemixBytesAttribute,
-			Value: []byte("msg3"),
-		},
-		{
-			Type:  types.IdemixBytesAttribute,
-			Value: []byte("msg4"),
-		},
+	allAttrs := []types.IdemixAttribute{
+		{Type: types.IdemixBytesAttribute, Value: []byte("msg1")},
+		{Type: types.IdemixIntAttribute, Value: 3},
+		{Type: types.IdemixBytesAttribute, Value: []byte("msg3")},
+		{Type: types.IdemixBytesAttribute, Value: []byte("msg4")},
 	}
 
-	cred, err := credProto.Sign(isk, credReq, idemixAttrs)
-	assert.NoError(t, err)
+	cred, err := credProto.Sign(isk, credReq, allAttrs)
+	require.NoError(t, err)
 
 	cred, err = cr.Unblind(cred, blinding)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
-	err = credProto.Verify(sk, ipk, cred, idemixAttrs)
-	assert.NoError(t, err)
+	t.Run("full_lifecycle", func(t *testing.T) {
+		err := credProto.Verify(sk, ipk, cred, allAttrs)
+		assert.NoError(t, err)
+	})
 
-	idemixAttrs = []types.IdemixAttribute{
-		{
-			Type:  types.IdemixBytesAttribute,
-			Value: []byte("msg1"),
-		},
-		{
-			Type:  types.IdemixIntAttribute,
-			Value: 3,
-		},
-		{
-			Type:  types.IdemixBytesAttribute,
-			Value: []byte("msg3"),
-		},
-		{
-			Type: types.IdemixHiddenAttribute,
-		},
-	}
+	t.Run("verify_with_hidden_last_attr", func(t *testing.T) {
+		attrs := []types.IdemixAttribute{
+			{Type: types.IdemixBytesAttribute, Value: []byte("msg1")},
+			{Type: types.IdemixIntAttribute, Value: 3},
+			{Type: types.IdemixBytesAttribute, Value: []byte("msg3")},
+			{Type: types.IdemixHiddenAttribute},
+		}
+		err := credProto.Verify(sk, ipk, cred, attrs)
+		assert.NoError(t, err)
+	})
 
-	// verify succeeds when supplying hidden attrs
-	err = credProto.Verify(sk, ipk, cred, idemixAttrs)
-	assert.NoError(t, err)
+	t.Run("verify_with_hidden_first_and_last_attr", func(t *testing.T) {
+		attrs := []types.IdemixAttribute{
+			{Type: types.IdemixHiddenAttribute},
+			{Type: types.IdemixIntAttribute, Value: 3},
+			{Type: types.IdemixBytesAttribute, Value: []byte("msg3")},
+			{Type: types.IdemixHiddenAttribute},
+		}
+		err := credProto.Verify(sk, ipk, cred, attrs)
+		assert.NoError(t, err)
+	})
 
-	idemixAttrs = []types.IdemixAttribute{
-		{
-			Type: types.IdemixHiddenAttribute,
-		},
-		{
-			Type:  types.IdemixIntAttribute,
-			Value: 3,
-		},
-		{
-			Type:  types.IdemixBytesAttribute,
-			Value: []byte("msg3"),
-		},
-		{
-			Type: types.IdemixHiddenAttribute,
-		},
-	}
+	t.Run("wrong_attr_at_position_0", func(t *testing.T) {
+		attrs := []types.IdemixAttribute{
+			{Type: types.IdemixBytesAttribute, Value: []byte("msg2")},
+			{Type: types.IdemixIntAttribute, Value: 3},
+			{Type: types.IdemixBytesAttribute, Value: []byte("msg3")},
+			{Type: types.IdemixHiddenAttribute},
+		}
+		err := credProto.Verify(sk, ipk, cred, attrs)
+		assert.EqualError(t, err, "credential does not contain the correct attribute value at position [0]")
+	})
 
-	// verify succeeds when supplying hidden attrs and one of the hidden attrs is not the last
-	err = credProto.Verify(sk, ipk, cred, idemixAttrs)
-	assert.NoError(t, err)
-
-	idemixAttrs = []types.IdemixAttribute{
-		{
-			Type:  types.IdemixBytesAttribute,
-			Value: []byte("msg2"),
-		},
-		{
-			Type:  types.IdemixIntAttribute,
-			Value: 3,
-		},
-		{
-			Type:  types.IdemixBytesAttribute,
-			Value: []byte("msg3"),
-		},
-		{
-			Type: types.IdemixHiddenAttribute,
-		},
-	}
-
-	// verify fails when supplying wrong attrs
-	err = credProto.Verify(sk, ipk, cred, idemixAttrs)
-	assert.EqualError(t, err, "credential does not contain the correct attribute value at position [0]")
-
-	idemixAttrs = []types.IdemixAttribute{
-		{
-			Type:  types.IdemixBytesAttribute,
-			Value: []byte("msg1"),
-		},
-		{
-			Type:  types.IdemixIntAttribute,
-			Value: 2,
-		},
-		{
-			Type:  types.IdemixBytesAttribute,
-			Value: []byte("msg3"),
-		},
-		{
-			Type: types.IdemixHiddenAttribute,
-		},
-	}
-
-	// verify fails when supplying wrong attrs
-	err = credProto.Verify(sk, ipk, cred, idemixAttrs)
-	assert.EqualError(t, err, "credential does not contain the correct attribute value at position [1]")
+	t.Run("wrong_attr_at_position_1", func(t *testing.T) {
+		attrs := []types.IdemixAttribute{
+			{Type: types.IdemixBytesAttribute, Value: []byte("msg1")},
+			{Type: types.IdemixIntAttribute, Value: 2},
+			{Type: types.IdemixBytesAttribute, Value: []byte("msg3")},
+			{Type: types.IdemixHiddenAttribute},
+		}
+		err := credProto.Verify(sk, ipk, cred, attrs)
+		assert.EqualError(t, err, "credential does not contain the correct attribute value at position [1]")
+	})
 }

@@ -12,10 +12,11 @@ import (
 	"github.com/IBM/idemix/bccsp/schemes/aries"
 	math "github.com/IBM/mathlib"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestUser(t *testing.T) {
-	issuer := &aries.Issuer{math.Curves[math.BLS12_381_BBS]}
+	issuer := &aries.Issuer{Curve: math.Curves[math.BLS12_381_BBS]}
 
 	attrs := []string{
 		"attr1",
@@ -25,13 +26,12 @@ func TestUser(t *testing.T) {
 	}
 
 	isk, err := issuer.NewKey(attrs)
-	assert.NoError(t, err)
-	assert.NotNil(t, isk)
+	require.NoError(t, err)
 
 	ipk := isk.Public()
 
 	rand, err := math.Curves[math.BLS12_381_BBS].Rand()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	user := &aries.User{
 		Curve: math.Curves[math.BLS12_381_BBS],
@@ -39,16 +39,17 @@ func TestUser(t *testing.T) {
 	}
 
 	sk, err := user.NewKey()
-	assert.NoError(t, err)
-	assert.NotNil(t, sk)
+	require.NoError(t, err)
 
-	sk1, err := user.NewKeyFromBytes(sk.Bytes())
-	assert.NoError(t, err)
-	assert.NotNil(t, sk1)
-	assert.Equal(t, sk, sk1)
+	t.Run("key_roundtrip", func(t *testing.T) {
+		sk1, err := user.NewKeyFromBytes(sk.Bytes())
+		assert.NoError(t, err)
+		assert.NotNil(t, sk1)
+		assert.Equal(t, sk, sk1)
+	})
 
 	nym, r, err := user.MakeNym(sk, ipk)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	nymBytes := nym.Bytes()
 	rBytes := r.Bytes()
@@ -56,32 +57,50 @@ func TestUser(t *testing.T) {
 	bothBytes = append(bothBytes, rBytes...)
 	bothBytes = append(bothBytes, nymBytes...)
 
-	nym1, err := user.NewPublicNymFromBytes(nymBytes)
-	assert.NoError(t, err)
-	assert.NotNil(t, nym)
-	assert.True(t, nym.Equals(nym1))
+	t.Run("public_nym_roundtrip", func(t *testing.T) {
+		nym1, err := user.NewPublicNymFromBytes(nymBytes)
+		assert.NoError(t, err)
+		assert.NotNil(t, nym1)
+		assert.True(t, nym.Equals(nym1))
+	})
 
-	nym1, r1, err := user.NewNymFromBytes(bothBytes)
-	assert.NoError(t, err)
-	assert.NotNil(t, nym)
-	assert.True(t, nym.Equals(nym1))
-	assert.NotNil(t, r1)
-	assert.Equal(t, r, r1)
+	t.Run("nym_roundtrip", func(t *testing.T) {
+		nym1, r1, err := user.NewNymFromBytes(bothBytes)
+		assert.NoError(t, err)
+		assert.NotNil(t, nym1)
+		assert.True(t, nym.Equals(nym1))
+		assert.NotNil(t, r1)
+		assert.Equal(t, r, r1)
+	})
 
-	nymBytes[len(nymBytes)-1] = 0
-	_, err = user.NewPublicNymFromBytes(nymBytes)
-	assert.EqualError(t, err, "failure [set bytes failed [point is not on curve]]")
+	t.Run("corrupted_public_nym_bytes", func(t *testing.T) {
+		corrupted := make([]byte, len(nymBytes))
+		copy(corrupted, nymBytes)
+		corrupted[len(corrupted)-1] = 0
+		_, err := user.NewPublicNymFromBytes(corrupted)
+		assert.EqualError(t, err, "failure [set bytes failed [point is not on curve]]")
+	})
 
-	bothBytes[len(bothBytes)-1] = 0
-	_, _, err = user.NewNymFromBytes(bothBytes)
-	assert.EqualError(t, err, "failure [set bytes failed [point is not on curve]]")
+	t.Run("corrupted_nym_bytes", func(t *testing.T) {
+		corrupted := make([]byte, len(bothBytes))
+		copy(corrupted, bothBytes)
+		corrupted[len(corrupted)-1] = 0
+		_, _, err := user.NewNymFromBytes(corrupted)
+		assert.EqualError(t, err, "failure [set bytes failed [point is not on curve]]")
+	})
 
-	_, err = user.NewKeyFromBytes([]byte("yän-dər"))
-	assert.EqualError(t, err, "invalid length, expected [32], got [9]")
+	t.Run("invalid_key_bytes", func(t *testing.T) {
+		_, err := user.NewKeyFromBytes([]byte("yän-dər"))
+		assert.EqualError(t, err, "invalid length, expected [32], got [9]")
+	})
 
-	_, err = user.NewPublicNymFromBytes([]byte("yän-dər"))
-	assert.EqualError(t, err, "invalid length, expected [96], got [9]")
+	t.Run("invalid_public_nym_length", func(t *testing.T) {
+		_, err := user.NewPublicNymFromBytes([]byte("yän-dər"))
+		assert.EqualError(t, err, "invalid length, expected [96], got [9]")
+	})
 
-	_, _, err = user.NewNymFromBytes([]byte("yän-dər"))
-	assert.EqualError(t, err, "invalid length, expected [128], got [9]")
+	t.Run("invalid_nym_length", func(t *testing.T) {
+		_, _, err := user.NewNymFromBytes([]byte("yän-dər"))
+		assert.EqualError(t, err, "invalid length, expected [128], got [9]")
+	})
 }

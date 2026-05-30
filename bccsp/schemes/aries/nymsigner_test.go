@@ -6,20 +6,22 @@ SPDX-License-Identifier: Apache-2.0
 package aries_test
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/IBM/idemix/bbs"
 	"github.com/IBM/idemix/bccsp/schemes/aries"
 	math "github.com/IBM/mathlib"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestNymSigner(t *testing.T) {
 	curve := math.Curves[math.BLS12_381_BBS]
 	rand, err := curve.Rand()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
-	issuerProto := &aries.Issuer{curve}
+	issuerProto := &aries.Issuer{Curve: curve}
 
 	attrs := []string{
 		"attr1",
@@ -29,8 +31,7 @@ func TestNymSigner(t *testing.T) {
 	}
 
 	isk, err := issuerProto.NewKey(attrs)
-	assert.NoError(t, err)
-	assert.NotNil(t, isk)
+	require.NoError(t, err)
 
 	_ipk := isk.Public()
 	ipk := _ipk.(*aries.IssuerPublicKey)
@@ -44,41 +45,53 @@ func TestNymSigner(t *testing.T) {
 	rNym := curve.NewRandomZr(rand)
 
 	for skPos := range attrs {
-		signer.UserSecretKeyIndex = skPos
+		t.Run(fmt.Sprintf("skPos=%d", skPos), func(t *testing.T) {
+			signer.UserSecretKeyIndex = skPos
 
-		cb := bbs.NewCommitmentBuilder(2)
-		cb.Add(ipk.PKwG.H0, rNym)
-		cb.Add(ipk.PKwG.H[skPos], sk)
-		nym := cb.Build()
+			cb := bbs.NewCommitmentBuilder(2)
+			cb.Add(ipk.PKwG.H0, rNym)
+			cb.Add(ipk.PKwG.H[skPos], sk)
+			nym := cb.Build()
 
-		sig, err := signer.Sign(sk, nym, rNym, _ipk, []byte("ciao"))
-		assert.NoError(t, err)
+			t.Run("happy_path", func(t *testing.T) {
+				sig, err := signer.Sign(sk, nym, rNym, _ipk, []byte("ciao"))
+				assert.NoError(t, err)
 
-		err = signer.Verify(_ipk, nym, sig, []byte("ciao"), skPos)
-		assert.NoError(t, err)
+				err = signer.Verify(_ipk, nym, sig, []byte("ciao"), skPos)
+				assert.NoError(t, err)
+			})
 
-		sig, err = signer.Sign(sk, nym, curve.NewRandomZr(rand), _ipk, []byte("ciao"))
-		assert.NoError(t, err)
+			t.Run("wrong_randomness", func(t *testing.T) {
+				sig, err := signer.Sign(sk, nym, curve.NewRandomZr(rand), _ipk, []byte("ciao"))
+				assert.NoError(t, err)
 
-		err = signer.Verify(_ipk, nym, sig, []byte("ciao"), skPos)
-		assert.EqualError(t, err, "contribution is not zero")
+				err = signer.Verify(_ipk, nym, sig, []byte("ciao"), skPos)
+				assert.EqualError(t, err, "contribution is not zero")
+			})
 
-		sig, err = signer.Sign(curve.NewRandomZr(rand), nym, rNym, _ipk, []byte("ciao"))
-		assert.NoError(t, err)
+			t.Run("wrong_secret_key", func(t *testing.T) {
+				sig, err := signer.Sign(curve.NewRandomZr(rand), nym, rNym, _ipk, []byte("ciao"))
+				assert.NoError(t, err)
 
-		err = signer.Verify(_ipk, nym, sig, []byte("ciao"), skPos)
-		assert.EqualError(t, err, "contribution is not zero")
+				err = signer.Verify(_ipk, nym, sig, []byte("ciao"), skPos)
+				assert.EqualError(t, err, "contribution is not zero")
+			})
 
-		sig, err = signer.Sign(sk, curve.GenG1.Mul(curve.NewRandomZr(rand)), rNym, _ipk, []byte("ciao"))
-		assert.NoError(t, err)
+			t.Run("wrong_nym_at_sign", func(t *testing.T) {
+				sig, err := signer.Sign(sk, curve.GenG1.Mul(curve.NewRandomZr(rand)), rNym, _ipk, []byte("ciao"))
+				assert.NoError(t, err)
 
-		err = signer.Verify(_ipk, nym, sig, []byte("ciao"), skPos)
-		assert.EqualError(t, err, "contribution is not zero")
+				err = signer.Verify(_ipk, nym, sig, []byte("ciao"), skPos)
+				assert.EqualError(t, err, "contribution is not zero")
+			})
 
-		sig, err = signer.Sign(sk, nym, rNym, _ipk, []byte("ciao"))
-		assert.NoError(t, err)
+			t.Run("wrong_nym_at_verify", func(t *testing.T) {
+				sig, err := signer.Sign(sk, nym, rNym, _ipk, []byte("ciao"))
+				assert.NoError(t, err)
 
-		err = signer.Verify(_ipk, curve.GenG1.Mul(curve.NewRandomZr(rand)), sig, []byte("ciao"), skPos)
-		assert.EqualError(t, err, "contribution is not zero")
+				err = signer.Verify(_ipk, curve.GenG1.Mul(curve.NewRandomZr(rand)), sig, []byte("ciao"), skPos)
+				assert.EqualError(t, err, "contribution is not zero")
+			})
+		})
 	}
 }
