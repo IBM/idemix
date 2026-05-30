@@ -36,6 +36,10 @@ func (b *BlindedMessages) Bytes() []byte {
 }
 
 func ParseBlindedMessages(bytes []byte, curve *ml.Curve) (*BlindedMessages, error) {
+	if len(bytes) < 2*curve.CompressedG1ByteSize {
+		return nil, fmt.Errorf("invalid blinded messages: input too short (%d bytes, need at least %d)", len(bytes), 2*curve.CompressedG1ByteSize)
+	}
+
 	offset := 0
 
 	C, err := curve.NewG1FromCompressed(bytes[offset : offset+curve.CompressedG1ByteSize])
