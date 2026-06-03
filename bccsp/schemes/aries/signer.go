@@ -631,6 +631,10 @@ func (s *Signer) Verify(
 		return fmt.Errorf("proto.Unmarshal error: %w", err)
 	}
 
+	if sig.NonRevocationProof == nil {
+		return fmt.Errorf("signature has no non-revocation proof")
+	}
+
 	if sig.NonRevocationProof.RevocationAlg != int32(types.AlgNoRevocation) {
 		return fmt.Errorf("unsupported revocation algorithm")
 	}
