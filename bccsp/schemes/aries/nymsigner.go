@@ -87,6 +87,10 @@ func (s *NymSigner) Verify(
 		return fmt.Errorf("parse nym proof: %w", err)
 	}
 
+	if len(nymProof.Responses) < 2 {
+		return fmt.Errorf("invalid nym proof: expected at least 2 responses, got %d", len(nymProof.Responses))
+	}
+
 	challengeBytes := []byte(nymSigLabel)
 	challengeBytes = append(challengeBytes, Nym.Bytes()...)
 	challengeBytes = append(challengeBytes, ipk.PKwG.H0.Bytes()...)
