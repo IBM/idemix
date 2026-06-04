@@ -9,7 +9,7 @@ package idemixca
 import (
 	"crypto/x509"
 	"encoding/pem"
-	"io/ioutil"
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -19,9 +19,8 @@ import (
 	amclt "github.com/IBM/idemix/bccsp/schemes/dlog/crypto/translator/amcl"
 	imsp "github.com/IBM/idemix/msp"
 	math "github.com/IBM/mathlib"
-	"github.com/golang/protobuf/proto"
-	"github.com/pkg/errors"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/proto"
 )
 
 var testDir = filepath.Join(os.TempDir(), "idemixca-test")
@@ -157,12 +156,12 @@ func writeVerifierToFile(ipkBytes []byte, revpkBytes []byte) error {
 	if err != nil {
 		return err
 	}
-	err = ioutil.WriteFile(filepath.Join(testDir, imsp.IdemixConfigDirMsp, imsp.IdemixConfigFileIssuerPublicKey), ipkBytes, 0644)
+	err = os.WriteFile(filepath.Join(testDir, imsp.IdemixConfigDirMsp, imsp.IdemixConfigFileIssuerPublicKey), ipkBytes, 0644)
 	if err != nil {
 		return err
 	}
 
-	return ioutil.WriteFile(filepath.Join(testDir, imsp.IdemixConfigDirMsp, imsp.IdemixConfigFileRevocationPublicKey), revpkBytes, 0644)
+	return os.WriteFile(filepath.Join(testDir, imsp.IdemixConfigDirMsp, imsp.IdemixConfigFileRevocationPublicKey), revpkBytes, 0644)
 }
 
 func writeSignerToFile(signerBytes []byte) error {
@@ -170,7 +169,7 @@ func writeSignerToFile(signerBytes []byte) error {
 	if err != nil {
 		return err
 	}
-	return ioutil.WriteFile(filepath.Join(testDir, imsp.IdemixConfigDirUser, imsp.IdemixConfigFileSigner), signerBytes, 0644)
+	return os.WriteFile(filepath.Join(testDir, imsp.IdemixConfigDirUser, imsp.IdemixConfigFileSigner), signerBytes, 0644)
 }
 
 // setupMSP tests whether we can successfully setup an idemix msp
@@ -185,7 +184,7 @@ func setupMSP(idType imsp.ProviderType) error {
 		msp, err = imsp.NewIdemixMspAries(imsp.MSPv1_1)
 	}
 	if err != nil {
-		return errors.Wrap(err, "Getting MSP failed")
+		return fmt.Errorf("Getting MSP failed: %w", err)
 	}
 
 	mspConfig, err := imsp.GetIdemixMspConfigWithType(testDir, "TestName", idType)

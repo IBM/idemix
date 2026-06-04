@@ -35,3 +35,13 @@ binaries:
 genprotos:
 	go install github.com/bufbuild/buf/cmd/buf@v1.1.1
 	buf generate --template buf.gen.yaml
+
+.PHONY: fmt
+fmt: ## Run gofmt on the entire project
+	@echo "Running gofmt..."
+	@gofmt -l -s -w .
+
+.PHONY: tidy
+# tidy up go modules
+tidy:
+	@go mod tidy

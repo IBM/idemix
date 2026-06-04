@@ -11,8 +11,8 @@ import (
 
 	bccsp "github.com/IBM/idemix/bccsp/types"
 	im "github.com/IBM/idemix/msp/config"
-	"github.com/golang/protobuf/proto"
 	"github.com/stretchr/testify/assert"
+	"google.golang.org/protobuf/proto"
 )
 
 func TestAudit(t *testing.T) {

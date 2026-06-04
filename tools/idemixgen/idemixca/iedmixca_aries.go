@@ -8,6 +8,7 @@ package idemixca
 
 import (
 	"crypto/ecdsa"
+	"fmt"
 
 	"github.com/IBM/idemix/bbs"
 	"github.com/IBM/idemix/bccsp/schemes/aries"
@@ -15,8 +16,7 @@ import (
 	imsp "github.com/IBM/idemix/msp"
 	im "github.com/IBM/idemix/msp/config"
 	math "github.com/IBM/mathlib"
-	"github.com/golang/protobuf/proto"
-	"github.com/pkg/errors"
+	"google.golang.org/protobuf/proto"
 )
 
 // GenerateIssuerKey invokes Idemix library to generate an issuer (CA) signing key pair.
@@ -33,17 +33,17 @@ func GenerateIssuerKeyAries(curve *math.Curve) ([]byte, []byte, error) {
 
 	key, err := issuer.NewKey(AttributeNames)
 	if err != nil {
-		return nil, nil, errors.WithMessage(err, "cannot generate CA key")
+		return nil, nil, fmt.Errorf("cannot generate CA key: %w", err)
 	}
 
 	iskSerialised, err := key.(*aries.IssuerSecretKey).Bytes()
 	if err != nil {
-		return nil, nil, errors.WithMessage(err, "isk byte conversion error")
+		return nil, nil, fmt.Errorf("isk byte conversion error: %w", err)
 	}
 
 	ipkSerialized, err := key.Public().Bytes()
 	if err != nil {
-		return nil, nil, errors.WithMessage(err, "ipk byte conversion error")
+		return nil, nil, fmt.Errorf("ipk byte conversion error: %w", err)
 	}
 
 	return iskSerialised, ipkSerialized, nil
@@ -61,16 +61,16 @@ func GenerateSignerConfigAries(
 	curve *math.Curve,
 ) ([]byte, error) {
 	if ouString == "" {
-		return nil, errors.Errorf("the OU attribute value is empty")
+		return nil, fmt.Errorf("the OU attribute value is empty")
 	}
 
 	if enrollmentId == "" {
-		return nil, errors.Errorf("the enrollment id value is empty")
+		return nil, fmt.Errorf("the enrollment id value is empty")
 	}
 
 	rng, err := curve.Rand()
 	if err != nil {
-		return nil, errors.WithMessage(err, "Error getting PRNG")
+		return nil, fmt.Errorf("Error getting PRNG: %w", err)
 	}
 
 	blindSigner := &aries.CredRequest{
@@ -91,7 +91,7 @@ func GenerateSignerConfigAries(
 	AttributeNames := []string{imsp.AttributeNameOU, imsp.AttributeNameRole, imsp.AttributeNameEnrollmentId, imsp.AttributeNameRevocationHandle}
 	isk, err := issuer.NewKeyFromBytes(iskBytes, AttributeNames)
 	if err != nil {
-		return nil, errors.WithMessage(err, "issuer.NewKeyFromBytes failed")
+		return nil, fmt.Errorf("issuer.NewKeyFromBytes failed: %w", err)
 	}
 
 	attrs := make([]bccsp.IdemixAttribute, 4)
@@ -117,32 +117,32 @@ func GenerateSignerConfigAries(
 
 	cr, blinding, err := blindSigner.Blind(sk, isk.Public(), ni)
 	if err != nil {
-		return nil, errors.WithMessage(err, "blindSigner.Blind failed")
+		return nil, fmt.Errorf("blindSigner.Blind failed: %w", err)
 	}
 
 	err = blindSigner.BlindVerify(cr, isk.Public(), ni)
 	if err != nil {
-		return nil, errors.WithMessage(err, "blindSigner.BlindVerify failed")
+		return nil, fmt.Errorf("blindSigner.BlindVerify failed: %w", err)
 	}
 
 	cred, err := credentialSigner.Sign(isk, cr, attrs)
 	if err != nil {
-		return nil, errors.WithMessage(err, "credentialSigner.Sign failed")
+		return nil, fmt.Errorf("credentialSigner.Sign failed: %w", err)
 	}
 
 	cred, err = blindSigner.Unblind(cred, blinding)
 	if err != nil {
-		return nil, errors.WithMessage(err, "blindSigner.Unblind failed")
+		return nil, fmt.Errorf("blindSigner.Unblind failed: %w", err)
 	}
 
 	err = credentialSigner.Verify(sk, isk.Public(), cred, attrs)
 	if err != nil {
-		return nil, errors.WithMessage(err, "credentialSigner.Verify failed")
+		return nil, fmt.Errorf("credentialSigner.Verify failed: %w", err)
 	}
 
 	cri, err := revocationAuthority.Sign(revKey, nil, 0, bccsp.AlgNoRevocation)
 	if err != nil {
-		return nil, errors.WithMessage(err, "revocationAuthority.Sign failed")
+		return nil, fmt.Errorf("revocationAuthority.Sign failed: %w", err)
 	}
 
 	signer := &im.IdemixMSPSignerConfig{

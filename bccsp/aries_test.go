@@ -7,23 +7,31 @@ package idemix_test
 
 import (
 	"crypto/rand"
-	"io/ioutil"
 	"os"
 	"path"
 
 	idemix "github.com/IBM/idemix/bccsp"
 	"github.com/IBM/idemix/bccsp/schemes/aries"
+	idemix1 "github.com/IBM/idemix/bccsp/schemes/dlog/crypto"
 	"github.com/IBM/idemix/bccsp/schemes/dlog/crypto/translator/amcl"
 	bccsp "github.com/IBM/idemix/bccsp/types"
 	math "github.com/IBM/mathlib"
-	"github.com/golang/protobuf/proto"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"google.golang.org/protobuf/proto"
 )
 
 func testAries() {
-	curve := math.Curves[math.BLS12_381_BBS]
-	translator := &amcl.Gurvy{C: curve}
+	// testAriesWithCurve(math.FP256BN_AMCL, &amcl.Fp256bn{C: math.Curves[math.FP256BN_AMCL]})
+	// testAriesWithCurve(math.FP256BN_AMCL_MIRACL, &amcl.Fp256bnMiracl{C: math.Curves[math.FP256BN_AMCL_MIRACL]})
+	testAriesWithCurve(math.BN254, &amcl.Gurvy{C: math.Curves[math.BN254]})
+	testAriesWithCurve(math.BLS12_381, &amcl.Gurvy{C: math.Curves[math.BLS12_381]})
+	testAriesWithCurve(math.BLS12_377_GURVY, &amcl.Gurvy{C: math.Curves[math.BLS12_377_GURVY]})
+	testAriesWithCurve(math.BLS12_381_GURVY, &amcl.Gurvy{C: math.Curves[math.BLS12_381_GURVY]})
+}
+
+func testAriesWithCurve(id math.CurveID, translator idemix1.Translator) {
+	curve := math.Curves[id]
 
 	Describe("setting up the environment with one issuer and one user with curve", func() {
 		var (
@@ -52,7 +60,7 @@ func testAries() {
 		BeforeEach(func() {
 			var err error
 
-			rootDir, err = ioutil.TempDir(os.TempDir(), "idemixtest")
+			rootDir, err = os.MkdirTemp(os.TempDir(), "idemixtest"+math.CurveIDToString(id))
 			Expect(err).NotTo(HaveOccurred())
 
 			CSP, err = idemix.NewAries(NewDummyKeyStore(), curve, translator, true)
@@ -67,10 +75,10 @@ func testAries() {
 
 			raw, err := IssuerKey.Bytes()
 			Expect(err).NotTo(HaveOccurred())
-			Expect(ioutil.WriteFile(path.Join(rootDir, "issuerkey.sk"), raw, 0666)).NotTo(HaveOccurred())
+			Expect(os.WriteFile(path.Join(rootDir, "issuerkey.sk"), raw, 0666)).NotTo(HaveOccurred())
 			raw, err = IssuerPublicKey.Bytes()
 			Expect(err).NotTo(HaveOccurred())
-			Expect(ioutil.WriteFile(path.Join(rootDir, "issuerkey.pk"), raw, 0666)).NotTo(HaveOccurred())
+			Expect(os.WriteFile(path.Join(rootDir, "issuerkey.pk"), raw, 0666)).NotTo(HaveOccurred())
 
 			// User
 			UserKey, err = CSP.KeyGen(&bccsp.IdemixUserSecretKeyGenOpts{Temporary: true})
@@ -79,7 +87,7 @@ func testAries() {
 			raw, err = UserKey.Bytes()
 			Expect(err).NotTo(HaveOccurred())
 			// Expect(len(raw)).To(Equal(32))
-			Expect(ioutil.WriteFile(path.Join(rootDir, "userkey.sk"), raw, 0666)).NotTo(HaveOccurred())
+			Expect(os.WriteFile(path.Join(rootDir, "userkey.sk"), raw, 0666)).NotTo(HaveOccurred())
 
 			// User Nym Key
 			NymKey, err = CSP.KeyDeriv(UserKey, &bccsp.IdemixNymKeyDerivationOpts{Temporary: true, IssuerPK: IssuerPublicKey})
@@ -89,11 +97,11 @@ func testAries() {
 
 			raw, err = NymKey.Bytes()
 			Expect(err).NotTo(HaveOccurred())
-			Expect(ioutil.WriteFile(path.Join(rootDir, "nymkey.sk"), raw, 0666)).NotTo(HaveOccurred())
+			Expect(os.WriteFile(path.Join(rootDir, "nymkey.sk"), raw, 0666)).NotTo(HaveOccurred())
 			raw, err = NymPublicKey.Bytes()
 			Expect(len(raw)).To(Equal(2 * curve.CoordByteSize))
 			Expect(err).NotTo(HaveOccurred())
-			Expect(ioutil.WriteFile(path.Join(rootDir, "nymkey.pk"), raw, 0666)).NotTo(HaveOccurred())
+			Expect(os.WriteFile(path.Join(rootDir, "nymkey.pk"), raw, 0666)).NotTo(HaveOccurred())
 
 			IssuerNonce = make([]byte, curve.ScalarByteSize)
 			n, err := rand.Read(IssuerNonce)
@@ -133,10 +141,10 @@ func testAries() {
 
 			raw, err = RevocationKey.Bytes()
 			Expect(err).NotTo(HaveOccurred())
-			Expect(ioutil.WriteFile(path.Join(rootDir, "revocation.sk"), raw, 0666)).NotTo(HaveOccurred())
+			Expect(os.WriteFile(path.Join(rootDir, "revocation.sk"), raw, 0666)).NotTo(HaveOccurred())
 			raw, err = RevocationPublicKey.Bytes()
 			Expect(err).NotTo(HaveOccurred())
-			Expect(ioutil.WriteFile(path.Join(rootDir, "revocation.pk"), raw, 0666)).NotTo(HaveOccurred())
+			Expect(os.WriteFile(path.Join(rootDir, "revocation.pk"), raw, 0666)).NotTo(HaveOccurred())
 
 			// CRI
 			cri, err = CSP.Sign(
@@ -1628,7 +1636,7 @@ func testAries() {
 
 					// Issuer
 					AttributeNames = []string{"Attr1", "Attr2", "Attr3", "Attr4", "Attr5"}
-					raw, err := ioutil.ReadFile(path.Join(rootDir, "issuerkey.sk"))
+					raw, err := os.ReadFile(path.Join(rootDir, "issuerkey.sk"))
 					Expect(err).NotTo(HaveOccurred())
 					IssuerKey, err = CSP.KeyImport(raw, &bccsp.IdemixIssuerKeyImportOpts{Temporary: true, AttributeNames: AttributeNames})
 					Expect(err).NotTo(HaveOccurred())
@@ -1636,15 +1644,15 @@ func testAries() {
 					Expect(err).NotTo(HaveOccurred())
 
 					// User
-					raw, err = ioutil.ReadFile(path.Join(rootDir, "userkey.sk"))
+					raw, err = os.ReadFile(path.Join(rootDir, "userkey.sk"))
 					Expect(err).NotTo(HaveOccurred())
 					UserKey, err = CSP.KeyImport(raw, &bccsp.IdemixUserSecretKeyImportOpts{Temporary: true})
 					Expect(err).NotTo(HaveOccurred())
 
 					// User Nym Key
-					rawNymKeySk, err := ioutil.ReadFile(path.Join(rootDir, "nymkey.sk"))
+					rawNymKeySk, err := os.ReadFile(path.Join(rootDir, "nymkey.sk"))
 					Expect(err).NotTo(HaveOccurred())
-					rawNymKeyPk, err := ioutil.ReadFile(path.Join(rootDir, "nymkey.pk"))
+					rawNymKeyPk, err := os.ReadFile(path.Join(rootDir, "nymkey.pk"))
 					Expect(err).NotTo(HaveOccurred())
 					Expect(len(rawNymKeyPk)).To(Equal(2 * curve.CoordByteSize))
 
@@ -1684,7 +1692,7 @@ func testAries() {
 					Expect(err).NotTo(HaveOccurred())
 
 					// Revocation
-					raw, err = ioutil.ReadFile(path.Join(rootDir, "revocation.sk"))
+					raw, err = os.ReadFile(path.Join(rootDir, "revocation.sk"))
 					Expect(err).NotTo(HaveOccurred())
 					RevocationKey, err = CSP.KeyImport(raw, &bccsp.IdemixRevocationKeyImportOpts{Temporary: true})
 					Expect(err).NotTo(HaveOccurred())

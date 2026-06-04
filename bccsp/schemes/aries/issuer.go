@@ -61,7 +61,7 @@ type Issuer struct {
 // Bases returns a map of element pairs that are used to generate pedersen commitments
 // for the attribute type in the key. The caller must specify what type of public key
 // it expects, and the indices for the three known commitments.
-func (i *Issuer) Bases(key types.IssuerPublicKey, ipkType types.CommitmentBasesRequest, RhIndex, EidIndex, SKIndex int) (map[types.CommitmentType]interface{}, error) {
+func (i *Issuer) Bases(key types.IssuerPublicKey, ipkType types.CommitmentBasesRequest, RhIndex, EidIndex, SKIndex int) (map[types.CommitmentType]any, error) {
 	if ipkType != types.Dlog {
 		return nil, fmt.Errorf("invalid ipk type %d, expected %d", ipkType, types.Dlog)
 	}
@@ -80,7 +80,7 @@ func (i *Issuer) Bases(key types.IssuerPublicKey, ipkType types.CommitmentBasesR
 		return nil, fmt.Errorf("invalid indices %d, %d, %d", RhIndex, EidIndex, SKIndex)
 	}
 
-	return map[types.CommitmentType]interface{}{
+	return map[types.CommitmentType]any{
 		types.Nym:    []*math.G1{ipk.PKwG.H0, ipk.PKwG.H[SKIndex]},
 		types.NymEid: []*math.G1{ipk.PKwG.H0, ipk.PKwG.H[EidIndex+1]},
 		types.NymRH:  []*math.G1{ipk.PKwG.H0, ipk.PKwG.H[RhIndex+1]},

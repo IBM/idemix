@@ -7,12 +7,12 @@ SPDX-License-Identifier: Apache-2.0
 package amcl
 
 import (
-	"io/ioutil"
+	"os"
 	"testing"
 
 	math "github.com/IBM/mathlib"
-	"github.com/golang/protobuf/proto"
 	"github.com/stretchr/testify/assert"
+	"google.golang.org/protobuf/proto"
 )
 
 func TestFp256bnTranslatorGen(t *testing.T) {
@@ -143,9 +143,9 @@ func TestFp256bnTranslatorG2FromFile(t *testing.T) {
 		C: curve,
 	}
 
-	wBytes, err := ioutil.ReadFile("./testdata/old/g2.bytes")
+	wBytes, err := os.ReadFile("./testdata/old/g2.bytes")
 	assert.NoError(t, err)
-	wProtoBytes, err := ioutil.ReadFile("./testdata/old/g2.proto.bytes")
+	wProtoBytes, err := os.ReadFile("./testdata/old/g2.proto.bytes")
 	assert.NoError(t, err)
 
 	ecp := &ECP2{}

@@ -6,9 +6,10 @@ SPDX-License-Identifier: Apache-2.0
 package handlers
 
 import (
+	"errors"
+
 	"github.com/IBM/idemix/bccsp/types"
 	bccsp "github.com/IBM/idemix/bccsp/types"
-	"github.com/pkg/errors"
 )
 
 // issuerSecretKey contains the issuer secret key
@@ -113,7 +114,7 @@ type IssuerPublicKeyImporter struct {
 	Issuer types.Issuer
 }
 
-func (i *IssuerPublicKeyImporter) KeyImport(raw interface{}, opts bccsp.KeyImportOpts) (k bccsp.Key, err error) {
+func (i *IssuerPublicKeyImporter) KeyImport(raw any, opts bccsp.KeyImportOpts) (k bccsp.Key, err error) {
 	der, ok := raw.([]byte)
 	if !ok {
 		return nil, errors.New("invalid raw, expected byte array")
@@ -156,7 +157,7 @@ type IssuerKeyImporter struct {
 	Issuer types.Issuer
 }
 
-func (i *IssuerKeyImporter) KeyImport(raw interface{}, opts bccsp.KeyImportOpts) (k bccsp.Key, err error) {
+func (i *IssuerKeyImporter) KeyImport(raw any, opts bccsp.KeyImportOpts) (k bccsp.Key, err error) {
 	der, ok := raw.([]byte)
 	if !ok {
 		return nil, errors.New("invalid raw, expected byte array")

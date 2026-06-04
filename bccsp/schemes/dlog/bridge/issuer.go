@@ -11,8 +11,7 @@ import (
 	idemix "github.com/IBM/idemix/bccsp/schemes/dlog/crypto"
 	"github.com/IBM/idemix/bccsp/types"
 	bccsp "github.com/IBM/idemix/bccsp/types"
-	"github.com/golang/protobuf/proto"
-	"github.com/pkg/errors"
+	"google.golang.org/protobuf/proto"
 )
 
 // IssuerPublicKey encapsulate an idemix issuer public key.
@@ -52,7 +51,7 @@ func (i *Issuer) NewKey(attributeNames []string) (res types.IssuerSecretKey, err
 	defer func() {
 		if r := recover(); r != nil {
 			res = nil
-			err = errors.Errorf("failure [%s]", r)
+			err = fmt.Errorf("failure [%s]", r)
 		}
 	}()
 
@@ -70,7 +69,7 @@ func (i *Issuer) NewKeyFromBytes(raw []byte, attributes []string) (res types.Iss
 	defer func() {
 		if r := recover(); r != nil {
 			res = nil
-			err = errors.Errorf("failure [%s]", r)
+			err = fmt.Errorf("failure [%s]", r)
 		}
 	}()
 
@@ -84,7 +83,7 @@ func (i *Issuer) NewKeyFromBytes(raw []byte, attributes []string) (res types.Iss
 	return
 }
 
-func (i *Issuer) Bases(ipk types.IssuerPublicKey, ipkType types.CommitmentBasesRequest, RhIndex, EidIndex, SKIndex int) (map[types.CommitmentType]interface{}, error) {
+func (i *Issuer) Bases(ipk types.IssuerPublicKey, ipkType types.CommitmentBasesRequest, RhIndex, EidIndex, SKIndex int) (map[types.CommitmentType]any, error) {
 	panic("not implemented")
 }
 
@@ -92,51 +91,51 @@ func (i *Issuer) NewPublicKeyFromBytes(raw []byte, attributes []string) (res typ
 	defer func() {
 		if r := recover(); r != nil {
 			res = nil
-			err = errors.Errorf("failure [%s]", r)
+			err = fmt.Errorf("failure [%s]", r)
 		}
 	}()
 
 	ipk := new(idemix.IssuerPublicKey)
 	err = proto.Unmarshal(raw, ipk)
 	if err != nil {
-		return nil, errors.WithStack(&bccsp.IdemixIssuerPublicKeyImporterError{
+		return nil, &bccsp.IdemixIssuerPublicKeyImporterError{
 			Type:     bccsp.IdemixIssuerPublicKeyImporterUnmarshallingError,
 			ErrorMsg: "failed to unmarshal issuer public key",
-			Cause:    err})
+			Cause:    err}
 	}
 
 	err = ipk.SetHash(i.Idemix.Curve)
 	if err != nil {
-		return nil, errors.WithStack(&bccsp.IdemixIssuerPublicKeyImporterError{
+		return nil, &bccsp.IdemixIssuerPublicKeyImporterError{
 			Type:     bccsp.IdemixIssuerPublicKeyImporterHashError,
 			ErrorMsg: "setting the hash of the issuer public key failed",
-			Cause:    err})
+			Cause:    err}
 	}
 
 	err = ipk.Check(i.Idemix.Curve, i.Translator)
 	if err != nil {
-		return nil, errors.WithStack(&bccsp.IdemixIssuerPublicKeyImporterError{
+		return nil, &bccsp.IdemixIssuerPublicKeyImporterError{
 			Type:     bccsp.IdemixIssuerPublicKeyImporterValidationError,
 			ErrorMsg: "invalid issuer public key",
-			Cause:    err})
+			Cause:    err}
 	}
 
 	if len(attributes) != 0 {
 		// Check the attributes
 		if len(attributes) != len(ipk.AttributeNames) {
-			return nil, errors.WithStack(&bccsp.IdemixIssuerPublicKeyImporterError{
+			return nil, &bccsp.IdemixIssuerPublicKeyImporterError{
 				Type: bccsp.IdemixIssuerPublicKeyImporterNumAttributesError,
 				ErrorMsg: fmt.Sprintf("invalid number of attributes, expected [%d], got [%d]",
 					len(ipk.AttributeNames), len(attributes)),
-			})
+			}
 		}
 
 		for i, attr := range attributes {
 			if ipk.AttributeNames[i] != attr {
-				return nil, errors.WithStack(&bccsp.IdemixIssuerPublicKeyImporterError{
+				return nil, &bccsp.IdemixIssuerPublicKeyImporterError{
 					Type:     bccsp.IdemixIssuerPublicKeyImporterAttributeNameError,
 					ErrorMsg: fmt.Sprintf("invalid attribute name at position [%d]", i),
-				})
+				}
 			}
 		}
 	}

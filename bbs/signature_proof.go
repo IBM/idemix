@@ -289,7 +289,7 @@ func (b *BBSLib) ParseProofG1(bytes []byte) (*ProofG1, error) {
 	}
 
 	responses := make([]*ml.Zr, length)
-	for i := 0; i < length; i++ {
+	for i := range length {
 		responses[i] = b.parseFr(bytes[offset : offset+frCompressedSize])
 		offset += frCompressedSize
 	}

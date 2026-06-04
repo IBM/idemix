@@ -6,6 +6,8 @@ SPDX-License-Identifier: Apache-2.0
 package idemix
 
 import (
+	"errors"
+	"fmt"
 	"reflect"
 
 	"github.com/IBM/idemix/bbs"
@@ -15,7 +17,6 @@ import (
 	idemix "github.com/IBM/idemix/bccsp/schemes/dlog/crypto"
 	bccsp "github.com/IBM/idemix/bccsp/types"
 	math "github.com/IBM/mathlib"
-	"github.com/pkg/errors"
 )
 
 type csp struct {
@@ -25,7 +26,7 @@ type csp struct {
 func New(keyStore bccsp.KeyStore, curve *math.Curve, translator idemix.Translator, exportable bool) (*csp, error) {
 	base, err := NewImpl(keyStore)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed instantiating base bccsp")
+		return nil, fmt.Errorf("failed instantiating base bccsp: %w", err)
 	}
 
 	csp := &csp{CSP: base}
@@ -36,21 +37,21 @@ func New(keyStore bccsp.KeyStore, curve *math.Curve, translator idemix.Translato
 	}
 
 	// key generators
-	base.AddWrapper(reflect.TypeOf(&bccsp.IdemixIssuerKeyGenOpts{}),
+	base.AddWrapper(reflect.TypeFor[*bccsp.IdemixIssuerKeyGenOpts](),
 		&handlers.IssuerKeyGen{
 			Exportable: exportable,
 			Issuer: &bridge.Issuer{
 				Idemix: idmx, Translator: translator,
 			},
 		})
-	base.AddWrapper(reflect.TypeOf(&bccsp.IdemixUserSecretKeyGenOpts{}),
+	base.AddWrapper(reflect.TypeFor[*bccsp.IdemixUserSecretKeyGenOpts](),
 		&handlers.UserKeyGen{
 			Exportable: exportable,
 			User: &bridge.User{
 				Idemix: idmx, Translator: translator,
 			},
 		})
-	base.AddWrapper(reflect.TypeOf(&bccsp.IdemixRevocationKeyGenOpts{}),
+	base.AddWrapper(reflect.TypeFor[*bccsp.IdemixRevocationKeyGenOpts](),
 		&handlers.RevocationKeyGen{
 			Exportable: exportable,
 			Revocation: &bridge.Revocation{
@@ -129,34 +130,34 @@ func New(keyStore bccsp.KeyStore, curve *math.Curve, translator idemix.Translato
 		})
 
 	// importers
-	base.AddWrapper(reflect.TypeOf(&bccsp.IdemixUserSecretKeyImportOpts{}),
+	base.AddWrapper(reflect.TypeFor[*bccsp.IdemixUserSecretKeyImportOpts](),
 		&handlers.UserKeyImporter{
 			Exportable: exportable,
 			User: &bridge.User{
 				Idemix: idmx, Translator: translator,
 			},
 		})
-	base.AddWrapper(reflect.TypeOf(&bccsp.IdemixIssuerPublicKeyImportOpts{}),
+	base.AddWrapper(reflect.TypeFor[*bccsp.IdemixIssuerPublicKeyImportOpts](),
 		&handlers.IssuerPublicKeyImporter{
 			Issuer: &bridge.Issuer{
 				Idemix: idmx, Translator: translator,
 			},
 		})
-	base.AddWrapper(reflect.TypeOf(&bccsp.IdemixIssuerKeyImportOpts{}),
+	base.AddWrapper(reflect.TypeFor[*bccsp.IdemixIssuerKeyImportOpts](),
 		&handlers.IssuerKeyImporter{
 			Exportable: exportable,
 			Issuer: &bridge.Issuer{
 				Idemix: idmx, Translator: translator,
 			},
 		})
-	base.AddWrapper(reflect.TypeOf(&bccsp.IdemixNymPublicKeyImportOpts{}),
+	base.AddWrapper(reflect.TypeFor[*bccsp.IdemixNymPublicKeyImportOpts](),
 		&handlers.NymPublicKeyImporter{
 			User: &bridge.User{
 				Idemix: idmx, Translator: translator,
 			},
 			Translator: translator,
 		})
-	base.AddWrapper(reflect.TypeOf(&bccsp.IdemixNymKeyImportOpts{}),
+	base.AddWrapper(reflect.TypeFor[*bccsp.IdemixNymKeyImportOpts](),
 		&handlers.NymKeyImporter{
 			Exportable: exportable,
 			User: &bridge.User{
@@ -164,9 +165,9 @@ func New(keyStore bccsp.KeyStore, curve *math.Curve, translator idemix.Translato
 			},
 			Translator: translator,
 		})
-	base.AddWrapper(reflect.TypeOf(&bccsp.IdemixRevocationPublicKeyImportOpts{}),
+	base.AddWrapper(reflect.TypeFor[*bccsp.IdemixRevocationPublicKeyImportOpts](),
 		&handlers.RevocationPublicKeyImporter{})
-	base.AddWrapper(reflect.TypeOf(&bccsp.IdemixRevocationKeyImportOpts{}),
+	base.AddWrapper(reflect.TypeFor[*bccsp.IdemixRevocationKeyImportOpts](),
 		&handlers.RevocationKeyImporter{
 			Exportable: exportable,
 			Revocation: &bridge.Revocation{
@@ -180,25 +181,25 @@ func New(keyStore bccsp.KeyStore, curve *math.Curve, translator idemix.Translato
 func NewAries(keyStore bccsp.KeyStore, curve *math.Curve, _translator idemix.Translator, exportable bool) (*csp, error) {
 	base, err := NewImpl(keyStore)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed instantiating base bccsp")
+		return nil, fmt.Errorf("failed instantiating base bccsp: %w", err)
 	}
 
 	csp := &csp{CSP: base}
 
 	rng, err := curve.Rand()
 	if err != nil {
-		return nil, errors.Wrap(err, "failed instantiating PRNG")
+		return nil, fmt.Errorf("failed instantiating PRNG: %w", err)
 	}
 
 	// key generators
-	base.AddWrapper(reflect.TypeOf(&bccsp.IdemixIssuerKeyGenOpts{}),
+	base.AddWrapper(reflect.TypeFor[*bccsp.IdemixIssuerKeyGenOpts](),
 		&handlers.IssuerKeyGen{
 			Exportable: exportable,
 			Issuer: &aries.Issuer{
 				Curve: curve,
 			},
 		})
-	base.AddWrapper(reflect.TypeOf(&bccsp.IdemixUserSecretKeyGenOpts{}),
+	base.AddWrapper(reflect.TypeFor[*bccsp.IdemixUserSecretKeyGenOpts](),
 		&handlers.UserKeyGen{
 			Exportable: exportable,
 			User: &aries.User{
@@ -206,7 +207,7 @@ func NewAries(keyStore bccsp.KeyStore, curve *math.Curve, _translator idemix.Tra
 				Rng:   rng,
 			},
 		})
-	base.AddWrapper(reflect.TypeOf(&bccsp.IdemixRevocationKeyGenOpts{}),
+	base.AddWrapper(reflect.TypeFor[*bccsp.IdemixRevocationKeyGenOpts](),
 		&handlers.RevocationKeyGen{
 			Exportable: exportable,
 			Revocation: &aries.RevocationAuthority{
@@ -303,7 +304,7 @@ func NewAries(keyStore bccsp.KeyStore, curve *math.Curve, _translator idemix.Tra
 		})
 
 	// importers
-	base.AddWrapper(reflect.TypeOf(&bccsp.IdemixUserSecretKeyImportOpts{}),
+	base.AddWrapper(reflect.TypeFor[*bccsp.IdemixUserSecretKeyImportOpts](),
 		&handlers.UserKeyImporter{
 			Exportable: exportable,
 			User: &aries.User{
@@ -311,20 +312,20 @@ func NewAries(keyStore bccsp.KeyStore, curve *math.Curve, _translator idemix.Tra
 				Rng:   rng,
 			},
 		})
-	base.AddWrapper(reflect.TypeOf(&bccsp.IdemixIssuerPublicKeyImportOpts{}),
+	base.AddWrapper(reflect.TypeFor[*bccsp.IdemixIssuerPublicKeyImportOpts](),
 		&handlers.IssuerPublicKeyImporter{
 			Issuer: &aries.Issuer{
 				Curve: curve,
 			},
 		})
-	base.AddWrapper(reflect.TypeOf(&bccsp.IdemixIssuerKeyImportOpts{}),
+	base.AddWrapper(reflect.TypeFor[*bccsp.IdemixIssuerKeyImportOpts](),
 		&handlers.IssuerKeyImporter{
 			Exportable: exportable,
 			Issuer: &aries.Issuer{
 				Curve: curve,
 			},
 		})
-	base.AddWrapper(reflect.TypeOf(&bccsp.IdemixNymPublicKeyImportOpts{}),
+	base.AddWrapper(reflect.TypeFor[*bccsp.IdemixNymPublicKeyImportOpts](),
 		&handlers.NymPublicKeyImporter{
 			User: &aries.User{
 				Curve: curve,
@@ -332,7 +333,7 @@ func NewAries(keyStore bccsp.KeyStore, curve *math.Curve, _translator idemix.Tra
 			},
 			Translator: _translator,
 		})
-	base.AddWrapper(reflect.TypeOf(&bccsp.IdemixNymKeyImportOpts{}),
+	base.AddWrapper(reflect.TypeFor[*bccsp.IdemixNymKeyImportOpts](),
 		&handlers.NymKeyImporter{
 			Exportable: exportable,
 			User: &aries.User{
@@ -341,9 +342,9 @@ func NewAries(keyStore bccsp.KeyStore, curve *math.Curve, _translator idemix.Tra
 			},
 			Translator: _translator,
 		})
-	base.AddWrapper(reflect.TypeOf(&bccsp.IdemixRevocationPublicKeyImportOpts{}),
+	base.AddWrapper(reflect.TypeFor[*bccsp.IdemixRevocationPublicKeyImportOpts](),
 		&handlers.RevocationPublicKeyImporter{})
-	base.AddWrapper(reflect.TypeOf(&bccsp.IdemixRevocationKeyImportOpts{}),
+	base.AddWrapper(reflect.TypeFor[*bccsp.IdemixRevocationKeyImportOpts](),
 		&handlers.RevocationKeyImporter{
 			Exportable: exportable,
 			Revocation: &aries.RevocationAuthority{
@@ -372,12 +373,12 @@ func (csp *csp) Sign(k bccsp.Key, digest []byte, opts bccsp.SignerOpts) (signatu
 	keyType := reflect.TypeOf(k)
 	signer, found := csp.Signers[keyType]
 	if !found {
-		return nil, errors.Errorf("Unsupported 'SignKey' provided [%s]", keyType)
+		return nil, fmt.Errorf("Unsupported 'SignKey' provided [%s]", keyType)
 	}
 
 	signature, err = signer.Sign(k, digest, opts)
 	if err != nil {
-		return nil, errors.Wrapf(err, "Failed signing with opts [%v]", opts)
+		return nil, fmt.Errorf("Failed signing with opts [%v]: %w", opts, err)
 	}
 
 	return
@@ -397,12 +398,12 @@ func (csp *csp) Verify(k bccsp.Key, signature, digest []byte, opts bccsp.SignerO
 
 	verifier, found := csp.Verifiers[reflect.TypeOf(k)]
 	if !found {
-		return false, errors.Errorf("Unsupported 'VerifyKey' provided [%v]", k)
+		return false, fmt.Errorf("Unsupported 'VerifyKey' provided [%v]", k)
 	}
 
 	valid, err = verifier.Verify(k, signature, digest, opts)
 	if err != nil {
-		return false, errors.Wrapf(err, "Failed verifing with opts [%v]", opts)
+		return false, fmt.Errorf("Failed verifing with opts [%v]: %w", opts, err)
 	}
 
 	return

@@ -11,8 +11,7 @@ import (
 	"github.com/IBM/idemix/bbs"
 	"github.com/IBM/idemix/bccsp/types"
 	math "github.com/IBM/mathlib"
-	"github.com/golang/protobuf/proto"
-	"github.com/pkg/errors"
+	"google.golang.org/protobuf/proto"
 )
 
 type Cred struct {
@@ -27,7 +26,7 @@ type Cred struct {
 func (c *Cred) Sign(key types.IssuerSecretKey, credentialRequest []byte, attributes []types.IdemixAttribute) ([]byte, error) {
 	isk, ok := key.(*IssuerSecretKey)
 	if !ok {
-		return nil, errors.Errorf("invalid issuer public key, expected *IssuerPublicKey, got [%T]", key)
+		return nil, fmt.Errorf("invalid issuer public key, expected *IssuerPublicKey, got [%T]", key)
 	}
 
 	blindedMsg, err := ParseBlindedMessages(credentialRequest, c.Curve)
@@ -65,7 +64,7 @@ func (c *Cred) Sign(key types.IssuerSecretKey, credentialRequest []byte, attribu
 func (c *Cred) Verify(sk *math.Zr, key types.IssuerPublicKey, credBytes []byte, attributes []types.IdemixAttribute) error {
 	ipk, ok := key.(*IssuerPublicKey)
 	if !ok {
-		return errors.Errorf("invalid issuer public key, expected *IssuerPublicKey, got [%T]", ipk)
+		return fmt.Errorf("invalid issuer public key, expected *IssuerPublicKey, got [%T]", ipk)
 	}
 
 	credential := &Credential{}
@@ -102,12 +101,12 @@ func (c *Cred) Verify(sk *math.Zr, key types.IssuerPublicKey, credBytes []byte, 
 		case types.IdemixBytesAttribute:
 			fr := bbs.FrFromOKM(attributes[i].Value.([]byte), c.Curve)
 			if !fr.Equals(sm[j].FR) {
-				return errors.Errorf("credential does not contain the correct attribute value at position [%d]", i)
+				return fmt.Errorf("credential does not contain the correct attribute value at position [%d]", i)
 			}
 		case types.IdemixIntAttribute:
 			fr := c.Curve.NewZrFromInt(int64(attributes[i].Value.(int)))
 			if !fr.Equals(sm[j].FR) {
-				return errors.Errorf("credential does not contain the correct attribute value at position [%d]", i)
+				return fmt.Errorf("credential does not contain the correct attribute value at position [%d]", i)
 			}
 		}
 	end:

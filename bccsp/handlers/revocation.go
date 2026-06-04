@@ -11,12 +11,12 @@ import (
 	"crypto/sha256"
 	"crypto/x509"
 	"encoding/pem"
+	"errors"
 	"fmt"
 	"reflect"
 
 	"github.com/IBM/idemix/bccsp/types"
 	bccsp "github.com/IBM/idemix/bccsp/types"
-	"github.com/pkg/errors"
 )
 
 // revocationSecretKey contains the revocation secret key
@@ -141,7 +141,7 @@ func (g *RevocationKeyGen) KeyGen(opts bccsp.KeyGenOpts) (bccsp.Key, error) {
 type RevocationPublicKeyImporter struct {
 }
 
-func (i *RevocationPublicKeyImporter) KeyImport(raw interface{}, opts bccsp.KeyImportOpts) (k bccsp.Key, err error) {
+func (i *RevocationPublicKeyImporter) KeyImport(raw any, opts bccsp.KeyImportOpts) (k bccsp.Key, err error) {
 	der, ok := raw.([]byte)
 	if !ok {
 		return nil, errors.New("invalid raw, expected byte array")
@@ -157,11 +157,11 @@ func (i *RevocationPublicKeyImporter) KeyImport(raw interface{}, opts bccsp.KeyI
 	}
 	revocationPk, err := x509.ParsePKIXPublicKey(blockPub.Bytes)
 	if err != nil {
-		return nil, errors.Wrap(err, "Failed to parse revocation ECDSA public key bytes")
+		return nil, fmt.Errorf("Failed to parse revocation ECDSA public key bytes: %w", err)
 	}
 	ecdsaPublicKey, isECDSA := revocationPk.(*ecdsa.PublicKey)
 	if !isECDSA {
-		return nil, errors.Errorf("key is of type %v, not of type ECDSA", reflect.TypeOf(revocationPk))
+		return nil, fmt.Errorf("key is of type %v, not of type ECDSA", reflect.TypeOf(revocationPk))
 	}
 
 	return &revocationPublicKey{ecdsaPublicKey}, nil
@@ -176,7 +176,7 @@ type RevocationKeyImporter struct {
 	Revocation types.Revocation
 }
 
-func (i *RevocationKeyImporter) KeyImport(raw interface{}, opts bccsp.KeyImportOpts) (k bccsp.Key, err error) {
+func (i *RevocationKeyImporter) KeyImport(raw any, opts bccsp.KeyImportOpts) (k bccsp.Key, err error) {
 	der, ok := raw.([]byte)
 	if !ok {
 		return nil, errors.New("invalid raw, expected byte array")

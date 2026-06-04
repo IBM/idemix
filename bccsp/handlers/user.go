@@ -7,11 +7,11 @@ package handlers
 
 import (
 	"crypto/sha256"
+	"errors"
 
 	"github.com/IBM/idemix/bccsp/types"
 	bccsp "github.com/IBM/idemix/bccsp/types"
 	math "github.com/IBM/mathlib"
-	"github.com/pkg/errors"
 )
 
 // UserSecretKey contains the User secret key
@@ -79,7 +79,7 @@ type UserKeyImporter struct {
 	User types.User
 }
 
-func (i *UserKeyImporter) KeyImport(raw interface{}, opts bccsp.KeyImportOpts) (k bccsp.Key, err error) {
+func (i *UserKeyImporter) KeyImport(raw any, opts bccsp.KeyImportOpts) (k bccsp.Key, err error) {
 	der, ok := raw.([]byte)
 	if !ok {
 		return nil, errors.New("invalid raw, expected byte array")

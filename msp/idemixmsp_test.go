@@ -7,16 +7,16 @@ SPDX-License-Identifier: Apache-2.0
 package msp
 
 import (
+	"fmt"
 	"testing"
 
 	idemix "github.com/IBM/idemix/bccsp/schemes/dlog/crypto"
 	amclt "github.com/IBM/idemix/bccsp/schemes/dlog/crypto/translator/amcl"
 	im "github.com/IBM/idemix/msp/config"
 	math "github.com/IBM/mathlib"
-	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-protos-go-apiv2/msp"
-	"github.com/pkg/errors"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/proto"
 )
 
 func setup(configPath string, ID string) (MSP, error) {
@@ -44,12 +44,12 @@ func setupWithTypeAndVersion(configPath string, ID string, version MSPVersion, m
 
 	conf, err := GetIdemixMspConfigWithType(configPath, ID, mspType)
 	if err != nil {
-		return nil, errors.Wrap(err, "Getting MSP config failed")
+		return nil, fmt.Errorf("Getting MSP config failed: %w", err)
 	}
 
 	err = msp.Setup(conf)
 	if err != nil {
-		return nil, errors.Wrap(err, "Setting up MSP failed")
+		return nil, fmt.Errorf("Setting up MSP failed: %w", err)
 	}
 	return msp, nil
 }
@@ -57,17 +57,17 @@ func setupWithTypeAndVersion(configPath string, ID string, version MSPVersion, m
 func getDefaultSigner(msp MSP) (SigningIdentity, error) {
 	id, err := msp.GetDefaultSigningIdentity()
 	if err != nil {
-		return nil, errors.Wrap(err, "Getting default signing identity failed")
+		return nil, fmt.Errorf("Getting default signing identity failed: %w", err)
 	}
 
 	err = id.Validate()
 	if err != nil {
-		return nil, errors.Wrap(err, "Default signing identity invalid")
+		return nil, fmt.Errorf("Default signing identity invalid: %w", err)
 	}
 
 	err = msp.Validate(id)
 	if err != nil {
-		return nil, errors.Wrap(err, "Default signing identity invalid")
+		return nil, fmt.Errorf("Default signing identity invalid: %w", err)
 	}
 
 	return id, nil
