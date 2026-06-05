@@ -6,13 +6,13 @@ SPDX-License-Identifier: Apache-2.0
 package idemix_test
 
 import (
+	"errors"
 	"fmt"
-	"io/ioutil"
+	"os"
 
 	math "github.com/IBM/mathlib"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	"github.com/pkg/errors"
 
 	idemix "github.com/IBM/idemix/bccsp"
 	"github.com/IBM/idemix/bccsp/schemes/dlog/crypto/translator/amcl"
@@ -111,7 +111,7 @@ var _ = Describe("Idemix Bridge Compatibility", func() {
 
 			// Issuer
 			AttributeNames = []string{"Attr1", "Attr2", "Attr3", "Attr4", "Attr5"}
-			raw, err := ioutil.ReadFile("./testdata/old/issuerkey.sk")
+			raw, err := os.ReadFile("./testdata/old/issuerkey.sk")
 			Expect(err).NotTo(HaveOccurred())
 			IssuerKey, err = CSP.KeyImport(raw, &bccsp.IdemixIssuerKeyImportOpts{Temporary: true, AttributeNames: AttributeNames})
 			Expect(err).NotTo(HaveOccurred())
@@ -119,7 +119,7 @@ var _ = Describe("Idemix Bridge Compatibility", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			// User
-			raw, err = ioutil.ReadFile("./testdata/old/userkey.sk")
+			raw, err = os.ReadFile("./testdata/old/userkey.sk")
 			Expect(err).NotTo(HaveOccurred())
 			UserKey, err = CSP.KeyImport(raw, &bccsp.IdemixUserSecretKeyImportOpts{Temporary: true})
 			Expect(err).NotTo(HaveOccurred())
@@ -127,7 +127,7 @@ var _ = Describe("Idemix Bridge Compatibility", func() {
 			// User Nym Key
 			// rawNymKeySk, err := ioutil.ReadFile("./testdata/old/nymkey.sk")
 			// Expect(err).NotTo(HaveOccurred())
-			rawNymKeyPk, err := ioutil.ReadFile("./testdata/old/nymkey.pk")
+			rawNymKeyPk, err := os.ReadFile("./testdata/old/nymkey.pk")
 			Expect(err).NotTo(HaveOccurred())
 
 			// NymKey, err = CSP.KeyImport(append(rawNymKeySk, rawNymKeyPk...), &bccsp.IdemixNymKeyImportOpts{Temporary: true})
@@ -139,11 +139,11 @@ var _ = Describe("Idemix Bridge Compatibility", func() {
 			// n, err := rand.Read(IssuerNonce)
 			// Expect(n).To(BeEquivalentTo(32))
 			// Expect(err).NotTo(HaveOccurred())
-			IssuerNonce, err = ioutil.ReadFile("./testdata/old/issuer_nonce")
+			IssuerNonce, err = os.ReadFile("./testdata/old/issuer_nonce")
 			Expect(err).NotTo(HaveOccurred())
 
 			// Credential Request for User
-			credRequest, err = ioutil.ReadFile("./testdata/old/cred_request.sign")
+			credRequest, err = os.ReadFile("./testdata/old/cred_request.sign")
 			Expect(err).NotTo(HaveOccurred())
 			// credRequest, err = CSP.Sign(
 			//	UserKey,
@@ -167,11 +167,11 @@ var _ = Describe("Idemix Bridge Compatibility", func() {
 			//	},
 			// )
 			// Expect(err).NotTo(HaveOccurred())
-			credential, err = ioutil.ReadFile("./testdata/old/credential.sign")
+			credential, err = os.ReadFile("./testdata/old/credential.sign")
 			Expect(err).NotTo(HaveOccurred())
 
 			// Revocation
-			raw, err = ioutil.ReadFile("./testdata/old/revocation.sk")
+			raw, err = os.ReadFile("./testdata/old/revocation.sk")
 			Expect(err).NotTo(HaveOccurred())
 			RevocationKey, err = CSP.KeyImport(raw, &bccsp.IdemixRevocationKeyImportOpts{Temporary: true})
 			Expect(err).NotTo(HaveOccurred())
@@ -185,7 +185,7 @@ var _ = Describe("Idemix Bridge Compatibility", func() {
 			//	&bccsp.IdemixCRISignerOpts{},
 			// )
 			// Expect(err).NotTo(HaveOccurred())
-			cri, err = ioutil.ReadFile("./testdata/old/cri.sign")
+			cri, err = os.ReadFile("./testdata/old/cri.sign")
 			Expect(err).NotTo(HaveOccurred())
 		})
 
@@ -261,7 +261,7 @@ var _ = Describe("Idemix Bridge Compatibility", func() {
 				//	},
 				// )
 				// Expect(err).NotTo(HaveOccurred())
-				signature, err = ioutil.ReadFile("./testdata/old/signature_no_disclosed_attribute.sign")
+				signature, err = os.ReadFile("./testdata/old/signature_no_disclosed_attribute.sign")
 				Expect(err).NotTo(HaveOccurred())
 			})
 
@@ -321,7 +321,7 @@ var _ = Describe("Idemix Bridge Compatibility", func() {
 				//	},
 				// )
 				// Expect(err).NotTo(HaveOccurred())
-				signature, err = ioutil.ReadFile("./testdata/old/signature_with_disclosed_attribute.sign")
+				signature, err = os.ReadFile("./testdata/old/signature_with_disclosed_attribute.sign")
 				Expect(err).NotTo(HaveOccurred())
 			})
 
@@ -370,7 +370,7 @@ var _ = Describe("Idemix Bridge Compatibility", func() {
 				//	},
 				// )
 				// Expect(err).NotTo(HaveOccurred())
-				signature, err = ioutil.ReadFile("./testdata/old/nym_signature.sign")
+				signature, err = os.ReadFile("./testdata/old/nym_signature.sign")
 				Expect(err).NotTo(HaveOccurred())
 			})
 

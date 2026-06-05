@@ -10,11 +10,11 @@ import (
 	"crypto/rand"
 	"crypto/sha256"
 	"fmt"
+	"math/big"
 	"testing"
 
 	"github.com/IBM/idemix/bbs"
 	ml "github.com/IBM/mathlib"
-	"github.com/btcsuite/btcutil/base58"
 	"github.com/stretchr/testify/require"
 )
 
@@ -100,10 +100,10 @@ func TestPublicKey_Marshal(t *testing.T) {
 
 func TestParseMattrKeys(t *testing.T) {
 	privKeyB58 := "5D6Pa8dSwApdnfg7EZR8WnGfvLDCZPZGsZ5Y1ELL9VDj"
-	privKeyBytes := base58.Decode(privKeyB58)
+	privKeyBytes := decodeBase58(privKeyB58)
 
 	pubKeyB58 := "oqpWYKaZD9M1Kbe94BVXpr8WTdFBNZyKv48cziTiQUeuhm7sBhCABMyYG4kcMrseC68YTFFgyhiNeBKjzdKk9MiRWuLv5H4FFujQsQK2KTAtzU8qTBiZqBHMmnLF4PL7Ytu" //nolint:lll
-	pubKeyBytes := base58.Decode(pubKeyB58)
+	pubKeyBytes := decodeBase58(pubKeyB58)
 
 	messagesBytes := [][]byte{[]byte("message1"), []byte("message2")}
 	signatureBytes, err := bbs.New(ml.Curves[ml.BLS12_381_BBS]).Sign(messagesBytes, privKeyBytes)
@@ -124,4 +124,39 @@ func generateKeyPairRandom(curve *ml.Curve) (*bbs.PublicKey, *bbs.PrivateKey, er
 	bbs := bbs.NewBBSLib(curve)
 
 	return bbs.GenerateKeyPair(sha256.New, seed)
+}
+
+func decodeBase58(src string) []byte {
+	const alphabet = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"
+
+	result := big.NewInt(0)
+	base := big.NewInt(58)
+
+	for _, r := range src {
+		index := int64(-1)
+		for i, candidate := range alphabet {
+			if candidate == r {
+				index = int64(i)
+				break
+			}
+		}
+
+		if index < 0 {
+			return []byte("")
+		}
+
+		result.Mul(result, base)
+		result.Add(result, big.NewInt(index))
+	}
+
+	decoded := result.Bytes()
+	for _, r := range src {
+		if r != '1' {
+			break
+		}
+
+		decoded = append([]byte{0x00}, decoded...)
+	}
+
+	return decoded
 }

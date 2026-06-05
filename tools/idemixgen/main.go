@@ -15,14 +15,13 @@ import (
 	"crypto/ecdsa"
 	"crypto/x509"
 	"encoding/pem"
+	"errors"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 
 	math "github.com/IBM/mathlib"
 	"github.com/alecthomas/kingpin/v2"
-	"github.com/pkg/errors"
 
 	idemix "github.com/IBM/idemix/bccsp/schemes/dlog/crypto"
 	"github.com/IBM/idemix/bccsp/schemes/dlog/crypto/translator/amcl"
@@ -222,20 +221,20 @@ func printVersion() {
 
 // writeFile writes bytes to a file and panics in case of an error
 func writeFile(path string, contents []byte) {
-	handleError(ioutil.WriteFile(path, contents, 0640))
+	handleError(os.WriteFile(path, contents, 0640))
 }
 
 // readIssuerKey reads the issuer key from the current directory
 func readIssuerKey() ([]byte, []byte) {
 	path := filepath.Join(*genCAInput, IdemixDirIssuer, IdemixConfigIssuerSecretKey)
-	iskBytes, err := ioutil.ReadFile(path)
+	iskBytes, err := os.ReadFile(path)
 	if err != nil {
-		handleError(errors.Wrapf(err, "failed to open issuer secret key file: %s", path))
+		handleError(fmt.Errorf("failed to open issuer secret key file: %s: %w", path, err))
 	}
 	path = filepath.Join(*genCAInput, IdemixDirIssuer, imsp.IdemixConfigFileIssuerPublicKey)
-	ipkBytes, err := ioutil.ReadFile(path)
+	ipkBytes, err := os.ReadFile(path)
 	if err != nil {
-		handleError(errors.Wrapf(err, "failed to open issuer public key file: %s", path))
+		handleError(fmt.Errorf("failed to open issuer public key file: %s: %w", path, err))
 	}
 
 	return iskBytes, ipkBytes
@@ -243,14 +242,14 @@ func readIssuerKey() ([]byte, []byte) {
 
 func readRevocationKey() *ecdsa.PrivateKey {
 	path := filepath.Join(*genCAInput, IdemixDirIssuer, IdemixConfigRevocationKey)
-	keyBytes, err := ioutil.ReadFile(path)
+	keyBytes, err := os.ReadFile(path)
 	if err != nil {
-		handleError(errors.Wrapf(err, "failed to open revocation secret key file: %s", path))
+		handleError(fmt.Errorf("failed to open revocation secret key file: %s: %w", path, err))
 	}
 
 	block, _ := pem.Decode(keyBytes)
 	if block == nil {
-		handleError(errors.Errorf("failed to decode ECDSA private key"))
+		handleError(fmt.Errorf("failed to decode ECDSA private key"))
 	}
 	key, err := x509.ParseECPrivateKey(block.Bytes)
 	handleError(err)
@@ -260,9 +259,9 @@ func readRevocationKey() *ecdsa.PrivateKey {
 
 func readRevocationPublicKey() []byte {
 	path := filepath.Join(*genCAInput, imsp.IdemixConfigDirMsp, imsp.IdemixConfigFileRevocationPublicKey)
-	keyBytes, err := ioutil.ReadFile(path)
+	keyBytes, err := os.ReadFile(path)
 	if err != nil {
-		handleError(errors.Wrapf(err, "failed to open revocation secret key file: %s", path))
+		handleError(fmt.Errorf("failed to open revocation secret key file: %s: %w", path, err))
 	}
 
 	return keyBytes

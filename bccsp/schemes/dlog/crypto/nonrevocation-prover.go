@@ -7,10 +7,10 @@ SPDX-License-Identifier: Apache-2.0
 package idemix
 
 import (
+	fmt "fmt"
 	"io"
 
 	math "github.com/IBM/mathlib"
-	"github.com/pkg/errors"
 )
 
 // nonRevokedProver is the Prover of the ZK proof system that handles revocation.
@@ -42,6 +42,6 @@ func getNonRevocationProver(algorithm RevocationAlgorithm) (nonRevokedProver, er
 		return &nopNonRevokedProver{}, nil
 	default:
 		// unknown revocation algorithm
-		return nil, errors.Errorf("unknown revocation algorithm %d", algorithm)
+		return nil, fmt.Errorf("unknown revocation algorithm %d", algorithm)
 	}
 }

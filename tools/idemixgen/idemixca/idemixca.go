@@ -8,13 +8,13 @@ package idemixca
 
 import (
 	"crypto/ecdsa"
+	"fmt"
 
 	idemix "github.com/IBM/idemix/bccsp/schemes/dlog/crypto"
 	imsp "github.com/IBM/idemix/msp"
 	im "github.com/IBM/idemix/msp/config"
 	math "github.com/IBM/mathlib"
-	"github.com/golang/protobuf/proto"
-	"github.com/pkg/errors"
+	"google.golang.org/protobuf/proto"
 )
 
 // GenerateIssuerKey invokes Idemix library to generate an issuer (CA) signing key pair.
@@ -32,7 +32,7 @@ func GenerateIssuerKey(idmx *idemix.Idemix, tr idemix.Translator) ([]byte, []byt
 	AttributeNames := []string{imsp.AttributeNameOU, imsp.AttributeNameRole, imsp.AttributeNameEnrollmentId, imsp.AttributeNameRevocationHandle}
 	key, err := idmx.NewIssuerKey(AttributeNames, rng, tr)
 	if err != nil {
-		return nil, nil, errors.WithMessage(err, "cannot generate CA key")
+		return nil, nil, fmt.Errorf("cannot generate CA key: %w", err)
 	}
 	ipkSerialized, err := proto.Marshal(key.Ipk)
 
@@ -55,11 +55,11 @@ func GenerateSignerConfig(
 	attrs := make([]*math.Zr, 4)
 
 	if ouString == "" {
-		return nil, errors.Errorf("the OU attribute value is empty")
+		return nil, fmt.Errorf("the OU attribute value is empty")
 	}
 
 	if enrollmentId == "" {
-		return nil, errors.Errorf("the enrollment id value is empty")
+		return nil, fmt.Errorf("the enrollment id value is empty")
 	}
 
 	attrs[imsp.AttributeIndexOU] = idmx.Curve.HashToZr([]byte(ouString))
@@ -70,28 +70,28 @@ func GenerateSignerConfig(
 	ipk := &idemix.IssuerPublicKey{}
 	err := proto.Unmarshal(ipkBytes, ipk)
 	if err != nil {
-		return nil, errors.WithMessage(err, "Error unmarshalling ipk")
+		return nil, fmt.Errorf("Error unmarshalling ipk: %w", err)
 	}
 	key := &idemix.IssuerKey{Isk: iskBytes, Ipk: ipk}
 
 	rng, err := idmx.Curve.Rand()
 	if err != nil {
-		return nil, errors.WithMessage(err, "Error getting PRNG")
+		return nil, fmt.Errorf("Error getting PRNG: %w", err)
 	}
 	sk := idmx.Curve.NewRandomZr(rng)
 	ni := idmx.Curve.NewRandomZr(rng).Bytes()
 	msg, err := idmx.NewCredRequest(sk, ni, key.Ipk, rng, tr)
 	if err != nil {
-		return nil, errors.WithMessage(err, "failed to generate a credential request")
+		return nil, fmt.Errorf("failed to generate a credential request: %w", err)
 	}
 	cred, err := idmx.NewCredential(key, msg, attrs, rng, tr)
 	if err != nil {
-		return nil, errors.WithMessage(err, "failed to generate a credential")
+		return nil, fmt.Errorf("failed to generate a credential: %w", err)
 	}
 
 	credBytes, err := proto.Marshal(cred)
 	if err != nil {
-		return nil, errors.WithMessage(err, "failed to marshal credential")
+		return nil, fmt.Errorf("failed to marshal credential: %w", err)
 	}
 
 	// NOTE currently, idemixca creates CRI's with "ALG_NO_REVOCATION"
@@ -101,7 +101,7 @@ func GenerateSignerConfig(
 	}
 	criBytes, err := proto.Marshal(cri)
 	if err != nil {
-		return nil, errors.WithMessage(err, "failed to marshal CRI")
+		return nil, fmt.Errorf("failed to marshal CRI: %w", err)
 	}
 
 	signer := &im.IdemixMSPSignerConfig{

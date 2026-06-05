@@ -12,6 +12,7 @@ import (
 	"crypto/sha256"
 	"crypto/x509"
 	"encoding/pem"
+	"errors"
 	"math/big"
 
 	"github.com/IBM/idemix/bccsp/handlers"
@@ -19,7 +20,6 @@ import (
 	"github.com/IBM/idemix/bccsp/types/mock"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	"github.com/pkg/errors"
 )
 
 var _ = Describe("Revocation", func() {

@@ -25,7 +25,7 @@ var benchCurve = ml.Curves[ml.BLS12_381_BBS_GURVY]
 func benchMessages(n int) [][]byte {
 	msgs := make([][]byte, n)
 	for i := range msgs {
-		msgs[i] = []byte(fmt.Sprintf("bench-message-%d", i))
+		msgs[i] = fmt.Appendf(nil, "bench-message-%d", i)
 	}
 	return msgs
 }
@@ -169,7 +169,7 @@ func BenchmarkVerifyProof(b *testing.B) {
 			// can corrupt Responses on re-verification of same parsed proof).
 			const proofPoolSize = 64
 			proofPool := make([][]byte, proofPoolSize)
-			for j := 0; j < proofPoolSize; j++ {
+			for j := range proofPoolSize {
 				proofPool[j], err = scheme.DeriveProof(msgs, sigBytes, nonce, pubKeyBytes, revealed)
 				if err != nil {
 					b.Fatal(err)
@@ -312,7 +312,7 @@ func BenchmarkNewCommitmentBuilder(b *testing.B) {
 			b.ResetTimer()
 			for i := 0; i < b.N; i++ {
 				cb := bbs.NewCommitmentBuilder(n)
-				for j := 0; j < n; j++ {
+				for j := range n {
 					cb.Add(pubKeyWithGens.H[j], scalars[j])
 				}
 				_ = cb.Build()

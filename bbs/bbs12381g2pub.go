@@ -247,7 +247,7 @@ func (bbs *BBSG2Pub) SignWithKeyFr(messagesFr []*SignatureMessage, messagesCount
 
 	cb.Add(bbs.curve.GenG1, bbs.curve.NewZrFromInt(1))
 
-	for i := 0; i < len(messagesFr); i++ {
+	for i := range messagesFr {
 		cb.Add(pubKeyWithGenerators.H[messagesFr[i].Idx], messagesFr[i].FR)
 	}
 
@@ -302,7 +302,7 @@ func ComputeB(
 	cb.Add(curve.GenG1, curve.NewZrFromInt(1))
 	cb.Add(key.H0, s)
 
-	for i := 0; i < len(messages); i++ {
+	for i := range messages {
 		cb.Add(key.H[messages[i].Idx], messages[i].FR)
 	}
 

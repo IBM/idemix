@@ -7,12 +7,12 @@ package handlers
 
 import (
 	"crypto/sha256"
+	"errors"
 
 	idemix "github.com/IBM/idemix/bccsp/schemes/dlog/crypto"
 	"github.com/IBM/idemix/bccsp/types"
 	bccsp "github.com/IBM/idemix/bccsp/types"
 	math "github.com/IBM/mathlib"
-	"github.com/pkg/errors"
 )
 
 // NymSecretKey contains the nym secret key
@@ -148,7 +148,7 @@ type NymPublicKeyImporter struct {
 	Translator idemix.Translator
 }
 
-func (i *NymPublicKeyImporter) KeyImport(raw interface{}, opts bccsp.KeyImportOpts) (k bccsp.Key, err error) {
+func (i *NymPublicKeyImporter) KeyImport(raw any, opts bccsp.KeyImportOpts) (k bccsp.Key, err error) {
 	bytes, ok := raw.([]byte)
 	if !ok {
 		return nil, errors.New("invalid raw, expected byte array")
@@ -186,7 +186,7 @@ type NymKeyImporter struct {
 	Translator idemix.Translator
 }
 
-func (i *NymKeyImporter) KeyImport(raw interface{}, opts bccsp.KeyImportOpts) (k bccsp.Key, err error) {
+func (i *NymKeyImporter) KeyImport(raw any, opts bccsp.KeyImportOpts) (k bccsp.Key, err error) {
 	bytes, ok := raw.([]byte)
 	if !ok {
 		return nil, errors.New("invalid raw, expected byte array")

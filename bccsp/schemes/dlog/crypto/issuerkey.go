@@ -7,12 +7,12 @@ SPDX-License-Identifier: Apache-2.0
 package idemix
 
 import (
+	fmt "fmt"
 	"io"
 
-	amcl "github.com/IBM/idemix/bccsp/schemes/dlog/crypto/translator/amcl"
+	"github.com/IBM/idemix/bccsp/schemes/dlog/crypto/translator/amcl"
 	math "github.com/IBM/mathlib"
-	"github.com/golang/protobuf/proto"
-	"github.com/pkg/errors"
+	"google.golang.org/protobuf/proto"
 )
 
 // The Issuer secret ISk and public IPk keys are used to issue credentials and
@@ -39,7 +39,7 @@ func newIssuerKey(AttributeNames []string, rng io.Reader, curve *math.Curve, t T
 	attributeNamesMap := map[string]bool{}
 	for _, name := range AttributeNames {
 		if attributeNamesMap[name] {
-			return nil, errors.Errorf("attribute %s appears multiple times in AttributeNames", name)
+			return nil, fmt.Errorf("attribute %s appears multiple times in AttributeNames", name)
 		}
 		attributeNamesMap[name] = true
 	}
@@ -59,7 +59,7 @@ func newIssuerKey(AttributeNames []string, rng io.Reader, curve *math.Curve, t T
 
 	// generate bases that correspond to the attributes
 	key.Ipk.HAttrs = make([]*amcl.ECP, len(AttributeNames))
-	for i := 0; i < len(AttributeNames); i++ {
+	for i := range AttributeNames {
 		key.Ipk.HAttrs[i] = t.G1ToProto(curve.GenG1.Mul(curve.NewRandomZr(rng)))
 	}
 
@@ -107,7 +107,7 @@ func newIssuerKey(AttributeNames []string, rng io.Reader, curve *math.Curve, t T
 	// Hash the public key
 	serializedIPk, err := proto.Marshal(key.Ipk)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to marshal issuer public key")
+		return nil, fmt.Errorf("failed to marshal issuer public key: %w", err)
 	}
 	key.Ipk.Hash = curve.HashToZr(serializedIPk).Bytes()
 
@@ -125,11 +125,11 @@ func newIssuerKeyFromBytes(raw []byte) (*IssuerKey, error) {
 		return nil, err
 	}
 
-	//raw, err :=proto.Marshal(ik.Ipk.W)
-	//if err != nil {
+	// raw, err :=proto.Marshal(ik.Ipk.W)
+	// if err != nil {
 	//	panic(err)
-	//}
-	//fmt.Printf("IPKW : [%v]", ik.Ipk.W.Xa)
+	// }
+	// fmt.Printf("IPKW : [%v]", ik.Ipk.W.Xa)
 
 	return ik, nil
 }
@@ -183,11 +183,11 @@ func (IPk *IssuerPublicKey) Check(curve *math.Curve, t Translator) error {
 		BarG2 == nil ||
 		HAttrs == nil ||
 		len(IPk.HAttrs) < NumAttrs {
-		return errors.Errorf("some part of the public key is undefined")
+		return fmt.Errorf("some part of the public key is undefined")
 	}
-	for i := 0; i < NumAttrs; i++ {
+	for i := range NumAttrs {
 		if IPk.HAttrs[i] == nil {
-			return errors.Errorf("some part of the public key is undefined")
+			return fmt.Errorf("some part of the public key is undefined")
 		}
 	}
 
@@ -213,7 +213,7 @@ func (IPk *IssuerPublicKey) Check(curve *math.Curve, t Translator) error {
 
 	// Verify that the challenge is the same
 	if !ProofC.Equals(curve.HashToZr(proofData)) {
-		return errors.Errorf("zero knowledge proof in public key invalid")
+		return fmt.Errorf("zero knowledge proof in public key invalid")
 	}
 
 	return IPk.SetHash(curve)
@@ -224,7 +224,7 @@ func (IPk *IssuerPublicKey) SetHash(curve *math.Curve) error {
 	IPk.Hash = nil
 	serializedIPk, err := proto.Marshal(IPk)
 	if err != nil {
-		return errors.Wrap(err, "Failed to marshal issuer public key")
+		return fmt.Errorf("Failed to marshal issuer public key: %w", err)
 	}
 	IPk.Hash = curve.HashToZr(serializedIPk).Bytes()
 	return nil

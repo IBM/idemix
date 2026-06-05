@@ -7,13 +7,13 @@ package handlers_test
 
 import (
 	"crypto/rand"
+	"errors"
 
 	"github.com/IBM/idemix/bccsp/handlers"
 	bccsp "github.com/IBM/idemix/bccsp/types"
 	"github.com/IBM/idemix/bccsp/types/mock"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	"github.com/pkg/errors"
 )
 
 var _ = Describe("Credential Request", func() {

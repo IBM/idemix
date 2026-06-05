@@ -8,7 +8,6 @@ package idemix_test
 import (
 	"crypto/rand"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path"
 
@@ -16,9 +15,9 @@ import (
 	idemix1 "github.com/IBM/idemix/bccsp/schemes/dlog/crypto"
 	bccsp "github.com/IBM/idemix/bccsp/types"
 	math "github.com/IBM/mathlib"
-	"github.com/golang/protobuf/proto"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"google.golang.org/protobuf/proto"
 )
 
 func testWithCurve(id math.CurveID, translator idemix1.Translator) {
@@ -47,7 +46,7 @@ func testWithCurve(id math.CurveID, translator idemix1.Translator) {
 		BeforeEach(func() {
 			var err error
 
-			rootDir, err = ioutil.TempDir(os.TempDir(), "idemixtest")
+			rootDir, err = os.MkdirTemp(os.TempDir(), "idemixtest")
 			Expect(err).NotTo(HaveOccurred())
 
 			CSP, err = idemix.New(NewDummyKeyStore(), math.Curves[id], translator, true)
@@ -62,10 +61,10 @@ func testWithCurve(id math.CurveID, translator idemix1.Translator) {
 
 			raw, err := IssuerKey.Bytes()
 			Expect(err).NotTo(HaveOccurred())
-			Expect(ioutil.WriteFile(path.Join(rootDir, "issuerkey.sk"), raw, 0666)).NotTo(HaveOccurred())
+			Expect(os.WriteFile(path.Join(rootDir, "issuerkey.sk"), raw, 0666)).NotTo(HaveOccurred())
 			raw, err = IssuerPublicKey.Bytes()
 			Expect(err).NotTo(HaveOccurred())
-			Expect(ioutil.WriteFile(path.Join(rootDir, "issuerkey.pk"), raw, 0666)).NotTo(HaveOccurred())
+			Expect(os.WriteFile(path.Join(rootDir, "issuerkey.pk"), raw, 0666)).NotTo(HaveOccurred())
 
 			// User
 			UserKey, err = CSP.KeyGen(&bccsp.IdemixUserSecretKeyGenOpts{Temporary: true})
@@ -74,7 +73,7 @@ func testWithCurve(id math.CurveID, translator idemix1.Translator) {
 			raw, err = UserKey.Bytes()
 			Expect(err).NotTo(HaveOccurred())
 			// Expect(len(raw)).To(Equal(32))
-			Expect(ioutil.WriteFile(path.Join(rootDir, "userkey.sk"), raw, 0666)).NotTo(HaveOccurred())
+			Expect(os.WriteFile(path.Join(rootDir, "userkey.sk"), raw, 0666)).NotTo(HaveOccurred())
 
 			// User Nym Key
 			NymKey, err = CSP.KeyDeriv(UserKey, &bccsp.IdemixNymKeyDerivationOpts{Temporary: true, IssuerPK: IssuerPublicKey})
@@ -84,11 +83,11 @@ func testWithCurve(id math.CurveID, translator idemix1.Translator) {
 
 			raw, err = NymKey.Bytes()
 			Expect(err).NotTo(HaveOccurred())
-			Expect(ioutil.WriteFile(path.Join(rootDir, "nymkey.sk"), raw, 0666)).NotTo(HaveOccurred())
+			Expect(os.WriteFile(path.Join(rootDir, "nymkey.sk"), raw, 0666)).NotTo(HaveOccurred())
 			raw, err = NymPublicKey.Bytes()
 			Expect(len(raw)).To(Equal(2 * math.Curves[id].CoordByteSize))
 			Expect(err).NotTo(HaveOccurred())
-			Expect(ioutil.WriteFile(path.Join(rootDir, "nymkey.pk"), raw, 0666)).NotTo(HaveOccurred())
+			Expect(os.WriteFile(path.Join(rootDir, "nymkey.pk"), raw, 0666)).NotTo(HaveOccurred())
 
 			IssuerNonce = make([]byte, math.Curves[id].ScalarByteSize)
 			n, err := rand.Read(IssuerNonce)
@@ -127,10 +126,10 @@ func testWithCurve(id math.CurveID, translator idemix1.Translator) {
 
 			raw, err = RevocationKey.Bytes()
 			Expect(err).NotTo(HaveOccurred())
-			Expect(ioutil.WriteFile(path.Join(rootDir, "revocation.sk"), raw, 0666)).NotTo(HaveOccurred())
+			Expect(os.WriteFile(path.Join(rootDir, "revocation.sk"), raw, 0666)).NotTo(HaveOccurred())
 			raw, err = RevocationPublicKey.Bytes()
 			Expect(err).NotTo(HaveOccurred())
-			Expect(ioutil.WriteFile(path.Join(rootDir, "revocation.pk"), raw, 0666)).NotTo(HaveOccurred())
+			Expect(os.WriteFile(path.Join(rootDir, "revocation.pk"), raw, 0666)).NotTo(HaveOccurred())
 
 			// CRI
 			cri, err = CSP.Sign(
@@ -1537,7 +1536,7 @@ func testWithCurve(id math.CurveID, translator idemix1.Translator) {
 
 					// Issuer
 					AttributeNames = []string{"Attr1", "Attr2", "Attr3", "Attr4", "Attr5"}
-					raw, err := ioutil.ReadFile(path.Join(rootDir, "issuerkey.sk"))
+					raw, err := os.ReadFile(path.Join(rootDir, "issuerkey.sk"))
 					Expect(err).NotTo(HaveOccurred())
 					IssuerKey, err = CSP.KeyImport(raw, &bccsp.IdemixIssuerKeyImportOpts{Temporary: true, AttributeNames: AttributeNames})
 					Expect(err).NotTo(HaveOccurred())
@@ -1545,15 +1544,15 @@ func testWithCurve(id math.CurveID, translator idemix1.Translator) {
 					Expect(err).NotTo(HaveOccurred())
 
 					// User
-					raw, err = ioutil.ReadFile(path.Join(rootDir, "userkey.sk"))
+					raw, err = os.ReadFile(path.Join(rootDir, "userkey.sk"))
 					Expect(err).NotTo(HaveOccurred())
 					UserKey, err = CSP.KeyImport(raw, &bccsp.IdemixUserSecretKeyImportOpts{Temporary: true})
 					Expect(err).NotTo(HaveOccurred())
 
 					// User Nym Key
-					rawNymKeySk, err := ioutil.ReadFile(path.Join(rootDir, "nymkey.sk"))
+					rawNymKeySk, err := os.ReadFile(path.Join(rootDir, "nymkey.sk"))
 					Expect(err).NotTo(HaveOccurred())
-					rawNymKeyPk, err := ioutil.ReadFile(path.Join(rootDir, "nymkey.pk"))
+					rawNymKeyPk, err := os.ReadFile(path.Join(rootDir, "nymkey.pk"))
 					Expect(err).NotTo(HaveOccurred())
 					Expect(len(rawNymKeyPk)).To(Equal(2 * math.Curves[id].CoordByteSize))
 
@@ -1592,7 +1591,7 @@ func testWithCurve(id math.CurveID, translator idemix1.Translator) {
 					Expect(err).NotTo(HaveOccurred())
 
 					// Revocation
-					raw, err = ioutil.ReadFile(path.Join(rootDir, "revocation.sk"))
+					raw, err = os.ReadFile(path.Join(rootDir, "revocation.sk"))
 					Expect(err).NotTo(HaveOccurred())
 					RevocationKey, err = CSP.KeyImport(raw, &bccsp.IdemixRevocationKeyImportOpts{Temporary: true})
 					Expect(err).NotTo(HaveOccurred())
