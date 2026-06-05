@@ -31,9 +31,12 @@ binaries:
 	mkdir -p bin/arm64
 	GOOS=darwin GOARCH=arm64 go build -o bin/arm64/idemixgen tools/idemixgen/main.go
 
+.PHONY: installbuf
+installbuf:
+	go install github.com/bufbuild/buf/cmd/buf@v1.70.0
+
 .PHONY: genprotos
 genprotos:
-	go install github.com/bufbuild/buf/cmd/buf@v1.1.1
 	buf generate --template buf.gen.yaml
 
 .PHONY: fmt
