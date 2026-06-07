@@ -9,7 +9,6 @@ import (
 	"crypto/sha256"
 
 	"github.com/IBM/idemix/bccsp/handlers"
-	"github.com/IBM/idemix/bccsp/schemes/dlog/crypto/translator/amcl"
 	bccsp "github.com/IBM/idemix/bccsp/types"
 	"github.com/IBM/idemix/bccsp/types/mock"
 	math "github.com/IBM/mathlib"
@@ -46,7 +45,7 @@ var _ = Describe("User", func() {
 				SKI           []byte
 			)
 			BeforeEach(func() {
-				fakeIdemixKey = math.Curves[math.FP256BN_AMCL].NewZrFromInt(0)
+				fakeIdemixKey = math.Curves[math.BLS12_381_BBS].NewZrFromInt(0)
 
 				fakeUser.NewKeyReturns(fakeIdemixKey, nil)
 				hash := sha256.New()
@@ -126,7 +125,7 @@ var _ = Describe("User", func() {
 		)
 
 		BeforeEach(func() {
-			NymKeyDerivation = &handlers.NymKeyDerivation{Translator: &amcl.Fp256bn{C: math.Curves[math.FP256BN_AMCL]}}
+			NymKeyDerivation = &handlers.NymKeyDerivation{Curve: math.Curves[math.BLS12_381_BBS]}
 			NymKeyDerivation.User = fakeUser
 		})
 
@@ -140,9 +139,9 @@ var _ = Describe("User", func() {
 			)
 
 			BeforeEach(func() {
-				userKey = math.Curves[math.FP256BN_AMCL].NewZrFromInt(0)
-				result2 = math.Curves[math.FP256BN_AMCL].NewZrFromInt(0)
-				result1 = math.Curves[math.FP256BN_AMCL].GenG1
+				userKey = math.Curves[math.BLS12_381_BBS].NewZrFromInt(0)
+				result2 = math.Curves[math.BLS12_381_BBS].NewZrFromInt(0)
+				result1 = math.Curves[math.BLS12_381_BBS].GenG1
 
 				fakeUser.MakeNymReturns(result1, result2, nil)
 			})
@@ -173,7 +172,7 @@ var _ = Describe("User", func() {
 					NymKeyDerivation.Exportable = true
 					fakeUserSecretKey = handlers.NewUserSecretKey(userKey, true)
 					fakeIssuerPublicKey = handlers.NewIssuerPublicKey(nil)
-					fakeNym, err = handlers.NewNymSecretKey(result2, result1, &amcl.Fp256bn{C: math.Curves[math.FP256BN_AMCL]}, true)
+					fakeNym, err = handlers.NewNymSecretKey(result2, result1, math.Curves[math.BLS12_381_BBS], true)
 					Expect(err).NotTo(HaveOccurred())
 				})
 
@@ -194,7 +193,7 @@ var _ = Describe("User", func() {
 					var err error
 					NymKeyDerivation.Exportable = false
 					fakeUserSecretKey = handlers.NewUserSecretKey(userKey, false)
-					fakeNym, err = handlers.NewNymSecretKey(result2, result1, &amcl.Fp256bn{C: math.Curves[math.FP256BN_AMCL]}, false)
+					fakeNym, err = handlers.NewNymSecretKey(result2, result1, math.Curves[math.BLS12_381_BBS], false)
 					Expect(err).NotTo(HaveOccurred())
 				})
 
@@ -308,7 +307,7 @@ var _ = Describe("User", func() {
 		Context("and the underlying cryptographic algorithm succeed", func() {
 
 			BeforeEach(func() {
-				sk := math.Curves[math.FP256BN_AMCL].NewZrFromInt(1)
+				sk := math.Curves[math.BLS12_381_BBS].NewZrFromInt(1)
 
 				fakeUser.NewKeyFromBytesReturns(sk, nil)
 			})
@@ -363,13 +362,13 @@ var _ = Describe("User", func() {
 		)
 
 		BeforeEach(func() {
-			NymPublicKeyImporter = &handlers.NymPublicKeyImporter{User: fakeUser, Translator: &amcl.Fp256bn{C: math.Curves[math.FP256BN_AMCL]}}
+			NymPublicKeyImporter = &handlers.NymPublicKeyImporter{User: fakeUser}
 		})
 
 		Context("and the underlying cryptographic algorithm succeed", func() {
 
 			BeforeEach(func() {
-				ecp := math.Curves[math.FP256BN_AMCL].GenG1
+				ecp := math.Curves[math.BLS12_381_BBS].GenG1
 
 				fakeUser.NewPublicNymFromBytesReturns(ecp, nil)
 			})
@@ -380,7 +379,7 @@ var _ = Describe("User", func() {
 
 				bytes, err := k.Bytes()
 				Expect(err).NotTo(HaveOccurred())
-				Expect(bytes).To(BeEquivalentTo([]byte{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2}))
+				Expect(bytes).To(BeEquivalentTo(math.Curves[math.BLS12_381_BBS].GenG1.Bytes()))
 			})
 		})
 

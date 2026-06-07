@@ -10,8 +10,6 @@ import (
 	"encoding/hex"
 
 	"github.com/IBM/idemix/bccsp/handlers"
-	idemix "github.com/IBM/idemix/bccsp/schemes/dlog/crypto"
-	"github.com/IBM/idemix/bccsp/schemes/dlog/crypto/translator/amcl"
 	bccsp "github.com/IBM/idemix/bccsp/types"
 	math "github.com/IBM/mathlib"
 	"github.com/pkg/errors"
@@ -25,7 +23,7 @@ type KVS interface {
 type NymSecretKey struct {
 	Ski        []byte
 	Sk         []byte
-	Pk         *amcl.ECP
+	Pk         []byte
 	Exportable bool
 }
 
@@ -42,8 +40,7 @@ type entry struct {
 // KVSStore is a read-only KeyStore that neither loads nor stores keys.
 type KVSStore struct {
 	KVS
-	Translator idemix.Translator
-	Curve      *math.Curve
+	Curve *math.Curve
 }
 
 // ReadOnly returns true if this KeyStore is read only, false otherwise.
@@ -64,7 +61,7 @@ func (ks *KVSStore) GetKey(ski []byte) (bccsp.Key, error) {
 
 	switch {
 	case entry.NymSecretKey != nil:
-		pk, err := ks.Translator.G1FromProto(entry.NymSecretKey.Pk)
+		pk, err := ks.Curve.NewG1FromBytes(entry.NymSecretKey.Pk)
 		if err != nil {
 			return nil, err
 		}
@@ -74,7 +71,7 @@ func (ks *KVSStore) GetKey(ski []byte) (bccsp.Key, error) {
 			Sk:         ks.Curve.NewZrFromBytes(entry.NymSecretKey.Sk),
 			Ski:        entry.NymSecretKey.Ski,
 			Pk:         pk,
-			Translator: ks.Translator,
+			Curve:      ks.Curve,
 		}, nil
 	case entry.UserSecretKey != nil:
 		return &handlers.UserSecretKey{
@@ -97,7 +94,7 @@ func (ks *KVSStore) StoreKey(k bccsp.Key) error {
 		entry.NymSecretKey = &NymSecretKey{
 			Ski:        key.Ski,
 			Sk:         key.Sk.Bytes(),
-			Pk:         ks.Translator.G1ToProto(key.Pk),
+			Pk:         key.Pk.Bytes(),
 			Exportable: key.Exportable,
 		}
 

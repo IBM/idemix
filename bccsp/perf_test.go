@@ -15,7 +15,6 @@ import (
 
 	idemix "github.com/IBM/idemix/bccsp"
 	"github.com/IBM/idemix/bccsp/schemes/aries"
-	"github.com/IBM/idemix/bccsp/schemes/dlog/crypto/translator/amcl"
 	bccsp "github.com/IBM/idemix/bccsp/types"
 	imsp "github.com/IBM/idemix/msp"
 	math "github.com/IBM/mathlib"
@@ -24,9 +23,8 @@ import (
 
 func setupAries(b *testing.B) (bccsp.BCCSP, bccsp.Key, bccsp.Key, bccsp.Key, []byte) {
 	curve := math.Curves[math.BLS12_381_BBS]
-	translator := &amcl.Gurvy{C: curve}
 
-	CSP, err := idemix.NewAries(NewDummyKeyStore(), curve, translator, true)
+	CSP, err := idemix.NewAries(NewDummyKeyStore(), curve, true)
 	assert.NoError(b, err)
 
 	AttributeNames := []string{imsp.AttributeNameOU, imsp.AttributeNameRole, imsp.AttributeNameEnrollmentId, imsp.AttributeNameRevocationHandle}
@@ -106,9 +104,8 @@ func setupAries(b *testing.B) (bccsp.BCCSP, bccsp.Key, bccsp.Key, bccsp.Key, []b
 
 func setupLegacy(b *testing.B) (bccsp.BCCSP, bccsp.Key, bccsp.Key, bccsp.Key, []byte) {
 	curve := math.Curves[math.BLS12_381_BBS]
-	translator := &amcl.Gurvy{C: curve}
 
-	CSP, err := idemix.New(NewDummyKeyStore(), curve, translator, true)
+	CSP, err := idemix.NewAries(NewDummyKeyStore(), curve, true)
 	assert.NoError(b, err)
 
 	AttributeNames := []string{imsp.AttributeNameOU, imsp.AttributeNameRole, imsp.AttributeNameEnrollmentId, imsp.AttributeNameRevocationHandle}

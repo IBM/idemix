@@ -8,7 +8,6 @@ package handlers
 import (
 	"crypto/sha256"
 
-	idemix "github.com/IBM/idemix/bccsp/schemes/dlog/crypto"
 	"github.com/IBM/idemix/bccsp/types"
 	bccsp "github.com/IBM/idemix/bccsp/types"
 	math "github.com/IBM/mathlib"
@@ -26,7 +25,7 @@ type NymSecretKey struct {
 	// Exportable if true, sk can be exported via the Bytes function
 	Exportable bool
 
-	Translator idemix.Translator
+	Curve *math.Curve
 }
 
 func computeSKI(serialise func() []byte) []byte {
@@ -38,9 +37,9 @@ func computeSKI(serialise func() []byte) []byte {
 
 }
 
-func NewNymSecretKey(sk *math.Zr, pk *math.G1, translator idemix.Translator, exportable bool) (*NymSecretKey, error) {
+func NewNymSecretKey(sk *math.Zr, pk *math.G1, curve *math.Curve, exportable bool) (*NymSecretKey, error) {
 	ski := computeSKI(sk.Bytes)
-	return &NymSecretKey{Ski: ski, Sk: sk, Pk: pk, Exportable: exportable, Translator: translator}, nil
+	return &NymSecretKey{Ski: ski, Sk: sk, Pk: pk, Exportable: exportable, Curve: curve}, nil
 }
 
 func (k *NymSecretKey) Bytes() ([]byte, error) {
@@ -67,7 +66,7 @@ func (*NymSecretKey) Private() bool {
 
 func (k *NymSecretKey) PublicKey() (bccsp.Key, error) {
 	ski := computeSKI(k.Pk.Bytes)
-	return &nymPublicKey{ski: ski, pk: k.Pk, translator: k.Translator}, nil
+	return &nymPublicKey{ski: ski, pk: k.Pk}, nil
 }
 
 type nymPublicKey struct {
@@ -75,17 +74,14 @@ type nymPublicKey struct {
 	ski []byte
 	// pk is the idemix reference to the nym public part
 	pk *math.G1
-
-	translator idemix.Translator
 }
 
-func NewNymPublicKey(pk *math.G1, translator idemix.Translator) *nymPublicKey {
-	return &nymPublicKey{pk: pk, translator: translator}
+func NewNymPublicKey(pk *math.G1) *nymPublicKey {
+	return &nymPublicKey{pk: pk}
 }
 
 func (k *nymPublicKey) Bytes() ([]byte, error) {
-	ecp := k.translator.G1ToProto(k.pk)
-	return append(ecp.X, ecp.Y...), nil
+	return k.pk.Bytes(), nil
 }
 
 func (k *nymPublicKey) SKI() []byte {
@@ -112,7 +108,7 @@ type NymKeyDerivation struct {
 	// User implements the underlying cryptographic algorithms
 	User types.User
 
-	Translator idemix.Translator
+	Curve *math.Curve
 }
 
 func (kd *NymKeyDerivation) KeyDeriv(k bccsp.Key, opts bccsp.KeyDerivOpts) (dk bccsp.Key, err error) {
@@ -137,15 +133,13 @@ func (kd *NymKeyDerivation) KeyDeriv(k bccsp.Key, opts bccsp.KeyDerivOpts) (dk b
 		return nil, err
 	}
 
-	return NewNymSecretKey(RandNym, Nym, kd.Translator, kd.Exportable)
+	return NewNymSecretKey(RandNym, Nym, kd.Curve, kd.Exportable)
 }
 
 // NymPublicKeyImporter imports nym public keys
 type NymPublicKeyImporter struct {
 	// User implements the underlying cryptographic algorithms
 	User types.User
-
-	Translator idemix.Translator
 }
 
 func (i *NymPublicKeyImporter) KeyImport(raw interface{}, opts bccsp.KeyImportOpts) (k bccsp.Key, err error) {
@@ -162,28 +156,23 @@ func (i *NymPublicKeyImporter) KeyImport(raw interface{}, opts bccsp.KeyImportOp
 	if err != nil {
 		// A Nym public key is just a group element. There are 2 main ways of serialising
 		// an uncompressed point: either the two coordinates, or the prefix `0x04` and the
-		// two coordinates. Typically these serialisation issues are handled with a
-		// `translator` object which gets bytes, understands the serialisation and produces
-		// a group element. This code does not have that, however. As a consequence, we
-		// handle the issue by prefixing the `0x04` byte and re-attempting deserialisation
-		// in case it first failed. Issue https://github.com/IBM/idemix/issues/42 has
-		// been created to fix this properly by adding the translator.
+		// two coordinates. Handle both formats by retrying with the prefix.
 		pk, err = i.User.NewPublicNymFromBytes(append([]byte{04}, bytes...))
 		if err != nil {
 			return nil, err
 		}
 	}
 
-	return &nymPublicKey{pk: pk, translator: i.Translator}, nil
+	return &nymPublicKey{pk: pk}, nil
 }
 
-// NymKeyImporter imports nym public keys
+// NymKeyImporter imports nym secret keys
 type NymKeyImporter struct {
 	Exportable bool
 	// User implements the underlying cryptographic algorithms
 	User types.User
 
-	Translator idemix.Translator
+	Curve *math.Curve
 }
 
 func (i *NymKeyImporter) KeyImport(raw interface{}, opts bccsp.KeyImportOpts) (k bccsp.Key, err error) {
@@ -201,5 +190,5 @@ func (i *NymKeyImporter) KeyImport(raw interface{}, opts bccsp.KeyImportOpts) (k
 		return nil, err
 	}
 
-	return NewNymSecretKey(sk, pk, i.Translator, i.Exportable)
+	return NewNymSecretKey(sk, pk, i.Curve, i.Exportable)
 }
