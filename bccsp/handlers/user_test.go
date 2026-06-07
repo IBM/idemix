@@ -379,7 +379,7 @@ var _ = Describe("User", func() {
 
 				bytes, err := k.Bytes()
 				Expect(err).NotTo(HaveOccurred())
-				Expect(bytes).To(BeEquivalentTo([]byte{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2}))
+				Expect(bytes).To(BeEquivalentTo(math.Curves[math.BLS12_381_BBS].GenG1.Bytes()))
 			})
 		})
 
