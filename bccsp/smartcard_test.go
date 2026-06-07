@@ -17,7 +17,6 @@ import (
 	idemix "github.com/IBM/idemix/bccsp"
 	"github.com/IBM/idemix/bccsp/handlers"
 	"github.com/IBM/idemix/bccsp/schemes/aries"
-	"github.com/IBM/idemix/bccsp/schemes/dlog/crypto/translator/amcl"
 	"github.com/IBM/idemix/bccsp/types"
 	"github.com/IBM/idemix/msp/config"
 	math "github.com/IBM/mathlib"
@@ -26,7 +25,7 @@ import (
 )
 
 func getSmartcard(t *testing.T) (*aries.Smartcard, *math.Curve) {
-	c := math.Curves[math.FP256BN_AMCL_MIRACL]
+	c := math.Curves[math.BLS12_381_BBS]
 
 	rng, err := c.Rand()
 	assert.NoError(t, err)
@@ -86,7 +85,6 @@ func readFile(t *testing.T, name string) []byte {
 
 func TestSmartcardHybrid(t *testing.T) {
 	sc, curve := getSmartcard(t)
-	translator := &amcl.Gurvy{C: curve}
 
 	/*******************************************************************************/
 	/****************************read out idemix config*****************************/
@@ -105,7 +103,7 @@ func TestSmartcardHybrid(t *testing.T) {
 	/*****************instantiate an idemix bccsp and import ipk********************/
 	/*******************************************************************************/
 
-	CSP, err := idemix.NewAries(NewDummyKeyStore(), curve, translator, true)
+	CSP, err := idemix.NewAries(NewDummyKeyStore(), curve, true)
 	assert.NoError(t, err)
 
 	IssuerPublicKey, err := CSP.KeyImport(readFile(t, "testdata/idemix/msp/IssuerPublicKey"), &types.IdemixIssuerPublicKeyImportOpts{Temporary: true, AttributeNames: []string{"", "", "", ""}})
@@ -138,7 +136,7 @@ func TestSmartcardHybrid(t *testing.T) {
 
 	/*****verify with csp*****/
 
-	valid, err := CSP.Verify(handlers.NewNymPublicKey(nil, nil), sig, msg, &types.IdemixNymSignerOpts{
+	valid, err := CSP.Verify(handlers.NewNymPublicKey(nil), sig, msg, &types.IdemixNymSignerOpts{
 		IssuerPK:    IssuerPublicKey,
 		IsSmartcard: true,
 		NymEid:      nymEid,
@@ -210,7 +208,6 @@ func TestSmartcardHybrid(t *testing.T) {
 
 func TestSmartcardCSP(t *testing.T) {
 	sc, curve := getSmartcard(t)
-	translator := &amcl.Gurvy{C: curve}
 
 	/*******************************************************************************/
 	/****************************read out idemix config*****************************/
@@ -229,7 +226,7 @@ func TestSmartcardCSP(t *testing.T) {
 	/*****************instantiate an idemix bccsp and import ipk********************/
 	/*******************************************************************************/
 
-	CSP, err := idemix.NewAries(NewDummyKeyStore(), curve, translator, true)
+	CSP, err := idemix.NewAries(NewDummyKeyStore(), curve, true)
 	assert.NoError(t, err)
 
 	IssuerPublicKey, err := CSP.KeyImport(readFile(t, "testdata/idemix/msp/IssuerPublicKey"), &types.IdemixIssuerPublicKeyImportOpts{Temporary: true, AttributeNames: []string{"", "", "", ""}})
@@ -266,7 +263,7 @@ func TestSmartcardCSP(t *testing.T) {
 
 	/*****verify*****/
 
-	valid, err := CSP.Verify(handlers.NewNymPublicKey(nil, nil), sig, msg, &types.IdemixNymSignerOpts{
+	valid, err := CSP.Verify(handlers.NewNymPublicKey(nil), sig, msg, &types.IdemixNymSignerOpts{
 		IssuerPK:    IssuerPublicKey,
 		IsSmartcard: true,
 		NymEid:      nymEid,
@@ -280,7 +277,7 @@ func TestSmartcardCSP(t *testing.T) {
 
 	/*****sign*****/
 
-	nymsk, err := handlers.NewNymSecretKey(opts.RNym, opts.NymG1, translator, true)
+	nymsk, err := handlers.NewNymSecretKey(opts.RNym, opts.NymG1, curve, true)
 	assert.NoError(t, err)
 
 	signOpts := &types.IdemixSignerOpts{
@@ -353,7 +350,7 @@ func TestSmartcardCSP(t *testing.T) {
 
 	/*****sign*****/
 
-	nymsk, err = handlers.NewNymSecretKey(opts.RNym, opts.NymG1, translator, true)
+	nymsk, err = handlers.NewNymSecretKey(opts.RNym, opts.NymG1, curve, true)
 	assert.NoError(t, err)
 
 	signOpts = &types.IdemixSignerOpts{

@@ -13,15 +13,13 @@ import (
 
 	"github.com/IBM/idemix/bccsp/handlers"
 	"github.com/IBM/idemix/bccsp/keystore/kvs"
-	"github.com/IBM/idemix/bccsp/schemes/dlog/crypto/translator/amcl"
 	bccsp "github.com/IBM/idemix/bccsp/types"
 	math "github.com/IBM/mathlib"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestFileBased(t *testing.T) {
-	curve := math.Curves[math.FP256BN_AMCL]
-	translator := &amcl.Fp256bn{C: curve}
+	curve := math.Curves[math.BLS12_381_BBS]
 	rnd, err := curve.Rand()
 	assert.NoError(t, err)
 
@@ -33,12 +31,11 @@ func TestFileBased(t *testing.T) {
 	assert.NoError(t, err)
 
 	keystore := &KVSStore{
-		KVS:        kvs,
-		Translator: translator,
-		Curve:      curve,
+		KVS:   kvs,
+		Curve: curve,
 	}
 
-	nsk, err := handlers.NewNymSecretKey(curve.NewRandomZr(rnd), curve.GenG1.Mul(curve.NewRandomZr(rnd)), translator, true)
+	nsk, err := handlers.NewNymSecretKey(curve.NewRandomZr(rnd), curve.GenG1.Mul(curve.NewRandomZr(rnd)), curve, true)
 	assert.NoError(t, err)
 	keys := []bccsp.Key{
 		handlers.NewUserSecretKey(curve.NewRandomZr(rnd), true),

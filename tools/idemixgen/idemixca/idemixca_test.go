@@ -15,11 +15,8 @@ import (
 	"testing"
 
 	"github.com/IBM/idemix/bccsp/schemes/aries"
-	idemix "github.com/IBM/idemix/bccsp/schemes/dlog/crypto"
-	amclt "github.com/IBM/idemix/bccsp/schemes/dlog/crypto/translator/amcl"
 	imsp "github.com/IBM/idemix/msp"
 	math "github.com/IBM/mathlib"
-	"github.com/golang/protobuf/proto"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/require"
 )
@@ -81,57 +78,6 @@ func TestIdemixCaAries(t *testing.T) {
 	require.EqualError(t, err, "the OU attribute value is empty")
 
 	_, err = GenerateSignerConfigAries(imsp.GetRoleMaskFromIdemixRole(imsp.ADMIN), "OU1", "", "1", iskBytes, ipkBytes, revocationkey, curve)
-	require.EqualError(t, err, "the enrollment id value is empty")
-}
-
-func TestIdemixCa(t *testing.T) {
-	cleanup()
-
-	curve := math.Curves[math.FP256BN_AMCL]
-	tr := &amclt.Fp256bn{
-		C: curve,
-	}
-
-	idmx := &idemix.Idemix{
-		Curve: curve,
-	}
-
-	iskBytes, ipkBytes, err := GenerateIssuerKey(idmx, tr)
-	require.NoError(t, err)
-
-	revocationkey, err := idmx.GenerateLongTermRevocationKey()
-	require.NoError(t, err)
-
-	ipk := &idemix.IssuerPublicKey{}
-	err = proto.Unmarshal(ipkBytes, ipk)
-	require.NoError(t, err)
-
-	encodedRevocationPK, err := x509.MarshalPKIXPublicKey(revocationkey.Public())
-	require.NoError(t, err)
-	pemEncodedRevocationPK := pem.EncodeToMemory(&pem.Block{Type: "PUBLIC KEY", Bytes: encodedRevocationPK})
-
-	writeVerifierToFile(ipkBytes, pemEncodedRevocationPK)
-
-	conf, err := GenerateSignerConfig(imsp.GetRoleMaskFromIdemixRole(imsp.MEMBER), "OU1", "enrollmentid1", "1", iskBytes, ipkBytes, revocationkey, idmx, tr)
-	require.NoError(t, err)
-	cleanupSigner()
-	require.NoError(t, writeSignerToFile(conf))
-	require.NoError(t, setupMSP(imsp.IDEMIX))
-
-	conf, err = GenerateSignerConfig(imsp.GetRoleMaskFromIdemixRole(imsp.ADMIN), "OU1", "enrollmentid2", "1234", iskBytes, ipkBytes, revocationkey, idmx, tr)
-	require.NoError(t, err)
-	cleanupSigner()
-	require.NoError(t, writeSignerToFile(conf))
-	require.NoError(t, setupMSP(imsp.IDEMIX))
-
-	// Without the verifier dir present, setup should give an error
-	cleanupVerifier()
-	require.Error(t, setupMSP(imsp.IDEMIX))
-
-	_, err = GenerateSignerConfig(imsp.GetRoleMaskFromIdemixRole(imsp.ADMIN), "", "enrollmentid", "1", iskBytes, ipkBytes, revocationkey, idmx, tr)
-	require.EqualError(t, err, "the OU attribute value is empty")
-
-	_, err = GenerateSignerConfig(imsp.GetRoleMaskFromIdemixRole(imsp.ADMIN), "OU1", "", "1", iskBytes, ipkBytes, revocationkey, idmx, tr)
 	require.EqualError(t, err, "the enrollment id value is empty")
 }
 

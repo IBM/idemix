@@ -9,8 +9,7 @@ package msp
 import (
 	"testing"
 
-	idemix "github.com/IBM/idemix/bccsp/schemes/dlog/crypto"
-	amclt "github.com/IBM/idemix/bccsp/schemes/dlog/crypto/translator/amcl"
+	"github.com/IBM/idemix/bccsp/schemes/aries"
 	im "github.com/IBM/idemix/msp/config"
 	math "github.com/IBM/mathlib"
 	"github.com/golang/protobuf/proto"
@@ -81,11 +80,6 @@ func TestSetup(t *testing.T) {
 }
 
 func TestSetupBad(t *testing.T) {
-	curve := math.Curves[math.FP256BN_AMCL]
-	tr := &amclt.Fp256bn{
-		C: curve,
-	}
-
 	_, err := setup("testdata/idemix/badpath", "MSPID")
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "Getting MSP config failed")
@@ -116,15 +110,12 @@ func TestSetupBad(t *testing.T) {
 	err = proto.Unmarshal(conf.Config, idemixconfig)
 	require.NoError(t, err)
 
-	// Create MSP config with IPK with incorrect attribute names
-	idmx := &idemix.Idemix{
-		Curve: curve,
-	}
-	rng, err := curve.Rand()
+	// Create MSP config with IPK with incorrect attribute names (empty attrs)
+	curve := math.Curves[math.BLS12_381_BBS]
+	issuer := &aries.Issuer{Curve: curve}
+	key, err := issuer.NewKey([]string{})
 	require.NoError(t, err)
-	key, err := idmx.NewIssuerKey([]string{}, rng, tr)
-	require.NoError(t, err)
-	ipkBytes, err := proto.Marshal(key.Ipk)
+	ipkBytes, err := key.Public().Bytes()
 	require.NoError(t, err)
 	idemixconfig.Ipk = ipkBytes
 
