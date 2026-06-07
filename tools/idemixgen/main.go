@@ -173,6 +173,7 @@ func readRevocationKey() *ecdsa.PrivateKey {
 	block, _ := pem.Decode(keyBytes)
 	if block == nil {
 		handleError(errors.Errorf("failed to decode ECDSA private key"))
+		return nil // unreachable, but satisfies staticcheck
 	}
 	key, err := x509.ParseECPrivateKey(block.Bytes)
 	handleError(err)

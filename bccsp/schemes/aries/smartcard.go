@@ -141,7 +141,6 @@ func (sc *Smartcard) NymVerify(proofBytes []byte, nymEid *math.G1, msg []byte) e
 	offset += sc.Curve.ScalarByteSize
 
 	r_hat := sc.Curve.NewZrFromBytes(proofBytes[offset : offset+sc.Curve.ScalarByteSize])
-	offset += sc.Curve.ScalarByteSize
 
 	var challengeBytes []byte
 	challengeBytes = append(challengeBytes, sc.H0.Bytes()[1:]...)

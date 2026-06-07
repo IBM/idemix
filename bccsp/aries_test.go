@@ -20,6 +20,8 @@ import (
 	. "github.com/onsi/gomega"
 )
 
+var _ = Describe("Aries", testAries)
+
 func testAries() {
 	curve := math.Curves[math.BLS12_381_BBS]
 
