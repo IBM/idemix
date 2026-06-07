@@ -13,7 +13,6 @@ import (
 
 	idemix "github.com/IBM/idemix/bccsp"
 	"github.com/IBM/idemix/bccsp/schemes/aries"
-	"github.com/IBM/idemix/bccsp/schemes/dlog/crypto/translator/amcl"
 	bccsp "github.com/IBM/idemix/bccsp/types"
 	math "github.com/IBM/mathlib"
 	"github.com/golang/protobuf/proto"
@@ -21,9 +20,10 @@ import (
 	. "github.com/onsi/gomega"
 )
 
+var _ = Describe("Aries", testAries)
+
 func testAries() {
 	curve := math.Curves[math.BLS12_381_BBS]
-	translator := &amcl.Gurvy{C: curve}
 
 	Describe("setting up the environment with one issuer and one user with curve", func() {
 		var (
@@ -55,7 +55,7 @@ func testAries() {
 			rootDir, err = ioutil.TempDir(os.TempDir(), "idemixtest")
 			Expect(err).NotTo(HaveOccurred())
 
-			CSP, err = idemix.NewAries(NewDummyKeyStore(), curve, translator, true)
+			CSP, err = idemix.NewAries(NewDummyKeyStore(), curve, true)
 			Expect(err).NotTo(HaveOccurred())
 
 			// Issuer
@@ -1623,7 +1623,7 @@ func testAries() {
 
 				BeforeEach(func() {
 					var err error
-					CSP, err = idemix.NewAries(NewDummyKeyStore(), curve, translator, true)
+					CSP, err = idemix.NewAries(NewDummyKeyStore(), curve, true)
 					Expect(err).NotTo(HaveOccurred())
 
 					// Issuer

@@ -1,0 +1,31 @@
+linters:
+  enable:
+    - errcheck
+    - gosimple
+    - govet
+    - ineffassign
+    - staticcheck
+    - unused
+
+linters-settings:
+  errcheck:
+    check-blank: false
+    check-type-assertions: false
+  staticcheck:
+    checks:
+      - "all"
+      - "-SA1019"  # Suppress deprecated usage — tracked for Phase 7
+
+issues:
+  exclude-dirs:
+    - bccsp/types/mock
+    - common/flogging/mock
+    - common/flogging
+  exclude-rules:
+    - path: bccsp/bccsp\.go
+      linters:
+        - errcheck
+      text: "AddWrapper"
+    - path: _test\.go
+      linters:
+        - errcheck

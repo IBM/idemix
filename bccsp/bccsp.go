@@ -11,8 +11,6 @@ import (
 	"github.com/IBM/idemix/bbs"
 	"github.com/IBM/idemix/bccsp/handlers"
 	"github.com/IBM/idemix/bccsp/schemes/aries"
-	"github.com/IBM/idemix/bccsp/schemes/dlog/bridge"
-	idemix "github.com/IBM/idemix/bccsp/schemes/dlog/crypto"
 	bccsp "github.com/IBM/idemix/bccsp/types"
 	math "github.com/IBM/mathlib"
 	"github.com/pkg/errors"
@@ -22,162 +20,7 @@ type csp struct {
 	*CSP
 }
 
-func New(keyStore bccsp.KeyStore, curve *math.Curve, translator idemix.Translator, exportable bool) (*csp, error) {
-	base, err := NewImpl(keyStore)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed instantiating base bccsp")
-	}
-
-	csp := &csp{CSP: base}
-
-	idmx := &idemix.Idemix{
-		Curve:      curve,
-		Translator: translator,
-	}
-
-	// key generators
-	base.AddWrapper(reflect.TypeOf(&bccsp.IdemixIssuerKeyGenOpts{}),
-		&handlers.IssuerKeyGen{
-			Exportable: exportable,
-			Issuer: &bridge.Issuer{
-				Idemix: idmx, Translator: translator,
-			},
-		})
-	base.AddWrapper(reflect.TypeOf(&bccsp.IdemixUserSecretKeyGenOpts{}),
-		&handlers.UserKeyGen{
-			Exportable: exportable,
-			User: &bridge.User{
-				Idemix: idmx, Translator: translator,
-			},
-		})
-	base.AddWrapper(reflect.TypeOf(&bccsp.IdemixRevocationKeyGenOpts{}),
-		&handlers.RevocationKeyGen{
-			Exportable: exportable,
-			Revocation: &bridge.Revocation{
-				Idemix: idmx, Translator: translator,
-			},
-		})
-
-	// key derivers
-	base.AddWrapper(reflect.TypeOf(handlers.NewUserSecretKey(nil, true)),
-		&handlers.NymKeyDerivation{
-			Exportable: exportable,
-			Translator: translator,
-			User: &bridge.User{
-				Idemix: idmx, Translator: translator,
-			},
-		})
-
-	// signers
-	base.AddWrapper(reflect.TypeOf(handlers.NewUserSecretKey(nil, true)),
-		&userSecreKeySignerMultiplexer{
-			signer: &handlers.Signer{
-				SignatureScheme: &bridge.SignatureScheme{
-					Idemix: idmx, Translator: translator,
-				}},
-			nymSigner: &handlers.NymSigner{
-				NymSignatureScheme: &bridge.NymSignatureScheme{
-					Idemix: idmx, Translator: translator,
-				}},
-			credentialRequestSigner: &handlers.CredentialRequestSigner{
-				CredRequest: &bridge.CredRequest{
-					Idemix: idmx, Translator: translator,
-				}},
-		})
-	base.AddWrapper(reflect.TypeOf(handlers.NewIssuerSecretKey(nil, true)),
-		&handlers.CredentialSigner{
-			Credential: &bridge.Credential{
-				Idemix: idmx, Translator: translator,
-			},
-		})
-	base.AddWrapper(reflect.TypeOf(handlers.NewRevocationSecretKey(nil, true)),
-		&handlers.CriSigner{
-			Revocation: &bridge.Revocation{
-				Idemix: idmx, Translator: translator,
-			},
-		})
-
-	// verifiers
-	base.AddWrapper(reflect.TypeOf(handlers.NewIssuerPublicKey(nil)),
-		&issuerPublicKeyVerifierMultiplexer{
-			verifier: &handlers.Verifier{
-				SignatureScheme: &bridge.SignatureScheme{
-					Idemix: idmx, Translator: translator,
-				}},
-			credentialRequestVerifier: &handlers.CredentialRequestVerifier{
-				CredRequest: &bridge.CredRequest{
-					Idemix: idmx, Translator: translator,
-				}},
-		})
-	base.AddWrapper(reflect.TypeOf(handlers.NewNymPublicKey(nil, translator)),
-		&handlers.NymVerifier{
-			NymSignatureScheme: &bridge.NymSignatureScheme{
-				Idemix: idmx, Translator: translator,
-			},
-		})
-	base.AddWrapper(reflect.TypeOf(handlers.NewUserSecretKey(nil, true)),
-		&handlers.CredentialVerifier{
-			Credential: &bridge.Credential{
-				Idemix: idmx, Translator: translator,
-			},
-		})
-	base.AddWrapper(reflect.TypeOf(handlers.NewRevocationPublicKey(nil)),
-		&handlers.CriVerifier{
-			Revocation: &bridge.Revocation{
-				Idemix: idmx, Translator: translator,
-			},
-		})
-
-	// importers
-	base.AddWrapper(reflect.TypeOf(&bccsp.IdemixUserSecretKeyImportOpts{}),
-		&handlers.UserKeyImporter{
-			Exportable: exportable,
-			User: &bridge.User{
-				Idemix: idmx, Translator: translator,
-			},
-		})
-	base.AddWrapper(reflect.TypeOf(&bccsp.IdemixIssuerPublicKeyImportOpts{}),
-		&handlers.IssuerPublicKeyImporter{
-			Issuer: &bridge.Issuer{
-				Idemix: idmx, Translator: translator,
-			},
-		})
-	base.AddWrapper(reflect.TypeOf(&bccsp.IdemixIssuerKeyImportOpts{}),
-		&handlers.IssuerKeyImporter{
-			Exportable: exportable,
-			Issuer: &bridge.Issuer{
-				Idemix: idmx, Translator: translator,
-			},
-		})
-	base.AddWrapper(reflect.TypeOf(&bccsp.IdemixNymPublicKeyImportOpts{}),
-		&handlers.NymPublicKeyImporter{
-			User: &bridge.User{
-				Idemix: idmx, Translator: translator,
-			},
-			Translator: translator,
-		})
-	base.AddWrapper(reflect.TypeOf(&bccsp.IdemixNymKeyImportOpts{}),
-		&handlers.NymKeyImporter{
-			Exportable: exportable,
-			User: &bridge.User{
-				Idemix: idmx, Translator: translator,
-			},
-			Translator: translator,
-		})
-	base.AddWrapper(reflect.TypeOf(&bccsp.IdemixRevocationPublicKeyImportOpts{}),
-		&handlers.RevocationPublicKeyImporter{})
-	base.AddWrapper(reflect.TypeOf(&bccsp.IdemixRevocationKeyImportOpts{}),
-		&handlers.RevocationKeyImporter{
-			Exportable: exportable,
-			Revocation: &bridge.Revocation{
-				Idemix: idmx, Translator: translator,
-			},
-		})
-
-	return csp, nil
-}
-
-func NewAries(keyStore bccsp.KeyStore, curve *math.Curve, _translator idemix.Translator, exportable bool) (*csp, error) {
+func NewAries(keyStore bccsp.KeyStore, curve *math.Curve, exportable bool) (*csp, error) {
 	base, err := NewImpl(keyStore)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed instantiating base bccsp")
@@ -219,7 +62,7 @@ func NewAries(keyStore bccsp.KeyStore, curve *math.Curve, _translator idemix.Tra
 	base.AddWrapper(reflect.TypeOf(handlers.NewUserSecretKey(nil, true)),
 		&handlers.NymKeyDerivation{
 			Exportable: exportable,
-			Translator: _translator,
+			Curve:      curve,
 			User: &aries.User{
 				Curve: curve,
 				Rng:   rng,
@@ -246,7 +89,7 @@ func NewAries(keyStore bccsp.KeyStore, curve *math.Curve, _translator idemix.Tra
 				CredRequest: &aries.CredRequest{
 					Curve: curve,
 				}},
-			credentialRequestSigner: nil, // aries does not implement this approach
+			credentialRequestSigner: nil,
 		})
 	base.AddWrapper(reflect.TypeOf(handlers.NewIssuerSecretKey(nil, true)),
 		&handlers.CredentialSigner{
@@ -275,9 +118,9 @@ func NewAries(keyStore bccsp.KeyStore, curve *math.Curve, _translator idemix.Tra
 				CredRequest: &aries.CredRequest{
 					Curve: curve,
 				}},
-			credentialRequestVerifier: nil, // aries does not implement this type of issuance
+			credentialRequestVerifier: nil,
 		})
-	base.AddWrapper(reflect.TypeOf(handlers.NewNymPublicKey(nil, _translator)),
+	base.AddWrapper(reflect.TypeOf(handlers.NewNymPublicKey(nil)),
 		&handlers.NymVerifier{
 			SmartcardNymSignatureScheme: &aries.SmartcardIdemixBackend{
 				Curve: curve,
@@ -330,7 +173,6 @@ func NewAries(keyStore bccsp.KeyStore, curve *math.Curve, _translator idemix.Tra
 				Curve: curve,
 				Rng:   rng,
 			},
-			Translator: _translator,
 		})
 	base.AddWrapper(reflect.TypeOf(&bccsp.IdemixNymKeyImportOpts{}),
 		&handlers.NymKeyImporter{
@@ -339,7 +181,7 @@ func NewAries(keyStore bccsp.KeyStore, curve *math.Curve, _translator idemix.Tra
 				Curve: curve,
 				Rng:   rng,
 			},
-			Translator: _translator,
+			Curve: curve,
 		})
 	base.AddWrapper(reflect.TypeOf(&bccsp.IdemixRevocationPublicKeyImportOpts{}),
 		&handlers.RevocationPublicKeyImporter{})

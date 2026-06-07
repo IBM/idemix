@@ -9,11 +9,11 @@ checks: check-deps
 
 .PHONY: unit-tests
 unit-tests:
-	@go test ./...
+	@go test -count=1 ./...
 
 .PHONY: unit-tests-race
 unit-tests-race:
-	@export GORACE=history_size=7; go test -timeout 960s -race -cover $(shell go list ./...)
+	@export GORACE=history_size=7; go test -count=1 -timeout 960s -race -cover $(shell go list ./...)
 
 .PHONY: check-deps
 check-deps:

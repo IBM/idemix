@@ -7,12 +7,14 @@ SPDX-License-Identifier: Apache-2.0
 package main
 
 // idemixgen is a command line tool that generates the CA's keys and
-// generates MSP configs for siging and for verification
+// generates MSP configs for signing and for verification
 // This tool can be used to setup the peers and CA to support
 // the Identity Mixer MSP
 
 import (
 	"crypto/ecdsa"
+	"crypto/elliptic"
+	"crypto/rand"
 	"crypto/x509"
 	"encoding/pem"
 	"fmt"
@@ -24,8 +26,6 @@ import (
 	"github.com/alecthomas/kingpin/v2"
 	"github.com/pkg/errors"
 
-	idemix "github.com/IBM/idemix/bccsp/schemes/dlog/crypto"
-	"github.com/IBM/idemix/bccsp/schemes/dlog/crypto/translator/amcl"
 	imsp "github.com/IBM/idemix/msp"
 	"github.com/IBM/idemix/tools/idemixgen/idemixca"
 	"github.com/IBM/idemix/tools/idemixgen/metadata"
@@ -36,14 +36,7 @@ const (
 	IdemixConfigIssuerSecretKey = "IssuerSecretKey"
 	IdemixConfigRevocationKey   = "RevocationKey"
 
-	FP256BN_AMCL        = "FP256BN_AMCL"
-	BN254               = "BN254"
-	FP256BN_AMCL_MIRACL = "FP256BN_AMCL_MIRACL"
-	BLS12_377_GURVY     = "BLS12_377_GURVY"
-	BLS12_381_GURVY     = "BLS12_381_GURVY"
-	BLS12_381           = "BLS12_381"
-	BLS12_381_BBS       = "BLS12_381_BBS"
-	BLS12_381_BBS_GURVY = "BLS12_381_BBS_GURVY"
+	BLS12_381_BBS = "BLS12_381_BBS"
 )
 
 // command line flags
@@ -51,16 +44,6 @@ var (
 	app = kingpin.New("idemixgen", "Utility for generating key material to be used with the Identity Mixer MSP in Hyperledger Fabric")
 
 	outputDir = app.Flag("output", "The output directory in which to place artifacts").Default("idemix-config").String()
-	curveID   = app.Flag("curve", "The curve to use to generate the crypto material").Short('c').Default(FP256BN_AMCL).
-			Enum(FP256BN_AMCL,
-			BN254,
-			FP256BN_AMCL_MIRACL,
-			BLS12_377_GURVY,
-			BLS12_381_GURVY,
-			BLS12_381,
-			BLS12_381_BBS,
-			BLS12_381_BBS_GURVY)
-	useAries = app.Flag("aries", "Use the aries-backed implementation").Bool()
 
 	genIssuerKey            = app.Command("ca-keygen", "Generate CA key material")
 	genSignerConfig         = app.Command("signerconfig", "Generate a default signer for this Idemix MSP")
@@ -73,73 +56,24 @@ var (
 	version = app.Command("version", "Show version information")
 )
 
-type Translator interface {
-	G1ToProto(*math.G1) *amcl.ECP
-	G1FromProto(*amcl.ECP) (*math.G1, error)
-	G1FromRawBytes([]byte) (*math.G1, error)
-	G2ToProto(*math.G2) *amcl.ECP2
-	G2FromProto(*amcl.ECP2) (*math.G2, error)
-}
-
 func main() {
 	app.HelpFlag.Short('h')
 
 	command := kingpin.MustParse(app.Parse(os.Args[1:]))
 
-	var curve *math.Curve
-	var tr Translator
-	switch *curveID {
-	case FP256BN_AMCL:
-		curve = math.Curves[math.FP256BN_AMCL]
-		tr = &amcl.Fp256bn{C: curve}
-	case BN254:
-		curve = math.Curves[math.BN254]
-		tr = &amcl.Gurvy{C: curve}
-	case FP256BN_AMCL_MIRACL:
-		curve = math.Curves[math.FP256BN_AMCL_MIRACL]
-		tr = &amcl.Fp256bnMiracl{C: curve}
-	case BLS12_377_GURVY:
-		curve = math.Curves[math.BLS12_377_GURVY]
-		tr = &amcl.Gurvy{C: curve}
-	case BLS12_381_GURVY:
-		curve = math.Curves[math.BLS12_381_GURVY]
-		tr = &amcl.Gurvy{C: curve}
-	case BLS12_381:
-		curve = math.Curves[math.BLS12_381]
-		tr = &amcl.Gurvy{C: curve}
-	case BLS12_381_BBS:
-		curve = math.Curves[math.BLS12_381_BBS]
-		tr = &amcl.Gurvy{C: curve}
-	case BLS12_381_BBS_GURVY:
-		curve = math.Curves[math.BLS12_381_BBS_GURVY]
-		tr = &amcl.Gurvy{C: curve}
-	default:
-		handleError(fmt.Errorf("invalid curve [%s]", *curveID))
-	}
-
-	idmx := &idemix.Idemix{
-		Curve: curve,
-	}
+	curve := math.Curves[math.BLS12_381_BBS]
 
 	switch command {
 
 	case genIssuerKey.FullCommand():
-		var isk, ipk []byte
-		var err error
-
-		if *useAries {
-			isk, ipk, err = idemixca.GenerateIssuerKeyAries(curve)
-		} else {
-			isk, ipk, err = idemixca.GenerateIssuerKey(idmx, tr)
-		}
+		isk, ipk, err := idemixca.GenerateIssuerKeyAries(curve)
 		handleError(err)
 
-		revocationKey, err := idmx.GenerateLongTermRevocationKey()
+		revocationKey, err := ecdsa.GenerateKey(elliptic.P384(), rand.Reader)
 		handleError(err)
 		encodedRevocationSK, err := x509.MarshalECPrivateKey(revocationKey)
 		handleError(err)
 		pemEncodedRevocationSK := pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: encodedRevocationSK})
-		handleError(err)
 		encodedRevocationPK, err := x509.MarshalPKIXPublicKey(revocationKey.Public())
 		handleError(err)
 		pemEncodedRevocationPK := pem.EncodeToMemory(&pem.Block{Type: "PUBLIC KEY", Bytes: encodedRevocationPK})
@@ -174,26 +108,14 @@ func main() {
 		rsk := readRevocationKey()
 		rpk := readRevocationPublicKey()
 
-		var config []byte
-		var err error
-		if *useAries {
-			config, err = idemixca.GenerateSignerConfigAries(
-				roleMask,
-				*genCredOU,
-				*genCredEnrollmentId,
-				*genCredRevocationHandle,
-				iskBytes, ipkBytes, rsk,
-				curve,
-			)
-		} else {
-			config, err = idemixca.GenerateSignerConfig(
-				roleMask,
-				*genCredOU,
-				*genCredEnrollmentId,
-				*genCredRevocationHandle,
-				iskBytes, ipkBytes, rsk, idmx, tr,
-			)
-		}
+		config, err := idemixca.GenerateSignerConfigAries(
+			roleMask,
+			*genCredOU,
+			*genCredEnrollmentId,
+			*genCredRevocationHandle,
+			iskBytes, ipkBytes, rsk,
+			curve,
+		)
 		handleError(err)
 
 		path := filepath.Join(*outputDir, imsp.IdemixConfigDirUser)
@@ -251,6 +173,7 @@ func readRevocationKey() *ecdsa.PrivateKey {
 	block, _ := pem.Decode(keyBytes)
 	if block == nil {
 		handleError(errors.Errorf("failed to decode ECDSA private key"))
+		return nil // unreachable, but satisfies staticcheck
 	}
 	key, err := x509.ParseECPrivateKey(block.Bytes)
 	handleError(err)

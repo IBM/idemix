@@ -18,12 +18,7 @@ import (
 	"reflect"
 
 	bccsp "github.com/IBM/idemix/bccsp/types"
-	"github.com/IBM/idemix/common/flogging"
 	"github.com/pkg/errors"
-)
-
-var (
-	logger = flogging.MustGetLogger("bccsp_idemix")
 )
 
 // KeyGenerator is a BCCSP-like interface that provides key generation algorithms

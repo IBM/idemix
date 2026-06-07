@@ -16,7 +16,6 @@ import (
 	"io"
 	"math/big"
 
-	weakbb "github.com/IBM/idemix/bccsp/schemes/weak-bb"
 	"github.com/IBM/idemix/bccsp/types"
 	math "github.com/IBM/mathlib"
 	"github.com/golang/protobuf/proto"
@@ -50,18 +49,14 @@ func (r *RevocationAuthority) Sign(key *ecdsa.PrivateKey, _ [][]byte, epoch int,
 		return nil, errors.Errorf("CreateCRI received nil input")
 	}
 
+	if alg != types.AlgNoRevocation {
+		return nil, errors.Errorf("the specified revocation algorithm is not supported.")
+	}
+
 	cri := &CredentialRevocationInformation{}
 	cri.RevocationAlg = int32(alg)
 	cri.Epoch = int64(epoch)
-
-	if alg == types.AlgNoRevocation {
-		// put a dummy PK in the proto
-		cri.EpochPk = r.Curve.GenG2.Bytes()
-	} else {
-		// create epoch key
-		_, epochPk := weakbb.WbbKeyGen(r.Curve, r.Rng)
-		cri.EpochPk = epochPk.Bytes()
-	}
+	cri.EpochPk = r.Curve.GenG2.Bytes()
 
 	// sign epoch + epoch key with long term key
 	bytesToSign, err := proto.Marshal(cri)
@@ -76,11 +71,7 @@ func (r *RevocationAuthority) Sign(key *ecdsa.PrivateKey, _ [][]byte, epoch int,
 		return nil, err
 	}
 
-	if alg == types.AlgNoRevocation {
-		return proto.Marshal(cri)
-	} else {
-		return nil, errors.Errorf("the specified revocation algorithm is not supported.")
-	}
+	return proto.Marshal(cri)
 }
 
 // Verify verifies that the revocation PK for a certain epoch is valid,

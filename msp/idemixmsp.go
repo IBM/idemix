@@ -16,7 +16,6 @@ import (
 
 	idemix "github.com/IBM/idemix/bccsp"
 	"github.com/IBM/idemix/bccsp/keystore"
-	"github.com/IBM/idemix/bccsp/schemes/dlog/crypto/translator/amcl"
 	bccsp "github.com/IBM/idemix/bccsp/types"
 	"github.com/IBM/idemix/common/flogging"
 	im "github.com/IBM/idemix/msp/config"
@@ -81,12 +80,12 @@ type Idemixmsp struct {
 var mspLogger = flogging.MustGetLogger("idemix")
 var mspIdentityLogger = flogging.MustGetLogger("idemix.identity")
 
-// NewIdemixMsp creates a new instance of idemixmsp
+// NewIdemixMsp creates a new instance of idemixmsp using the Aries (BBS+) scheme
 func NewIdemixMsp(version MSPVersion) (MSP, error) {
 	mspLogger.Debugf("Creating Idemix-based MSP instance")
 
-	curve := math.Curves[math.FP256BN_AMCL]
-	csp, err := idemix.New(&keystore.Dummy{}, curve, &amcl.Fp256bn{C: curve}, true)
+	curve := math.Curves[math.BLS12_381_BBS]
+	csp, err := idemix.NewAries(&keystore.Dummy{}, curve, true)
 	if err != nil {
 		panic(fmt.Sprintf("unexpected condition, error received [%s]", err))
 	}
@@ -96,12 +95,12 @@ func NewIdemixMsp(version MSPVersion) (MSP, error) {
 	return &msp, nil
 }
 
-// NewIdemixMspAries creates a new instance of idemixmsp
+// NewIdemixMspAries creates a new instance of idemixmsp using the Aries (BBS+) scheme
 func NewIdemixMspAries(version MSPVersion) (MSP, error) {
 	mspLogger.Debugf("Creating Idemix-based MSP instance")
 
 	curve := math.Curves[math.BLS12_381_BBS]
-	csp, err := idemix.NewAries(&keystore.Dummy{}, curve, &amcl.Gurvy{C: curve}, true)
+	csp, err := idemix.NewAries(&keystore.Dummy{}, curve, true)
 	if err != nil {
 		panic(fmt.Sprintf("unexpected condition, error received [%s]", err))
 	}

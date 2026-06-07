@@ -9,7 +9,6 @@ import (
 	"errors"
 
 	"github.com/IBM/idemix/bccsp/handlers"
-	"github.com/IBM/idemix/bccsp/schemes/dlog/crypto/translator/amcl"
 	bccsp "github.com/IBM/idemix/bccsp/types"
 	"github.com/IBM/idemix/bccsp/types/mock"
 	math "github.com/IBM/mathlib"
@@ -32,8 +31,8 @@ var _ = Describe("Signature", func() {
 			Signer = &handlers.Signer{SignatureScheme: fakeSignatureScheme}
 
 			var err error
-			sk := math.Curves[math.FP256BN_AMCL].NewZrFromInt(0)
-			nymSK, err = handlers.NewNymSecretKey(sk, nil, &amcl.Fp256bn{C: math.Curves[math.FP256BN_AMCL]}, false)
+			sk := math.Curves[math.BLS12_381_BBS].NewZrFromInt(0)
+			nymSK, err = handlers.NewNymSecretKey(sk, nil, math.Curves[math.BLS12_381_BBS], false)
 			Expect(err).NotTo(HaveOccurred())
 		})
 
@@ -68,7 +67,7 @@ var _ = Describe("Signature", func() {
 			)
 			BeforeEach(func() {
 				fakeSignature = []byte("fake signature")
-				randomRandomness = math.Curves[math.FP256BN_AMCL].NewZrFromInt(35)
+				randomRandomness = math.Curves[math.BLS12_381_BBS].NewZrFromInt(35)
 				fakeSignatureScheme.SignReturns(fakeSignature, &bccsp.IdemixSignerMetadata{EidNymAuditData: &bccsp.AttrNymAuditData{Rand: randomRandomness}}, nil)
 			})
 
