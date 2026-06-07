@@ -16,7 +16,6 @@ import (
 	"math/big"
 
 	amcl "github.com/IBM/idemix/bccsp/schemes/dlog/crypto/translator/amcl"
-	weakbb "github.com/IBM/idemix/bccsp/schemes/weak-bb"
 	math "github.com/IBM/mathlib"
 	"github.com/golang/protobuf/proto"
 	"github.com/pkg/errors"
@@ -75,9 +74,7 @@ func createCRI(key *ecdsa.PrivateKey, unrevokedHandles []*math.Zr, epoch int, al
 		// put a dummy PK in the proto
 		cri.EpochPk = t.G2ToProto(curve.GenG2)
 	} else {
-		// create epoch key
-		_, epochPk := weakbb.WbbKeyGen(curve, rng)
-		cri.EpochPk = t.G2ToProto(epochPk)
+		return nil, errors.Errorf("the specified revocation algorithm is not supported.")
 	}
 
 	// sign epoch + epoch key with long term key

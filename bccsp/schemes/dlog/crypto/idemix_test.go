@@ -15,7 +15,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/IBM/idemix/bccsp/schemes/dlog/crypto/translator/amcl"
-	weakbb "github.com/IBM/idemix/bccsp/schemes/weak-bb"
 	opts "github.com/IBM/idemix/bccsp/types"
 )
 
@@ -73,20 +72,8 @@ func testIdemix(t *testing.T, curve *math.Curve, tr Translator) {
 	idmx := &Idemix{
 		Curve: curve,
 	}
-	// Test weak BB sigs:
-	// Test KeyGen
+
 	rng, err := curve.Rand()
-	require.NoError(t, err)
-	wbbsk, wbbpk := weakbb.WbbKeyGen(curve, rng)
-
-	// Get random message
-	testmsg := curve.NewRandomZr(rng)
-
-	// Test Signing
-	wbbsig := weakbb.WbbSign(curve, wbbsk, testmsg)
-
-	// Test Verification
-	err = weakbb.WbbVerify(curve, wbbpk, wbbsig, testmsg)
 	require.NoError(t, err)
 
 	// Test idemix functionality
