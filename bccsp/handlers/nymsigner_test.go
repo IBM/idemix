@@ -9,7 +9,6 @@ import (
 	"errors"
 
 	"github.com/IBM/idemix/bccsp/handlers"
-	"github.com/IBM/idemix/bccsp/schemes/dlog/crypto/translator/amcl"
 	bccsp "github.com/IBM/idemix/bccsp/types"
 	"github.com/IBM/idemix/bccsp/types/mock"
 	math "github.com/IBM/mathlib"
@@ -32,8 +31,8 @@ var _ = Describe("Nym Signature", func() {
 			NymSigner = &handlers.NymSigner{NymSignatureScheme: fakeSignatureScheme}
 
 			var err error
-			sk := math.Curves[math.FP256BN_AMCL].NewZrFromInt(0)
-			nymSK, err = handlers.NewNymSecretKey(sk, nil, &amcl.Fp256bn{C: math.Curves[math.FP256BN_AMCL]}, false)
+			sk := math.Curves[math.BLS12_381_BBS].NewZrFromInt(0)
+			nymSK, err = handlers.NewNymSecretKey(sk, nil, math.Curves[math.BLS12_381_BBS], false)
 			Expect(err).NotTo(HaveOccurred())
 		})
 
@@ -215,7 +214,7 @@ var _ = Describe("Nym Signature", func() {
 
 			It("returns no error and valid signature", func() {
 				valid, err := NymVerifier.Verify(
-					handlers.NewNymPublicKey(nil, &amcl.Fp256bn{C: math.Curves[math.FP256BN_AMCL]}),
+					handlers.NewNymPublicKey(nil),
 					[]byte("a signature"),
 					[]byte("a digest"),
 					&bccsp.IdemixNymSignerOpts{
@@ -234,7 +233,7 @@ var _ = Describe("Nym Signature", func() {
 
 			It("returns an error", func() {
 				valid, err := NymVerifier.Verify(
-					handlers.NewNymPublicKey(nil, &amcl.Fp256bn{C: math.Curves[math.FP256BN_AMCL]}),
+					handlers.NewNymPublicKey(nil),
 					[]byte("a signature"),
 					[]byte("a digest"),
 					&bccsp.IdemixNymSignerOpts{
@@ -277,7 +276,7 @@ var _ = Describe("Nym Signature", func() {
 			Context("and the signature is empty", func() {
 				It("returns error", func() {
 					valid, err := NymVerifier.Verify(
-						handlers.NewNymPublicKey(nil, &amcl.Fp256bn{C: math.Curves[math.FP256BN_AMCL]}),
+						handlers.NewNymPublicKey(nil),
 						nil,
 						[]byte("a digest"),
 						&bccsp.IdemixNymSignerOpts{IssuerPK: handlers.NewIssuerPublicKey(nil)},
@@ -290,7 +289,7 @@ var _ = Describe("Nym Signature", func() {
 			Context("and the option is empty", func() {
 				It("returns error", func() {
 					valid, err := NymVerifier.Verify(
-						handlers.NewNymPublicKey(nil, &amcl.Fp256bn{C: math.Curves[math.FP256BN_AMCL]}),
+						handlers.NewNymPublicKey(nil),
 						[]byte("a signature"),
 						[]byte("a digest"),
 						nil,
@@ -303,7 +302,7 @@ var _ = Describe("Nym Signature", func() {
 			Context("and the option is not of type *IdemixNymSignerOpts", func() {
 				It("returns error", func() {
 					valid, err := NymVerifier.Verify(
-						handlers.NewNymPublicKey(nil, &amcl.Fp256bn{C: math.Curves[math.FP256BN_AMCL]}),
+						handlers.NewNymPublicKey(nil),
 						[]byte("a signature"),
 						[]byte("a digest"),
 						&bccsp.IdemixCredentialRequestSignerOpts{},
@@ -316,7 +315,7 @@ var _ = Describe("Nym Signature", func() {
 			Context("and the option's issuer public key is empty", func() {
 				It("returns error", func() {
 					valid, err := NymVerifier.Verify(
-						handlers.NewNymPublicKey(nil, &amcl.Fp256bn{C: math.Curves[math.FP256BN_AMCL]}),
+						handlers.NewNymPublicKey(nil),
 						[]byte("fake signature"),
 						nil,
 						&bccsp.IdemixNymSignerOpts{},
@@ -329,11 +328,11 @@ var _ = Describe("Nym Signature", func() {
 			Context("and the option's issuer public key is not of type *issuerPublicKey", func() {
 				It("returns error", func() {
 					valid, err := NymVerifier.Verify(
-						handlers.NewNymPublicKey(nil, &amcl.Fp256bn{C: math.Curves[math.FP256BN_AMCL]}),
+						handlers.NewNymPublicKey(nil),
 						[]byte("fake signature"),
 						nil,
 						&bccsp.IdemixNymSignerOpts{
-							IssuerPK: handlers.NewNymPublicKey(nil, &amcl.Fp256bn{C: math.Curves[math.FP256BN_AMCL]}),
+							IssuerPK: handlers.NewNymPublicKey(nil),
 						},
 					)
 					Expect(err).To(MatchError("invalid issuer public key, expected *issuerPublicKey"))
