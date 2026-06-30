@@ -7,6 +7,7 @@ package handlers_test
 
 import (
 	"crypto/sha256"
+	"errors"
 
 	"github.com/IBM/idemix/bccsp/handlers"
 	"github.com/IBM/idemix/bccsp/schemes/dlog/crypto/translator/amcl"
@@ -15,7 +16,6 @@ import (
 	math "github.com/IBM/mathlib"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	"github.com/pkg/errors"
 )
 
 var _ = Describe("User", func() {

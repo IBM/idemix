@@ -65,7 +65,7 @@ type IdemixIssuerPublicKeyImportOpts struct {
 	// SKIndex contains the index of the secret key
 	SKIndex int
 	// CommitmentBases contains the bases used for the various commitments
-	CommitmentBases map[CommitmentType]interface{}
+	CommitmentBases map[CommitmentType]any
 }
 
 // Ephemeral returns true if the key to generate has to be ephemeral,
@@ -215,7 +215,7 @@ type IdemixAttribute struct {
 	// Type is the attribute's type
 	Type IdemixAttributeType
 	// Value is the attribute's value
-	Value interface{}
+	Value any
 }
 
 // IdemixCredentialSignerOpts contains the options to produce a credential starting from a credential request
@@ -343,7 +343,7 @@ type IdemixNymSignerOpts struct {
 	// Smartcard is a software smartcard used to support signing in s/w
 	// this field is only used in testing to emulate a real smartcard
 	// and may never be set in production.
-	Smartcard interface{}
+	Smartcard any
 
 	// NymEid is the nym eid to use in the verification
 	NymEid *math.G1

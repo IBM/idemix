@@ -7,9 +7,9 @@ package handlers
 
 import (
 	"crypto/ecdsa"
+	"errors"
 
 	"github.com/IBM/idemix/bccsp/types"
-	"github.com/pkg/errors"
 )
 
 type Signer struct {

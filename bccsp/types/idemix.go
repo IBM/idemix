@@ -47,7 +47,7 @@ type Issuer interface {
 
 	// Bases returns the bases used for commitments produced by
 	// key ipk (when it is of an applicable type ipkType)
-	Bases(ipk IssuerPublicKey, ipkType CommitmentBasesRequest, RhIndex, EidIndex, SKIndex int) (map[CommitmentType]interface{}, error)
+	Bases(ipk IssuerPublicKey, ipkType CommitmentBasesRequest, RhIndex, EidIndex, SKIndex int) (map[CommitmentType]any, error)
 }
 
 // User is a local interface to decouple from the idemix implementation
@@ -190,7 +190,7 @@ type NymSignatureScheme interface {
 // the nym sign-related operations
 type SmartcardNymSignatureScheme interface {
 	// Sign creates a new idemix pseudonym signature
-	Sign(isc interface{}, ipk IssuerPublicKey, digest []byte) ([]byte, *math.G1, *math.Zr, error)
+	Sign(isc any, ipk IssuerPublicKey, digest []byte) ([]byte, *math.G1, *math.Zr, error)
 
 	// Verify verifies an idemix NymSignature
 	Verify(pk IssuerPublicKey, Nym *math.G1, signature, digest []byte) error

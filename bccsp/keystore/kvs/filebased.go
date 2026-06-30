@@ -8,11 +8,9 @@ package kvs
 
 import (
 	"encoding/json"
-	"io/ioutil"
+	"fmt"
 	"os"
 	"path"
-
-	"github.com/pkg/errors"
 )
 
 type FileBasedKVS struct {
@@ -23,13 +21,13 @@ func NewFileBased(path string) (*FileBasedKVS, error) {
 	f, err := os.Stat(path)
 
 	if !os.IsNotExist(err) && f.Mode().IsRegular() {
-		return nil, errors.Errorf("invalid path [%s]: it's a file", path)
+		return nil, fmt.Errorf("invalid path [%s]: it's a file", path)
 	}
 
 	if os.IsNotExist(err) {
 		err = os.MkdirAll(path, 0770)
 		if err != nil {
-			return nil, errors.Wrapf(err, "could not create path [%s]", path)
+			return nil, fmt.Errorf("could not create path [%s]: [%w]", path, err)
 		}
 	}
 
@@ -38,31 +36,31 @@ func NewFileBased(path string) (*FileBasedKVS, error) {
 	}, nil
 }
 
-func (f *FileBasedKVS) Put(id string, entry interface{}) error {
+func (f *FileBasedKVS) Put(id string, entry any) error {
 	bytes, err := json.Marshal(entry)
 	if err != nil {
-		return errors.Wrapf(err, "marshalling key [%s] failed", id)
+		return fmt.Errorf("marshalling key [%s] failed: [%w]", id, err)
 	}
 
 	fname := path.Join(f.path, id)
-	err = ioutil.WriteFile(fname, bytes, 0660)
+	err = os.WriteFile(fname, bytes, 0660)
 	if err != nil {
-		return errors.Wrapf(err, "writing [%s] failed", fname)
+		return fmt.Errorf("writing [%s] failed: [%w]", fname, err)
 	}
 
 	return nil
 }
 
-func (f *FileBasedKVS) Get(id string, entry interface{}) error {
+func (f *FileBasedKVS) Get(id string, entry any) error {
 	fname := path.Join(f.path, id)
-	bytes, err := ioutil.ReadFile(fname)
+	bytes, err := os.ReadFile(fname)
 	if err != nil {
-		return errors.Wrapf(err, "could not read file [%s]", fname)
+		return fmt.Errorf("could not read file [%s]: [%w]", fname, err)
 	}
 
 	err = json.Unmarshal(bytes, entry)
 	if err != nil {
-		return errors.Wrapf(err, "could not unmarshal bytes for file [%s]", fname)
+		return fmt.Errorf("could not unmarshal bytes for file [%s]: [%w]", fname, err)
 	}
 
 	return nil

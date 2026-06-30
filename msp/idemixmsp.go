@@ -9,8 +9,10 @@ package msp
 import (
 	"bytes"
 	"encoding/hex"
+	"errors"
 	"fmt"
-	"io/ioutil"
+	"log"
+	"os"
 	"path/filepath"
 	"time"
 
@@ -18,13 +20,12 @@ import (
 	"github.com/IBM/idemix/bccsp/keystore"
 	"github.com/IBM/idemix/bccsp/schemes/dlog/crypto/translator/amcl"
 	bccsp "github.com/IBM/idemix/bccsp/types"
-	"github.com/IBM/idemix/common/flogging"
 	im "github.com/IBM/idemix/msp/config"
 	math "github.com/IBM/mathlib"
-	"github.com/golang/protobuf/proto"
 	m "github.com/hyperledger/fabric-protos-go-apiv2/msp"
-	"github.com/pkg/errors"
+	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
+	"google.golang.org/protobuf/proto"
 )
 
 const (
@@ -68,6 +69,15 @@ const (
 const rhIndex = 3
 const eidIndex = 2
 
+// Logger defines the logging interface required by Idemixmsp.
+// This interface is compatible with the Go SDK log package and common logging facades.
+type Logger interface {
+	Debug(args ...any)
+	Debugf(format string, args ...any)
+	Errorf(format string, args ...any)
+	IsEnabledFor(level zapcore.Level) bool
+}
+
 type Idemixmsp struct {
 	csp          bccsp.BCCSP
 	version      MSPVersion
@@ -76,14 +86,63 @@ type Idemixmsp struct {
 	name         string
 	revocationPK bccsp.Key
 	epoch        int
+	logger       Logger
 }
 
-var mspLogger = flogging.MustGetLogger("idemix")
-var mspIdentityLogger = flogging.MustGetLogger("idemix.identity")
+// defaultLogger is a simple logger implementation that wraps zap.SugaredLogger
+// and satisfies the Logger interface.
+type defaultLogger struct {
+	*zap.SugaredLogger
+	core zapcore.Core
+}
+
+// IsEnabledFor checks if the logger is enabled for the given level
+func (l *defaultLogger) IsEnabledFor(level zapcore.Level) bool {
+	return l.core.Enabled(level)
+}
+
+// newDefaultLogger creates a new logger instance compatible with the Logger interface.
+// It uses zap for structured logging with a development configuration.
+func newDefaultLogger(name string) Logger {
+	config := zap.NewDevelopmentConfig()
+	config.EncoderConfig.EncodeLevel = zapcore.CapitalColorLevelEncoder
+	zapLogger, err := config.Build()
+	if err != nil {
+		// Fallback to standard log if zap initialization fails
+		log.Printf("Failed to initialize zap logger: %v, using standard logger", err)
+		return &stdLogger{prefix: name}
+	}
+	return &defaultLogger{
+		SugaredLogger: zapLogger.Sugar().Named(name),
+		core:          zapLogger.Core(),
+	}
+}
+
+// stdLogger is a fallback logger using Go's standard log package
+type stdLogger struct {
+	prefix string
+}
+
+func (l *stdLogger) Debug(args ...any) {
+	log.Println(append([]any{l.prefix + " [DEBUG]"}, args...)...)
+}
+
+func (l *stdLogger) Debugf(format string, args ...any) {
+	log.Printf(l.prefix+" [DEBUG] "+format, args...)
+}
+
+func (l *stdLogger) Errorf(format string, args ...any) {
+	log.Printf(l.prefix+" [ERROR] "+format, args...)
+}
+
+func (l *stdLogger) IsEnabledFor(level zapcore.Level) bool {
+	return true // Standard logger always logs
+}
 
 // NewIdemixMsp creates a new instance of idemixmsp
 func NewIdemixMsp(version MSPVersion) (MSP, error) {
-	mspLogger.Debugf("Creating Idemix-based MSP instance")
+	logger := newDefaultLogger("idemix")
+	logger.Debugf("Creating Idemix-based MSP instance")
 
 	curve := math.Curves[math.FP256BN_AMCL]
 	csp, err := idemix.New(&keystore.Dummy{}, curve, &amcl.Fp256bn{C: curve}, true)
@@ -91,14 +150,16 @@ func NewIdemixMsp(version MSPVersion) (MSP, error) {
 		panic(fmt.Sprintf("unexpected condition, error received [%s]", err))
 	}
 
-	msp := Idemixmsp{csp: csp}
+	msp := Idemixmsp{csp: csp, logger: logger}
 	msp.version = version
 	return &msp, nil
 }
 
-// NewIdemixMspAries creates a new instance of idemixmsp
+// NewIdemixMspAries creates a new
+// instance of idemixmsp
 func NewIdemixMspAries(version MSPVersion) (MSP, error) {
-	mspLogger.Debugf("Creating Idemix-based MSP instance")
+	logger := newDefaultLogger("idemix")
+	logger.Debugf("Creating Idemix-based MSP instance")
 
 	curve := math.Curves[math.BLS12_381_BBS]
 	csp, err := idemix.NewAries(&keystore.Dummy{}, curve, &amcl.Gurvy{C: curve}, true)
@@ -106,32 +167,32 @@ func NewIdemixMspAries(version MSPVersion) (MSP, error) {
 		panic(fmt.Sprintf("unexpected condition, error received [%s]", err))
 	}
 
-	msp := Idemixmsp{csp: csp}
+	msp := Idemixmsp{csp: csp, logger: logger}
 	msp.version = version
 	return &msp, nil
 }
 
 func (msp *Idemixmsp) Setup(conf1 *m.MSPConfig) error {
-	mspLogger.Debugf("Setting up Idemix-based MSP instance")
+	msp.logger.Debugf("Setting up Idemix-based MSP instance")
 
 	if conf1 == nil {
-		return errors.Errorf("setup error: nil conf reference")
+		return fmt.Errorf("setup error: nil conf reference")
 	}
 
 	var conf im.IdemixMSPConfig
 	err := proto.Unmarshal(conf1.Config, &conf)
 	if err != nil {
-		return errors.Wrap(err, "failed unmarshalling idemix msp config")
+		return fmt.Errorf("failed unmarshalling idemix msp config: %w", err)
 	}
 
 	msp.name = conf.Name
-	mspLogger.Debugf("Setting up Idemix MSP instance %s", msp.name)
+	msp.logger.Debugf("Setting up Idemix MSP instance %s", msp.name)
 
 	switch conf1.Type {
 	case int32(IDEMIX):
 	case int32(IDEMIX_ARIES):
 	default:
-		return errors.Errorf("setup error: config is not of type IDEMIX")
+		return fmt.Errorf("setup error: config is not of type IDEMIX")
 	}
 
 	// Import Issuer Public Key
@@ -147,21 +208,22 @@ func (msp *Idemixmsp) Setup(conf1 *m.MSPConfig) error {
 			},
 		})
 	if err != nil {
-		importErr, ok := errors.Cause(err).(*bccsp.IdemixIssuerPublicKeyImporterError)
+		var importErr *bccsp.IdemixIssuerPublicKeyImporterError
+		ok := errors.As(err, &importErr)
 		if !ok {
 			panic("unexpected condition, BCCSP did not return the expected *bccsp.IdemixIssuerPublicKeyImporterError")
 		}
 		switch importErr.Type {
 		case bccsp.IdemixIssuerPublicKeyImporterUnmarshallingError:
-			return errors.WithMessage(err, "failed to unmarshal ipk from idemix msp config")
+			return fmt.Errorf("failed to unmarshal ipk from idemix msp config: %w", err)
 		case bccsp.IdemixIssuerPublicKeyImporterHashError:
-			return errors.WithMessage(err, "setting the hash of the issuer public key failed")
+			return fmt.Errorf("setting the hash of the issuer public key failed: %w", err)
 		case bccsp.IdemixIssuerPublicKeyImporterValidationError:
-			return errors.WithMessage(err, "cannot setup idemix msp with invalid public key")
+			return fmt.Errorf("cannot setup idemix msp with invalid public key: %w", err)
 		case bccsp.IdemixIssuerPublicKeyImporterNumAttributesError:
 			fallthrough
 		case bccsp.IdemixIssuerPublicKeyImporterAttributeNameError:
-			return errors.Errorf("issuer public key must have have attributes OU, Role, EnrollmentId, and RevocationHandle")
+			return fmt.Errorf("issuer public key must have have attributes OU, Role, EnrollmentId, and RevocationHandle")
 		default:
 			panic(fmt.Sprintf("unexpected condtion, issuer public key import error not valid, got [%d]", importErr.Type))
 		}
@@ -174,13 +236,13 @@ func (msp *Idemixmsp) Setup(conf1 *m.MSPConfig) error {
 		&bccsp.IdemixRevocationPublicKeyImportOpts{Temporary: true},
 	)
 	if err != nil {
-		return errors.WithMessage(err, "failed to import revocation public key")
+		return fmt.Errorf("failed to import revocation public key: %w", err)
 	}
 	msp.revocationPK = RevocationPublicKey
 
 	if conf.Signer == nil {
 		// No credential in config, so we don't setup a default signer
-		mspLogger.Debug("idemix msp setup as verification only msp (no key material found)")
+		msp.logger.Debug("idemix msp setup as verification only msp (no key material found)")
 		return nil
 	}
 
@@ -189,17 +251,17 @@ func (msp *Idemixmsp) Setup(conf1 *m.MSPConfig) error {
 	// Import User secret key
 	UserKey, err := msp.csp.KeyImport(conf.Signer.Sk, &bccsp.IdemixUserSecretKeyImportOpts{Temporary: true})
 	if err != nil {
-		return errors.WithMessage(err, "failed importing signer secret key")
+		return fmt.Errorf("failed importing signer secret key: %w", err)
 	}
 
 	// Derive NymPublicKey
 	NymKey, err := msp.csp.KeyDeriv(UserKey, &bccsp.IdemixNymKeyDerivationOpts{Temporary: true, IssuerPK: IssuerPublicKey})
 	if err != nil {
-		return errors.WithMessage(err, "failed deriving nym")
+		return fmt.Errorf("failed deriving nym: %w", err)
 	}
 	NymPublicKey, err := NymKey.PublicKey()
 	if err != nil {
-		return errors.Wrapf(err, "failed getting public nym key")
+		return fmt.Errorf("failed getting public nym key: %w", err)
 	}
 
 	role := &m.MSPRole{
@@ -233,8 +295,11 @@ func (msp *Idemixmsp) Setup(conf1 *m.MSPConfig) error {
 			},
 		},
 	)
-	if err != nil || !valid {
-		return errors.WithMessage(err, "Credential is not cryptographically valid")
+	if err != nil {
+		return fmt.Errorf("Credential is not cryptographically valid: %w", err)
+	}
+	if !valid {
+		return errors.New("Credential is not cryptographically valid")
 	}
 
 	// Create the cryptographic evidence that this identity is valid
@@ -257,7 +322,7 @@ func (msp *Idemixmsp) Setup(conf1 *m.MSPConfig) error {
 		},
 	)
 	if err != nil {
-		return errors.WithMessage(err, "Failed to setup cryptographic proof of identity")
+		return fmt.Errorf("Failed to setup cryptographic proof of identity: %w", err)
 	}
 
 	// Set up default signer
@@ -285,10 +350,10 @@ func (msp *Idemixmsp) GetIdentifier() (string, error) {
 }
 
 func (msp *Idemixmsp) GetDefaultSigningIdentity() (SigningIdentity, error) {
-	mspLogger.Debugf("Obtaining default idemix signing identity")
+	msp.logger.Debugf("Obtaining default idemix signing identity")
 
 	if msp.signer == nil {
-		return nil, errors.Errorf("no default signer setup")
+		return nil, fmt.Errorf("no default signer setup")
 	}
 	return msp.signer, nil
 }
@@ -297,25 +362,25 @@ func (msp *Idemixmsp) DeserializeIdentity(serializedID []byte) (Identity, error)
 	sID := &m.SerializedIdentity{}
 	err := proto.Unmarshal(serializedID, sID)
 	if err != nil {
-		return nil, errors.Wrap(err, "could not deserialize a SerializedIdentity")
+		return nil, fmt.Errorf("could not deserialize a SerializedIdentity: %w", err)
 	}
 
 	if sID.Mspid != msp.name {
-		return nil, errors.Errorf("expected MSP ID %s, received %s", msp.name, sID.Mspid)
+		return nil, fmt.Errorf("expected MSP ID %s, received %s", msp.name, sID.Mspid)
 	}
 
 	return msp.DeserializeIdentityInternal(sID.GetIdBytes())
 }
 
 func (msp *Idemixmsp) DeserializeIdentityInternal(serializedID []byte) (Identity, error) {
-	mspLogger.Debug("idemixmsp: deserializing identity")
+	msp.logger.Debug("idemixmsp: deserializing identity")
 	serialized := new(im.SerializedIdemixIdentity)
 	err := proto.Unmarshal(serializedID, serialized)
 	if err != nil {
-		return nil, errors.Wrap(err, "could not deserialize a SerializedIdemixIdentity")
+		return nil, fmt.Errorf("could not deserialize a SerializedIdemixIdentity: %w", err)
 	}
 	if serialized.NymX == nil || serialized.NymY == nil {
-		return nil, errors.Errorf("unable to deserialize idemix identity: pseudonym is invalid")
+		return nil, fmt.Errorf("unable to deserialize idemix identity: pseudonym is invalid")
 	}
 
 	// Import NymPublicKey
@@ -327,21 +392,21 @@ func (msp *Idemixmsp) DeserializeIdentityInternal(serializedID []byte) (Identity
 		&bccsp.IdemixNymPublicKeyImportOpts{Temporary: true},
 	)
 	if err != nil {
-		return nil, errors.WithMessage(err, "failed to import nym public key")
+		return nil, fmt.Errorf("failed to import nym public key: %w", err)
 	}
 
 	// OU
 	ou := &m.OrganizationUnit{}
 	err = proto.Unmarshal(serialized.Ou, ou)
 	if err != nil {
-		return nil, errors.Wrap(err, "cannot deserialize the OU of the identity")
+		return nil, fmt.Errorf("cannot deserialize the OU of the identity: %w", err)
 	}
 
 	// Role
 	role := &m.MSPRole{}
 	err = proto.Unmarshal(serialized.Role, role)
 	if err != nil {
-		return nil, errors.Wrap(err, "cannot deserialize the role of the identity")
+		return nil, fmt.Errorf("cannot deserialize the role of the identity: %w", err)
 	}
 
 	return newIdemixIdentity(msp, NymPublicKey, role, ou, serialized.Proof), nil
@@ -355,12 +420,12 @@ func (msp *Idemixmsp) Validate(id Identity) error {
 	case *IdemixSigningIdentity:
 		identity = id.(*IdemixSigningIdentity).Idemixidentity
 	default:
-		return errors.Errorf("identity type %T is not recognized", t)
+		return fmt.Errorf("identity type %T is not recognized", t)
 	}
 
-	mspLogger.Debugf("Validating identity %+v", identity)
+	msp.logger.Debugf("Validating identity %+v", identity)
 	if identity.GetMSPIdentifier() != msp.name {
-		return errors.Errorf("the supplied identity does not belong to this msp")
+		return fmt.Errorf("the supplied identity does not belong to this msp")
 	}
 	return identity.verifyProof()
 }
@@ -394,7 +459,7 @@ func (id *Idemixidentity) verifyProof() error {
 func (msp *Idemixmsp) SatisfiesPrincipal(id Identity, principal *m.MSPPrincipal) error {
 	err := msp.Validate(id)
 	if err != nil {
-		return errors.Wrap(err, "identity is not valid with respect to this MSP")
+		return fmt.Errorf("identity is not valid with respect to this MSP: %w", err)
 	}
 
 	return msp.satisfiesPrincipalValidated(id, principal)
@@ -411,13 +476,13 @@ func (msp *Idemixmsp) satisfiesPrincipalValidated(id Identity, principal *m.MSPP
 		mspRole := &m.MSPRole{}
 		err := proto.Unmarshal(principal.Principal, mspRole)
 		if err != nil {
-			return errors.Wrap(err, "could not unmarshal MSPRole from principal")
+			return fmt.Errorf("could not unmarshal MSPRole from principal: %w", err)
 		}
 
 		// at first, we check whether the MSP
 		// identifier is the same as that of the identity
 		if mspRole.MspIdentifier != msp.name {
-			return errors.Errorf("the identity is a member of a different MSP (expected %s, got %s)", mspRole.MspIdentifier, id.GetMSPIdentifier())
+			return fmt.Errorf("the identity is a member of a different MSP (expected %s, got %s)", mspRole.MspIdentifier, id.GetMSPIdentifier())
 		}
 
 		// now we validate the different msp roles
@@ -425,17 +490,17 @@ func (msp *Idemixmsp) satisfiesPrincipalValidated(id Identity, principal *m.MSPP
 		case m.MSPRole_MEMBER:
 			// in the case of member, we simply check
 			// whether this identity is valid for the MSP
-			mspLogger.Debugf("Checking if identity satisfies MEMBER role for %s", msp.name)
+			msp.logger.Debugf("Checking if identity satisfies MEMBER role for %s", msp.name)
 			return nil
 		case m.MSPRole_ADMIN:
-			mspLogger.Debugf("Checking if identity satisfies ADMIN role for %s", msp.name)
+			msp.logger.Debugf("Checking if identity satisfies ADMIN role for %s", msp.name)
 			if id.(*Idemixidentity).Role.Role != m.MSPRole_ADMIN {
-				return errors.Errorf("user is not an admin")
+				return fmt.Errorf("user is not an admin")
 			}
 			return nil
 		case m.MSPRole_PEER:
 			if msp.version >= MSPv1_3 {
-				return errors.Errorf("idemixmsp only supports client use, so it cannot satisfy an MSPRole PEER principal")
+				return fmt.Errorf("idemixmsp only supports client use, so it cannot satisfy an MSPRole PEER principal")
 			}
 			fallthrough
 		case m.MSPRole_CLIENT:
@@ -444,53 +509,53 @@ func (msp *Idemixmsp) satisfiesPrincipalValidated(id Identity, principal *m.MSPP
 			}
 			fallthrough
 		default:
-			return errors.Errorf("invalid MSP role type %d", int32(mspRole.Role))
+			return fmt.Errorf("invalid MSP role type %d", int32(mspRole.Role))
 		}
 		// in this case we have to serialize this instance
 		// and compare it byte-by-byte with Principal
 	case m.MSPPrincipal_IDENTITY:
-		mspLogger.Debugf("Checking if identity satisfies IDENTITY principal")
+		msp.logger.Debugf("Checking if identity satisfies IDENTITY principal")
 		idBytes, err := id.Serialize()
 		if err != nil {
-			return errors.Wrap(err, "could not serialize this identity instance")
+			return fmt.Errorf("could not serialize this identity instance: %w", err)
 		}
 
 		rv := bytes.Compare(idBytes, principal.Principal)
 		if rv == 0 {
 			return nil
 		}
-		return errors.Errorf("the identities do not match")
+		return fmt.Errorf("the identities do not match")
 
 	case m.MSPPrincipal_ORGANIZATION_UNIT:
 		ou := &m.OrganizationUnit{}
 		err := proto.Unmarshal(principal.Principal, ou)
 		if err != nil {
-			return errors.Wrap(err, "could not unmarshal OU from principal")
+			return fmt.Errorf("could not unmarshal OU from principal: %w", err)
 		}
 
-		mspLogger.Debugf("Checking if identity is part of OU \"%s\" of mspid \"%s\"", ou.OrganizationalUnitIdentifier, ou.MspIdentifier)
+		msp.logger.Debugf("Checking if identity is part of OU \"%s\" of mspid \"%s\"", ou.OrganizationalUnitIdentifier, ou.MspIdentifier)
 
 		// at first, we check whether the MSP
 		// identifier is the same as that of the identity
 		if ou.MspIdentifier != msp.name {
-			return errors.Errorf("the identity is a member of a different MSP (expected %s, got %s)", ou.MspIdentifier, id.GetMSPIdentifier())
+			return fmt.Errorf("the identity is a member of a different MSP (expected %s, got %s)", ou.MspIdentifier, id.GetMSPIdentifier())
 		}
 
 		if ou.OrganizationalUnitIdentifier != id.(*Idemixidentity).OU.OrganizationalUnitIdentifier {
-			return errors.Errorf("user is not part of the desired organizational unit")
+			return fmt.Errorf("user is not part of the desired organizational unit")
 		}
 
 		return nil
 	case m.MSPPrincipal_COMBINED:
 		if msp.version <= MSPv1_1 {
-			return errors.Errorf("Combined MSP Principals are unsupported in MSPv1_1")
+			return fmt.Errorf("Combined MSP Principals are unsupported in MSPv1_1")
 		}
 
 		// Principal is a combination of multiple principals.
 		principals := &m.CombinedPrincipal{}
 		err := proto.Unmarshal(principal.Principal, principals)
 		if err != nil {
-			return errors.Wrap(err, "could not unmarshal CombinedPrincipal from principal")
+			return fmt.Errorf("could not unmarshal CombinedPrincipal from principal: %w", err)
 		}
 		// Return an error if there are no principals in the combined principal.
 		if len(principals.Principals) == 0 {
@@ -508,13 +573,13 @@ func (msp *Idemixmsp) satisfiesPrincipalValidated(id Identity, principal *m.MSPP
 		return nil
 	case m.MSPPrincipal_ANONYMITY:
 		if msp.version <= MSPv1_1 {
-			return errors.Errorf("Anonymity MSP Principals are unsupported in MSPv1_1")
+			return fmt.Errorf("Anonymity MSP Principals are unsupported in MSPv1_1")
 		}
 
 		anon := &m.MSPIdentityAnonymity{}
 		err := proto.Unmarshal(principal.Principal, anon)
 		if err != nil {
-			return errors.Wrap(err, "could not unmarshal MSPIdentityAnonymity from principal")
+			return fmt.Errorf("could not unmarshal MSPIdentityAnonymity from principal: %w", err)
 		}
 		switch anon.AnonymityType {
 		case m.MSPIdentityAnonymity_ANONYMOUS:
@@ -522,10 +587,10 @@ func (msp *Idemixmsp) satisfiesPrincipalValidated(id Identity, principal *m.MSPP
 		case m.MSPIdentityAnonymity_NOMINAL:
 			return errors.New("principal is nominal, but idemix MSP is anonymous")
 		default:
-			return errors.Errorf("unknown principal anonymity type: %d", anon.AnonymityType)
+			return fmt.Errorf("unknown principal anonymity type: %d", anon.AnonymityType)
 		}
 	default:
-		return errors.Errorf("invalid principal type %d", int32(principal.PrincipalClassification))
+		return fmt.Errorf("invalid principal type %d", int32(principal.PrincipalClassification))
 	}
 }
 
@@ -536,7 +601,7 @@ func (id *Idemixmsp) IsWellFormed(identity *m.SerializedIdentity) error {
 	sId := new(im.SerializedIdemixIdentity)
 	err := proto.Unmarshal(identity.IdBytes, sId)
 	if err != nil {
-		return errors.Wrap(err, "not an idemix identity")
+		return fmt.Errorf("not an idemix identity: %w", err)
 	}
 	return nil
 }
@@ -606,7 +671,7 @@ func (id *Idemixidentity) GetOrganizationalUnits() []*OUIdentifier {
 	// we use the (serialized) public key of this MSP as the CertifiersIdentifier
 	certifiersIdentifier, err := id.msp.ipk.Bytes()
 	if err != nil {
-		mspIdentityLogger.Errorf("Failed to marshal ipk in GetOrganizationalUnits: %s", err)
+		id.msp.logger.Errorf("Failed to marshal ipk in GetOrganizationalUnits: %s", err)
 		return nil
 	}
 
@@ -618,9 +683,9 @@ func (id *Idemixidentity) Validate() error {
 }
 
 func (id *Idemixidentity) Verify(msg []byte, sig []byte) error {
-	if mspIdentityLogger.IsEnabledFor(zapcore.DebugLevel) {
-		mspIdentityLogger.Debugf("Verify Idemix sig: msg = %s", hex.Dump(msg))
-		mspIdentityLogger.Debugf("Verify Idemix sig: sig = %s", hex.Dump(sig))
+	if id.msp.logger.IsEnabledFor(zapcore.DebugLevel) {
+		id.msp.logger.Debugf("Verify Idemix sig: msg = %s", hex.Dump(msg))
+		id.msp.logger.Debugf("Verify Idemix sig: sig = %s", hex.Dump(sig))
 	}
 
 	_, err := id.msp.csp.Verify(
@@ -643,7 +708,7 @@ func (id *Idemixidentity) Serialize() ([]byte, error) {
 
 	raw, err := id.NymPublicKey.Bytes()
 	if err != nil {
-		return nil, errors.Wrapf(err, "could not serialize nym of identity %s", id.id)
+		return nil, fmt.Errorf("could not serialize nym of identity %s: %w", id.id, err)
 	}
 	// This is an assumption on how the underlying idemix implementation work.
 	// TODO: change this in future version
@@ -651,12 +716,12 @@ func (id *Idemixidentity) Serialize() ([]byte, error) {
 	serialized.NymY = raw[len(raw)/2:]
 	ouBytes, err := proto.Marshal(id.OU)
 	if err != nil {
-		return nil, errors.Wrapf(err, "could not marshal OU of identity %s", id.id)
+		return nil, fmt.Errorf("could not marshal OU of identity %s: %w", id.id, err)
 	}
 
 	roleBytes, err := proto.Marshal(id.Role)
 	if err != nil {
-		return nil, errors.Wrapf(err, "could not marshal role of identity %s", id.id)
+		return nil, fmt.Errorf("could not marshal role of identity %s: %w", id.id, err)
 	}
 
 	serialized.Ou = ouBytes
@@ -671,7 +736,7 @@ func (id *Idemixidentity) Serialize() ([]byte, error) {
 	sID := &m.SerializedIdentity{Mspid: id.GetMSPIdentifier(), IdBytes: idemixIDBytes}
 	idBytes, err := proto.Marshal(sID)
 	if err != nil {
-		return nil, errors.Wrapf(err, "could not marshal a SerializedIdentity structure for identity %s", id.id)
+		return nil, fmt.Errorf("could not marshal a SerializedIdentity structure for identity %s: %w", id.id, err)
 	}
 
 	return idBytes, nil
@@ -686,7 +751,7 @@ type IdemixSigningIdentity struct {
 }
 
 func (id *IdemixSigningIdentity) Sign(msg []byte) ([]byte, error) {
-	mspLogger.Debugf("Idemix identity %s is signing", id.GetIdentifier())
+	id.msp.logger.Debugf("Idemix identity %s is signing", id.GetIdentifier())
 
 	sig, err := id.msp.csp.Sign(
 		id.UserKey,
@@ -707,9 +772,9 @@ func (id *IdemixSigningIdentity) GetPublicVersion() Identity {
 }
 
 func readFile(file string) ([]byte, error) {
-	fileCont, err := ioutil.ReadFile(file)
+	fileCont, err := os.ReadFile(file)
 	if err != nil {
-		return nil, errors.Wrapf(err, "could not read file %s", file)
+		return nil, fmt.Errorf("could not read file %s: %w", file, err)
 	}
 
 	return fileCont, nil
@@ -732,12 +797,12 @@ func GetIdemixMspConfig(dir string, ID string) (*m.MSPConfig, error) {
 func GetIdemixMspConfigWithType(dir string, ID string, mspType ProviderType) (*m.MSPConfig, error) {
 	ipkBytes, err := readFile(filepath.Join(dir, IdemixConfigDirMsp, IdemixConfigFileIssuerPublicKey))
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to read issuer public key file")
+		return nil, fmt.Errorf("failed to read issuer public key file: %w", err)
 	}
 
 	revocationPkBytes, err := readFile(filepath.Join(dir, IdemixConfigDirMsp, IdemixConfigFileRevocationPublicKey))
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to read revocation public key file")
+		return nil, fmt.Errorf("failed to read revocation public key file: %w", err)
 	}
 
 	idemixConfig := &im.IdemixMSPConfig{

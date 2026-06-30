@@ -583,7 +583,7 @@ func computeB(s *math.Zr, messages []*bbs.SignatureMessage, key *bbs.PublicKeyWi
 	cb.Add(curve.GenG1, curve.NewZrFromInt(1))
 	cb.Add(key.H0, s)
 
-	for i := 0; i < len(messages); i++ {
+	for i := range messages {
 		cb.Add(key.H[messages[i].Idx], messages[i].FR)
 	}
 
@@ -616,7 +616,7 @@ func newModifiedVC2Signature(
 
 	secrets2 = append(secrets2, sPrime)
 
-	for i := 0; i < messagesCount; i++ {
+	for i := range messagesCount {
 		if _, ok := revealedMessages[messages[i].Idx]; ok {
 			continue
 		}

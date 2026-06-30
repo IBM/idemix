@@ -347,7 +347,7 @@ func testCredentialVerParallel(t *testing.T, curve *math.Curve, tr Translator) {
 	// Test issuance
 	waitGroup := &sync.WaitGroup{}
 	waitGroup.Add(100)
-	for i := 0; i < 100; i++ {
+	for range 100 {
 		go func() {
 			defer waitGroup.Done()
 
@@ -437,7 +437,7 @@ func testSigParallel(t *testing.T, curve *math.Curve, tr Translator) {
 	n := 100
 
 	waitGroup.Add(n)
-	for i := 0; i < n; i++ {
+	for range n {
 		go func() {
 			defer waitGroup.Done()
 			rng, _ := curve.Rand()
@@ -536,7 +536,7 @@ func testSigParallel(t *testing.T, curve *math.Curve, tr Translator) {
 	}
 
 	waitGroup.Add(n)
-	for i := 0; i < n; i++ {
+	for range n {
 		go func() {
 			defer waitGroup.Done()
 			rng, _ := curve.Rand()
@@ -595,7 +595,7 @@ func testSigParallel(t *testing.T, curve *math.Curve, tr Translator) {
 	}
 
 	waitGroup.Add(n)
-	for i := 0; i < n; i++ {
+	for range n {
 		go func() {
 			defer waitGroup.Done()
 			rng, _ := curve.Rand()
@@ -682,7 +682,7 @@ func testSigParallel(t *testing.T, curve *math.Curve, tr Translator) {
 	}
 
 	waitGroup.Add(n)
-	for i := 0; i < n; i++ {
+	for range n {
 		go func() {
 			defer waitGroup.Done()
 			rng, _ := curve.Rand()
@@ -780,7 +780,7 @@ func testNymSigParallel(t *testing.T, curve *math.Curve, tr Translator) {
 	n := 100
 
 	waitGroup.Add(n)
-	for i := 0; i < n; i++ {
+	for range n {
 		go func() {
 			defer waitGroup.Done()
 			rng, _ := curve.Rand()
@@ -828,7 +828,7 @@ func testIPKCheck(t *testing.T, curve *math.Curve, tr Translator) {
 	waitGroup := &sync.WaitGroup{}
 	n := 50
 	waitGroup.Add(n)
-	for i := 0; i < n; i++ {
+	for range n {
 		go func() {
 			defer waitGroup.Done()
 			// Test weak BB sigs:

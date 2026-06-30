@@ -6,10 +6,10 @@ SPDX-License-Identifier: Apache-2.0
 package handlers
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/IBM/idemix/bccsp/types"
-	"github.com/pkg/errors"
 )
 
 type NymSigner struct {

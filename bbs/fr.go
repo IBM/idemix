@@ -25,14 +25,16 @@ var (
 		0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0,
 		0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0,
 	}
-	f2192Cached *ml.Zr
+	f2192Cache = make(map[*ml.Curve]*ml.Zr)
 )
 
 func f2192(curve *ml.Curve) *ml.Zr {
-	if f2192Cached == nil {
-		f2192Cached = curve.NewZrFromBytes(f2192Bytes)
+	if cached, ok := f2192Cache[curve]; ok {
+		return cached
 	}
-	return f2192Cached
+	val := curve.NewZrFromBytes(f2192Bytes)
+	f2192Cache[curve] = val
+	return val
 }
 
 func FrFromOKM(message []byte, curve *ml.Curve) *ml.Zr {

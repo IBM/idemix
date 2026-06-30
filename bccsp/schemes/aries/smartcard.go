@@ -171,7 +171,7 @@ type SmartcardIdemixBackend struct {
 }
 
 // Sign creates a new idemix pseudonym signature
-func (s *SmartcardIdemixBackend) Sign(isc interface{}, ipk types.IssuerPublicKey, digest []byte) ([]byte, *math.G1, *math.Zr, error) {
+func (s *SmartcardIdemixBackend) Sign(isc any, ipk types.IssuerPublicKey, digest []byte) ([]byte, *math.G1, *math.Zr, error) {
 	sc, ok := isc.(*Smartcard)
 	if !ok {
 		return nil, nil, nil, fmt.Errorf("invalid interface conversion for %T to *Smartcard", isc)

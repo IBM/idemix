@@ -7,7 +7,6 @@ SPDX-License-Identifier: Apache-2.0
 package keystore
 
 import (
-	"io/ioutil"
 	"os"
 	"testing"
 
@@ -25,7 +24,7 @@ func TestFileBased(t *testing.T) {
 	rnd, err := curve.Rand()
 	assert.NoError(t, err)
 
-	dir, err := ioutil.TempDir(os.TempDir(), "idemix-TesFileBased")
+	dir, err := os.MkdirTemp(os.TempDir(), "idemix-TesFileBased")
 	assert.NoError(t, err)
 	defer os.RemoveAll(dir)
 

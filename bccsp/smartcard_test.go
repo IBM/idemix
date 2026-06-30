@@ -21,8 +21,8 @@ import (
 	"github.com/IBM/idemix/bccsp/types"
 	"github.com/IBM/idemix/msp/config"
 	math "github.com/IBM/mathlib"
-	"github.com/golang/protobuf/proto"
 	"github.com/stretchr/testify/assert"
+	"google.golang.org/protobuf/proto"
 )
 
 func getSmartcard(t *testing.T) (*aries.Smartcard, *math.Curve) {
