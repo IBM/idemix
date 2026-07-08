@@ -17,45 +17,47 @@ import (
 	"github.com/IBM/idemix/bccsp/schemes/aries"
 	math "github.com/IBM/mathlib"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func getSmartcard(t *testing.T) (*aries.Smartcard, *math.Curve) {
+	t.Helper()
 	c := math.Curves[math.FP256BN_AMCL_MIRACL]
 
 	rng, err := c.Rand()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	k0, err := hex.DecodeString("4669650c993c43ef45742c3aa8aeb842")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	k1, err := hex.DecodeString("358abd275e6a945d680d40474f5f16c7")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	ciph0, err := aes.NewCipher(k0)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	ciph1, err := aes.NewCipher(k1)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	h0Bytes, err := hex.DecodeString("0441c48875b5045400ce6bb4ce5b9c733f6d539a89f1ec2c24e0e04f56932c52ffd918f0679996b017363c591df413e1ac0be63e919defd6edc0686d41b1fcd68d")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	h0, err := c.NewG1FromBytes(h0Bytes)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	h1Bytes, err := hex.DecodeString("041e304080e9afd0d04317d12b5cb058cd4f322a1cddb71e64a47528353d51f7a8324fce4698dff52cd8d4c7dd2c8c94c6fba8ce12493d182e4d849106dc5c46de")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	h1, err := c.NewG1FromBytes(h1Bytes)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	h2Bytes, err := hex.DecodeString("04196c48c6d0249de961b97433a577da537c341ad0ea0cde4dfa40ef6bab9b59f274a07a3665518401119957a52a32a18256d7215e4f1d0ce6c9e2646d939c07f9")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	h2, err := c.NewG1FromBytes(h2Bytes)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	eidBytes, err := hex.DecodeString("003522e297a5f7db7521e23d9f9b87378126acd80429cf4ec07344f06bd9f7d5")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	eid := c.NewZrFromBytes(eidBytes)
 
 	skBytes, err := hex.DecodeString("00f022e297a5f7db7521e23d9f9b87378182acd80429cf4ec07344f06bd9f7d5")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	sk := c.NewZrFromBytes(skBytes)
 
 	return &aries.Smartcard{
@@ -156,7 +158,7 @@ func (v *defaultVC2ProofVerifier) Verify(challenge *math.Zr, pubKey *bbs.PublicK
 	pr := v.curve.GenG1.Copy()
 	pr.Sub(v.curve.GenG1)
 
-	for i := 0; i < len(basesDisclosed); i++ {
+	for i := range basesDisclosed {
 		b := basesDisclosed[i]
 		s := exponents[i]
 
@@ -180,32 +182,32 @@ func TestAll(t *testing.T) {
 	bl := bbs.NewBBSLib(curve)
 
 	pubKey, privKey, err := generateKeyPairRandom(curve)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	privKeyBytes, err := privKey.Marshal()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	pkwg, err := pubKey.ToPublicKeyWithGenerators(5)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// convert public key
 	pkbbs, err := bbs.NewBBSLib(curve).UnmarshalPublicKey(pubKey.PointG2.Compressed())
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	pkwgbbs, err := pkbbs.ToPublicKeyWithGenerators(5)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	sc.H0 = pkwg.H0
 	sc.H1 = pkwg.H[0]
 	sc.H2 = pkwg.H[3]
 
 	proofBytes, err := sc.NymSign(nil)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	seed := proofBytes[0:16]
 	r := sc.PRF(seed, sc.PRF_K1)
 
 	B, err := sc.Curve.NewG1FromBytes(proofBytes[16 : 16+curve.G1ByteSize])
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	ou, role, eid, rh := "ou", "role", "eid", "rh"
 	messagesCount := 5 // includes the sk
@@ -228,13 +230,13 @@ func TestAll(t *testing.T) {
 			FR:  bbs.FrFromOKM([]byte(rh), curve),
 		},
 	}, messagesCount, B, privKeyBytes, curve)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	sigBytes, err := aries.UnblindSign(sig_, r, curve)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	sig, err := bbs.NewBBSLib(curve).ParseSignature(sigBytes)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	messagesFr := []*bbs.SignatureMessage{
 		{
@@ -260,13 +262,13 @@ func TestAll(t *testing.T) {
 	}
 
 	err = sig.Verify(messagesFr, pkwgbbs)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	/*********************************************************************/
 	/*********************************************************************/
 
 	pok_, err := bbs.NewBBSLib(curve).NewPoKOfSignature(sig, messagesFr, []int{1, 2}, pkwg)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	c := curve.NewRandomZr(rand.Reader)
 
@@ -274,10 +276,10 @@ func TestAll(t *testing.T) {
 
 	pokbytes := pok.ToBytes()
 	pok, err = bbs.NewBBSLib(curve).ParseSignatureProof(pokbytes)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	err = pok.Verify(c, pkwg, map[int]*bbs.SignatureMessage{1: {}, 2: {}}, []*bbs.SignatureMessage{messagesFr[1], messagesFr[2]})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	/*********************************************************************/
 
@@ -327,7 +329,7 @@ func TestAll(t *testing.T) {
 	b.Add(C)
 
 	pok_, err = p.PoKOfSignatureB(sig, messagesFr[1:], []int{0, 1}, pkwgbbs, b)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	c = curve.NewRandomZr(rand.Reader)
 
@@ -339,26 +341,26 @@ func TestAll(t *testing.T) {
 	}
 
 	err = pok.Verify(c, pkwgbbs, map[int]*bbs.SignatureMessage{1: {}, 2: {}}, []*bbs.SignatureMessage{messagesFr[1], messagesFr[2]})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
-	////////////////////////////////////////////////////////////////////////////////////////////////////
-	///////////////////////////////////////COMPATIBILITY WITH OLD CODE//////////////////////////////////
-	////////////////////////////////////////////////////////////////////////////////////////////////////
+	// //////////////////////////////////////////////////////////////////////////////////////////////////
+	// /////////////////////////////////////COMPATIBILITY WITH OLD CODE//////////////////////////////////
+	// //////////////////////////////////////////////////////////////////////////////////////////////////
 
 	// convert signature
 	sigbbs, err := bl.ParseSignature(sigBytes)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// convert POK
 	proof := pok_.GenerateProof(c)
 	payload := bbs.NewPoKPayload(messagesCount, []int{1, 2})
 	payloadBytes, err := payload.ToBytes()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	signatureProofBytes := append(payloadBytes, proof.ToBytes()...)
 	payload, err = bbs.ParsePoKPayload(signatureProofBytes)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	signatureProof, err := bl.ParseSignatureProof(signatureProofBytes[payload.LenInBytes():])
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// set custom verifier on the new POK
 	signatureProof.VC2ProofVerifier = &defaultVC2ProofVerifier{
@@ -377,7 +379,7 @@ func TestAll(t *testing.T) {
 			Idx: messagesFr[2].Idx,
 		}},
 	)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	p = &bbs.PoKOfSignatureProvider{
 		VC2SignatureProvider: &defaultVC2SignatureProvider{
@@ -396,7 +398,7 @@ func TestAll(t *testing.T) {
 
 	// create proof with new code
 	pokSignature, err := p.PoKOfSignatureB(sigbbs, messagesFrbbs[1:], []int{0, 1}, pkwg, b)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	proofbbs := pokSignature.GenerateProof(c)
 
 	// set custom verifier on the new POK
@@ -416,17 +418,17 @@ func TestAll(t *testing.T) {
 			Idx: messagesFr[2].Idx,
 		}},
 	)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// convert POK
 	payloadnew := bbs.NewPoKPayload(messagesCount, []int{1, 2})
 	payloadBytesnew, err := payloadnew.ToBytes()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	signatureProofBytesnew := append(payloadBytesnew, proofbbs.ToBytes()...)
 	payloadnew, err = bbs.ParsePoKPayload(signatureProofBytesnew)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	signatureProofnew, err := bbs.NewBBSLib(curve).ParseSignatureProof(signatureProofBytesnew[payloadnew.LenInBytes():])
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// set custom verifier on the new POK
 	signatureProofnew.VC2ProofVerifier = &defaultVC2ProofVerifier{
@@ -436,10 +438,10 @@ func TestAll(t *testing.T) {
 
 	// verify proof with old code
 	err = signatureProofnew.Verify(c, pkwgbbs, map[int]*bbs.SignatureMessage{1: {}, 2: {}}, []*bbs.SignatureMessage{messagesFr[1], messagesFr[2]})
-	assert.NoError(t, err)
-	////////////////////////////////////////////////////////////////////////////////////////////////////
-	////////////////////////////////////////////////////////////////////////////////////////////////////
-	////////////////////////////////////////////////////////////////////////////////////////////////////
+	require.NoError(t, err)
+	// //////////////////////////////////////////////////////////////////////////////////////////////////
+	// //////////////////////////////////////////////////////////////////////////////////////////////////
+	// //////////////////////////////////////////////////////////////////////////////////////////////////
 
 	/*********************************************************************/
 
@@ -559,7 +561,7 @@ func TestAll(t *testing.T) {
 	pr := curve.GenG1.Copy()
 	pr.Sub(curve.GenG1)
 
-	for i := 0; i < len(basesDisclosed); i++ {
+	for i := range basesDisclosed {
 		b := basesDisclosed[i]
 		s := exponents[i]
 
@@ -572,7 +574,7 @@ func TestAll(t *testing.T) {
 	pr.Neg()
 
 	err = pi.Verify(basesVC2, pr, c)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func computeB(s *math.Zr, messages []*bbs.SignatureMessage, key *bbs.PublicKeyWithGenerators, curve *math.Curve) *math.G1 {
@@ -599,7 +601,6 @@ func newModifiedVC2Signature(
 	revealedMessages map[int]*bbs.SignatureMessage,
 	curve *math.Curve,
 ) (*bbs.ProverCommittedG1, []*math.Zr) {
-
 	messagesCount := len(messages)
 	committing2 := bbs.NewBBSLib(curve).NewProverCommittingG1()
 	baseSecretsCount := 2
@@ -638,12 +639,12 @@ func TestPRF(t *testing.T) {
 	sc, _ := getSmartcard(t)
 
 	seed, err := hex.DecodeString("62189E8BFAC71BA9894ACEC9FCE45FE7")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	r := sc.PRF(seed, sc.PRF_K1)
 
 	rExpected, err := hex.DecodeString("87e904087f9c5e975a0334534db8d5ed1ba4d75df1ba61349817ce0469168488")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, rExpected, r.Bytes())
 }
 
@@ -653,16 +654,16 @@ func TestVerifyFromCard(t *testing.T) {
 	_, tau0 := sc.NymEid()
 
 	proof, err := hex.DecodeString("751A2CB0ECE86ACCCA5846E578DA045E04C10FE2D02FED20CED167BB12C94B52C82C3269AB423BC977B1052D9A891E78321BCDB9AAD44A79922611DEA4832F1DD310F18FAA24B01A273C6BCFE2044FF11804B00567E220E1E8C0E76E2EA7DBAEE8F9ABCF8B7CACB562086D827345A02D76F83BB7DFD533745D57E4AD618D4CE8DF031F437B6220EE97C19B78B2DBFCCBFC69C0733191905FC5550BCC4D0F5DCE10780558E99DA037155CCE0452EC298390D186DAC6BA386550952467A45C366175E8A5465B8FBD30AC64885630309F9E73BD9000")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	nonce, err := hex.DecodeString("00e7a59abb5692a91b3e41d483af1279216b0f855ff9f688335a7d2cd92f877d")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	tau, err := hex.DecodeString("a622f6dc87e125705980c7185f2b5b7766ec3cb6a21d78108e01865bf02ea9ddc449793856bf9a7ea7c3e6ce39cae9c4c3d5c39a1e37e436d60ccf2cdd8339ea")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	err = sc.NymVerify(proof, tau0, append(append([]byte{}, tau...), nonce...))
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestSmartcard(t *testing.T) {
@@ -671,16 +672,16 @@ func TestSmartcard(t *testing.T) {
 	_, nymEid := sc.NymEid()
 
 	tau0Expected, err := hex.DecodeString("049a82e7816bc68a24ffb9331158c5112473f60cb3c738f8bcf9eca9b2a914d1cc519e3b3c1792cc1447a7c5c1edb6d8ae0b40c49dec4b6f40ccfbc39df31e01cd")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, tau0Expected, nymEid.Bytes())
 
 	nonce := []byte("nonce")
 	tau := []byte("tau")
 
 	pi, err := sc.NymSign(append(append([]byte{}, tau...), nonce...))
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Len(t, pi, 16+2*curve.G1ByteSize+2*curve.ScalarByteSize)
 
 	err = sc.NymVerify(pi, nymEid, append(append([]byte{}, tau...), nonce...))
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }

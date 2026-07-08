@@ -7,7 +7,8 @@ SPDX-License-Identifier: Apache-2.0
 package idemix
 
 import (
-	fmt "fmt"
+	"errors"
+	"fmt"
 	"io"
 
 	"github.com/IBM/idemix/bccsp/schemes/dlog/crypto/translator/amcl"
@@ -95,7 +96,7 @@ func newIssuerKey(AttributeNames []string, rng io.Reader, curve *math.Curve, t T
 	index = appendBytesG2(proofData, index, curve.GenG2)
 	index = appendBytesG1(proofData, index, BarG1)
 	index = appendBytesG2(proofData, index, W)
-	index = appendBytesG1(proofData, index, BarG2)
+	_ = appendBytesG1(proofData, index, BarG2)
 
 	proofC := curve.HashToZr(proofData)
 	key.Ipk.ProofC = proofC.Bytes()
@@ -150,7 +151,7 @@ func (IPk *IssuerPublicKey) Check(curve *math.Curve, t Translator) error {
 	}
 
 	HAttrs := make([]*math.G1, len(IPk.GetHAttrs()))
-	for i := 0; i < len(IPk.GetHAttrs()); i++ {
+	for i := range len(IPk.GetHAttrs()) {
 		HAttrs[i], err = t.G1FromProto(IPk.GetHAttrs()[i])
 		if err != nil {
 			return err
@@ -183,11 +184,11 @@ func (IPk *IssuerPublicKey) Check(curve *math.Curve, t Translator) error {
 		BarG2 == nil ||
 		HAttrs == nil ||
 		len(IPk.HAttrs) < NumAttrs {
-		return fmt.Errorf("some part of the public key is undefined")
+		return errors.New("some part of the public key is undefined")
 	}
 	for i := range NumAttrs {
 		if IPk.HAttrs[i] == nil {
-			return fmt.Errorf("some part of the public key is undefined")
+			return errors.New("some part of the public key is undefined")
 		}
 	}
 
@@ -209,11 +210,11 @@ func (IPk *IssuerPublicKey) Check(curve *math.Curve, t Translator) error {
 	index = appendBytesG2(proofData, index, curve.GenG2)
 	index = appendBytesG1(proofData, index, BarG1)
 	index = appendBytesG2(proofData, index, W)
-	index = appendBytesG1(proofData, index, BarG2)
+	_ = appendBytesG1(proofData, index, BarG2)
 
 	// Verify that the challenge is the same
 	if !ProofC.Equals(curve.HashToZr(proofData)) {
-		return fmt.Errorf("zero knowledge proof in public key invalid")
+		return errors.New("zero knowledge proof in public key invalid")
 	}
 
 	return IPk.SetHash(curve)
@@ -224,8 +225,9 @@ func (IPk *IssuerPublicKey) SetHash(curve *math.Curve) error {
 	IPk.Hash = nil
 	serializedIPk, err := proto.Marshal(IPk)
 	if err != nil {
-		return fmt.Errorf("Failed to marshal issuer public key: %w", err)
+		return fmt.Errorf("failed to marshal issuer public key: %w", err)
 	}
 	IPk.Hash = curve.HashToZr(serializedIPk).Bytes()
+
 	return nil
 }

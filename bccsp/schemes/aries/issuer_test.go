@@ -38,7 +38,7 @@ func TestIssuer(t *testing.T) {
 		require.NotNil(t, iskBytes)
 
 		isk1, err := issuer.NewKeyFromBytes(iskBytes, attrs)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.NotNil(t, isk1)
 		assert.Equal(t, isk, isk1)
 	})
@@ -49,7 +49,7 @@ func TestIssuer(t *testing.T) {
 		require.NotNil(t, ipkBytes)
 
 		ipk1, err := issuer.NewPublicKeyFromBytes(ipkBytes, attrs)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.NotNil(t, ipk1)
 		assert.True(t, ipk.(*aries.IssuerPublicKey).PK.PointG2.Equals(ipk1.(*aries.IssuerPublicKey).PK.PointG2))
 		assert.Equal(t, ipk.(*aries.IssuerPublicKey).N, ipk1.(*aries.IssuerPublicKey).N)

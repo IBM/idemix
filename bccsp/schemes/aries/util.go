@@ -64,7 +64,7 @@ func (c *Credential) toSignatureMessage(sk *math.Zr, curve *math.Curve) []*bbs.S
 	msgsZr := make([]*bbs.SignatureMessage, 0, len(c.Attrs)+1)
 
 	j := 0
-	for i := 0; i < len(c.Attrs)+1; i++ {
+	for i := range len(c.Attrs) + 1 {
 		msg := &bbs.SignatureMessage{}
 		msgsZr = append(msgsZr, msg)
 

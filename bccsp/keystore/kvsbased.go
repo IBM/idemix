@@ -57,7 +57,7 @@ func (ks *KVSStore) GetKey(ski []byte) (bccsp.Key, error) {
 	id := hex.EncodeToString(ski)
 
 	entry := &entry{}
-	err := ks.KVS.Get(id, entry)
+	err := ks.Get(id, entry)
 	if err != nil {
 		return nil, fmt.Errorf("could not get key [%s] from kvs: %w", id, err)
 	}
@@ -117,5 +117,5 @@ func (ks *KVSStore) StoreKey(k bccsp.Key) error {
 		return fmt.Errorf("unknown type [%T] for the supplied key", key)
 	}
 
-	return ks.KVS.Put(id, entry)
+	return ks.Put(id, entry)
 }

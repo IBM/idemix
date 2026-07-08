@@ -43,7 +43,7 @@ func TestUser(t *testing.T) {
 
 	t.Run("key_roundtrip", func(t *testing.T) {
 		sk1, err := user.NewKeyFromBytes(sk.Bytes())
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.NotNil(t, sk1)
 		assert.Equal(t, sk, sk1)
 	})
@@ -59,14 +59,14 @@ func TestUser(t *testing.T) {
 
 	t.Run("public_nym_roundtrip", func(t *testing.T) {
 		nym1, err := user.NewPublicNymFromBytes(nymBytes)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.NotNil(t, nym1)
 		assert.True(t, nym.Equals(nym1))
 	})
 
 	t.Run("nym_roundtrip", func(t *testing.T) {
 		nym1, r1, err := user.NewNymFromBytes(bothBytes)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.NotNil(t, nym1)
 		assert.True(t, nym.Equals(nym1))
 		assert.NotNil(t, r1)
@@ -78,7 +78,7 @@ func TestUser(t *testing.T) {
 		copy(corrupted, nymBytes)
 		corrupted[len(corrupted)-1] = 0
 		_, err := user.NewPublicNymFromBytes(corrupted)
-		assert.EqualError(t, err, "failure [set bytes failed [point is not on curve]]")
+		assert.EqualError(t, err, "failure [set bytes failed [invalid point: subgroup check failed]]")
 	})
 
 	t.Run("corrupted_nym_bytes", func(t *testing.T) {
@@ -86,7 +86,7 @@ func TestUser(t *testing.T) {
 		copy(corrupted, bothBytes)
 		corrupted[len(corrupted)-1] = 0
 		_, _, err := user.NewNymFromBytes(corrupted)
-		assert.EqualError(t, err, "failure [set bytes failed [point is not on curve]]")
+		assert.EqualError(t, err, "failure [set bytes failed [invalid point: subgroup check failed]]")
 	})
 
 	t.Run("invalid_key_bytes", func(t *testing.T) {

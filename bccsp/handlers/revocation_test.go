@@ -55,7 +55,7 @@ var _ = Describe("Revocation", func() {
 					},
 					D: big.NewInt(1)}
 
-				raw := elliptic.Marshal(idemixRevocationKey.Curve, idemixRevocationKey.PublicKey.X, idemixRevocationKey.PublicKey.Y)
+				raw := elliptic.Marshal(idemixRevocationKey.Curve, idemixRevocationKey.X, idemixRevocationKey.Y) //nolint:staticcheck
 				hash := sha256.New()
 				hash.Write(raw)
 				SKI = hash.Sum(nil)
@@ -107,7 +107,7 @@ var _ = Describe("Revocation", func() {
 					raw, err := sk.Bytes()
 					Expect(err).NotTo(HaveOccurred())
 					Expect(raw).NotTo(BeNil())
-					Expect(raw).To(BeEquivalentTo(idemixRevocationKey.D.Bytes()))
+					Expect(raw).To(BeEquivalentTo(idemixRevocationKey.D.Bytes())) //nolint:staticcheck
 				})
 			})
 
@@ -206,7 +206,7 @@ var _ = Describe("Revocation", func() {
 
 			It("returns an error", func() {
 				k, err := RevocationPublicKeyImporter.KeyImport([]byte("fake-raw"), nil)
-				Expect(err).To(MatchError("Failed to decode revocation ECDSA public key"))
+				Expect(err).To(MatchError("failed to decode revocation ECDSA public key"))
 				Expect(k).To(BeNil())
 			})
 

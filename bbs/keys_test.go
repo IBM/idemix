@@ -9,7 +9,6 @@ package bbs_test
 import (
 	"crypto/rand"
 	"crypto/sha256"
-	"fmt"
 	"math/big"
 	"testing"
 
@@ -24,7 +23,7 @@ func TestGenerateKeyPair(t *testing.T) {
 	seed := make([]byte, 32)
 
 	for i, curve := range ml.Curves {
-		t.Run(fmt.Sprintf("with curve %s", ml.CurveIDToString(ml.CurveID(i))), func(t *testing.T) {
+		t.Run("with curve "+ml.CurveIDToString(ml.CurveID(i)), func(t *testing.T) {
 			bl := bbs.NewBBSLib(curve)
 			pubKey, privKey, err := bl.GenerateKeyPair(h, seed)
 			require.NoError(t, err)
@@ -49,8 +48,7 @@ func TestGenerateKeyPair(t *testing.T) {
 
 func TestPrivateKey_Marshal(t *testing.T) {
 	for i, curve := range ml.Curves {
-		t.Run(fmt.Sprintf("with curve %s", ml.CurveIDToString(ml.CurveID(i))), func(t *testing.T) {
-
+		t.Run("with curve "+ml.CurveIDToString(ml.CurveID(i)), func(t *testing.T) {
 			_, privKey, err := generateKeyPairRandom(curve)
 			require.NoError(t, err)
 
@@ -69,8 +67,7 @@ func TestPrivateKey_Marshal(t *testing.T) {
 
 func TestPrivateKey_PublicKey(t *testing.T) {
 	for i, curve := range ml.Curves {
-		t.Run(fmt.Sprintf("with curve %s", ml.CurveIDToString(ml.CurveID(i))), func(t *testing.T) {
-
+		t.Run("with curve "+ml.CurveIDToString(ml.CurveID(i)), func(t *testing.T) {
 			pubKey, privKey, err := generateKeyPairRandom(curve)
 			require.NoError(t, err)
 
@@ -81,7 +78,7 @@ func TestPrivateKey_PublicKey(t *testing.T) {
 
 func TestPublicKey_Marshal(t *testing.T) {
 	for i, curve := range ml.Curves {
-		t.Run(fmt.Sprintf("with curve %s", ml.CurveIDToString(ml.CurveID(i))), func(t *testing.T) {
+		t.Run("with curve "+ml.CurveIDToString(ml.CurveID(i)), func(t *testing.T) {
 			pubKey, _, err := generateKeyPairRandom(curve)
 			require.NoError(t, err)
 
@@ -137,6 +134,7 @@ func decodeBase58(src string) []byte {
 		for i, candidate := range alphabet {
 			if candidate == r {
 				index = int64(i)
+
 				break
 			}
 		}
