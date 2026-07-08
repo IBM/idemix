@@ -595,7 +595,7 @@ func finalise(
 	ProofSAttrs := make([][]byte, len(HiddenIndices))
 	for i, j := range HiddenIndices {
 		ProofSAttrs[i] =
-		// s_attrsi = rAttrsi + C \cdot cred.Attrs[j]
+			// s_attrsi = rAttrsi + C \cdot cred.Attrs[j]
 			curve.ModAdd(rAttrs[i], curve.ModMul(ProofC, curve.NewZrFromBytes(cred.Attrs[j]), curve.GroupOrder), curve.GroupOrder).Bytes()
 	}
 
