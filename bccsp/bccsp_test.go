@@ -43,7 +43,7 @@ func (ks *dummyKeyStore) GetKey(ski []byte) (bccsp.Key, error) {
 // StoreKey stores the key k in this KeyStore.
 // If this KeyStore is read only then the method will fail.
 func (ks *dummyKeyStore) StoreKey(k bccsp.Key) error {
-	return errors.New("Cannot store key. This is a dummy read-only KeyStore")
+	return errors.New("cannot store key. This is a dummy read-only KeyStore")
 }
 
 var _ = Describe("Idemix Bridge", func() {

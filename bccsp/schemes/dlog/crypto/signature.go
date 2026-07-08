@@ -43,6 +43,7 @@ func hiddenIndices(Disclosure []byte) []int {
 			HiddenIndices = append(HiddenIndices, index)
 		}
 	}
+
 	return HiddenIndices
 }
 
@@ -140,7 +141,7 @@ func newSignatureWithEIDNym(
 	metadata *opts.IdemixSignerMetadata,
 ) (*Signature, *opts.IdemixSignerMetadata, error) {
 	if Disclosure[eidIndex] != 0 {
-		return nil, nil, fmt.Errorf("cannot create idemix signature: disclosure of enrollment ID requested for NewSignatureWithEIDNym")
+		return nil, nil, errors.New("cannot create idemix signature: disclosure of enrollment ID requested for NewSignatureWithEIDNym")
 	}
 
 	t1, t2, t3, APrime, ABar, BPrime, nonRevokedProofHashData, E, Nonce, rSk, rSPrime, rR2, rR3, r2, r3, re, sPrime, rRNym, rAttrs, prover, HiddenIndices, err := prepare(cred, sk, Nym, RNym, ipk, Disclosure, msg, rhIndex, cri, rng, curve, tr)
@@ -191,11 +192,11 @@ func newSignatureWithEIDNymAndRHNym(
 	metadata *opts.IdemixSignerMetadata,
 ) (*Signature, *opts.IdemixSignerMetadata, error) {
 	if Disclosure[eidIndex] != 0 {
-		return nil, nil, fmt.Errorf("cannot create idemix signature: disclosure of enrollment ID requested for NewSignatureWithEIDNym")
+		return nil, nil, errors.New("cannot create idemix signature: disclosure of enrollment ID requested for NewSignatureWithEIDNym")
 	}
 
 	if Disclosure[rhIndex] != 0 {
-		return nil, nil, fmt.Errorf("cannot create idemix signature: disclosure of revocation handle requested for NewSignatureWithEIDNymAndRHNym")
+		return nil, nil, errors.New("cannot create idemix signature: disclosure of revocation handle requested for NewSignatureWithEIDNymAndRHNym")
 	}
 
 	t1, t2, t3, APrime, ABar, BPrime, nonRevokedProofHashData, E, Nonce, rSk, rSPrime, rR2, rR3, r2, r3, re, sPrime, rRNym, rAttrs, prover, HiddenIndices, err := prepare(cred, sk, Nym, RNym, ipk, Disclosure, msg, rhIndex, cri, rng, curve, tr)
@@ -254,15 +255,15 @@ func prepare(
 ) {
 	// Validate inputs
 	if cred == nil || sk == nil || Nym == nil || RNym == nil || ipk == nil || rng == nil || cri == nil {
-		return nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, fmt.Errorf("cannot create idemix signature: received nil input")
+		return nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, errors.New("cannot create idemix signature: received nil input")
 	}
 
 	if rhIndex < 0 || rhIndex >= len(ipk.AttributeNames) || len(Disclosure) != len(ipk.AttributeNames) {
-		return nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, fmt.Errorf("cannot create idemix signature: received invalid input")
+		return nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, errors.New("cannot create idemix signature: received invalid input")
 	}
 
 	if cri.RevocationAlg != int32(ALG_NO_REVOCATION) && Disclosure[rhIndex] == 1 {
-		return nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, fmt.Errorf("Attribute %d is disclosed but also used as revocation handle attribute, which should remain hidden.", rhIndex)
+		return nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, fmt.Errorf("attribute %d is disclosed but also used as revocation handle attribute, which should remain hidden", rhIndex)
 	}
 
 	// locate the indices of the attributes to hide and sample randomness for them
@@ -376,7 +377,7 @@ func prepare(
 	// t2: is related to knowledge of the non-disclosed attributes that signed  in (A,B,S,E)
 	t2 := HRand.Mul(rSPrime)           // h_r^{r_{s'}}
 	t2.Add(BPrime.Mul2(rR3, HSk, rSk)) // B'^{r_{r3}} \cdot h_{sk}^{r_{sk}}
-	for i := 0; i < len(HiddenIndices)/2; i++ {
+	for i := range len(HiddenIndices) / 2 {
 		t2.Add(
 			// \cdot h_{2 \cdot i}^{r_{attrs,i}
 			HAttrs[HiddenIndices[2*i]].Mul2(
@@ -429,7 +430,6 @@ func finalise(
 	sigType opts.SignatureType,
 	metadata *opts.IdemixSignerMetadata,
 ) (*Signature, *opts.IdemixSignerMetadata, error) {
-
 	var Nym_eid, Nym_rh *math.G1
 	var t4_eid, t4_rh *math.G1
 	var r_r_eid, r_eid, r_r_rh, r_rh *math.Zr
@@ -440,11 +440,11 @@ func finalise(
 		EID = curve.NewZrFromBytes(cred.Attrs[eidIndex])
 		if metadata != nil {
 			if metadata.EidNymAuditData == nil {
-				return nil, nil, fmt.Errorf("invalid argument, expected metadata")
+				return nil, nil, errors.New("invalid argument, expected metadata")
 			}
 
 			if !metadata.EidNymAuditData.Attr.Equals(EID) {
-				return nil, nil, fmt.Errorf("invalid argument, eid nym audit metadata does not match (1)")
+				return nil, nil, errors.New("invalid argument, eid nym audit metadata does not match (1)")
 			}
 			r_eid = metadata.EidNymAuditData.Rand
 		} else {
@@ -471,7 +471,7 @@ func finalise(
 
 		if metadata != nil {
 			if !metadata.EidNymAuditData.Nym.Equals(Nym_eid) {
-				return nil, nil, fmt.Errorf("invalid argument, eid nym audit metadata does not match (2)")
+				return nil, nil, errors.New("invalid argument, eid nym audit metadata does not match (2)")
 			}
 		}
 
@@ -483,11 +483,11 @@ func finalise(
 		RH = curve.NewZrFromBytes(cred.Attrs[rhIndex])
 		if metadata != nil {
 			if metadata.RhNymAuditData == nil {
-				return nil, nil, fmt.Errorf("invalid argument, expected metadata")
+				return nil, nil, errors.New("invalid argument, expected metadata")
 			}
 
 			if !metadata.RhNymAuditData.Attr.Equals(RH) {
-				return nil, nil, fmt.Errorf("invalid argument, rh nym audit metadata does not match (1)")
+				return nil, nil, errors.New("invalid argument, rh nym audit metadata does not match (1)")
 			}
 			r_rh = metadata.RhNymAuditData.Rand
 		} else {
@@ -514,7 +514,7 @@ func finalise(
 
 		if metadata != nil {
 			if !metadata.RhNymAuditData.Nym.Equals(Nym_rh) {
-				return nil, nil, fmt.Errorf("invalid argument, rh nym audit metadata does not match (2)")
+				return nil, nil, errors.New("invalid argument, rh nym audit metadata does not match (2)")
 			}
 		}
 
@@ -595,7 +595,7 @@ func finalise(
 	ProofSAttrs := make([][]byte, len(HiddenIndices))
 	for i, j := range HiddenIndices {
 		ProofSAttrs[i] =
-			// s_attrsi = rAttrsi + C \cdot cred.Attrs[j]
+		// s_attrsi = rAttrsi + C \cdot cred.Attrs[j]
 			curve.ModAdd(rAttrs[i], curve.ModMul(ProofC, curve.NewZrFromBytes(cred.Attrs[j]), curve.GroupOrder), curve.GroupOrder).Bytes()
 	}
 
@@ -718,15 +718,15 @@ func (sig *Signature) AuditNymEid(
 ) error {
 	// Validate inputs
 	if ipk == nil {
-		return fmt.Errorf("cannot verify idemix signature: received nil input")
+		return errors.New("cannot verify idemix signature: received nil input")
 	}
 
 	if sig.EidNym == nil || sig.EidNym.Nym == nil {
-		return fmt.Errorf("no EidNym provided")
+		return errors.New("no EidNym provided")
 	}
 
 	if len(ipk.HAttrs) <= eidIndex {
-		return fmt.Errorf("could not access H_a_eid in array")
+		return errors.New("could not access H_a_eid in array")
 	}
 
 	H_a_eid, err := t.G1FromProto(ipk.HAttrs[eidIndex])
@@ -763,15 +763,15 @@ func (sig *Signature) AuditNymRh(
 ) error {
 	// Validate inputs
 	if ipk == nil {
-		return fmt.Errorf("cannot verify idemix signature: received nil input")
+		return errors.New("cannot verify idemix signature: received nil input")
 	}
 
 	if sig.RhNym == nil || sig.RhNym.Nym == nil {
-		return fmt.Errorf("no RhNym provided")
+		return errors.New("no RhNym provided")
 	}
 
 	if len(ipk.HAttrs) <= rhIndex {
-		return fmt.Errorf("could not access H_a_rh in array")
+		return errors.New("could not access H_a_rh in array")
 	}
 
 	H_a_rh, err := t.G1FromProto(ipk.HAttrs[rhIndex])
@@ -817,36 +817,36 @@ func (sig *Signature) Ver(
 ) error {
 	// Validate inputs
 	if ipk == nil {
-		return fmt.Errorf("cannot verify idemix signature: received nil input")
+		return errors.New("cannot verify idemix signature: received nil input")
 	}
 
 	if rhIndex < 0 || rhIndex >= len(ipk.AttributeNames) || len(Disclosure) != len(ipk.AttributeNames) {
-		return fmt.Errorf("cannot verify idemix signature: received invalid input")
+		return errors.New("cannot verify idemix signature: received invalid input")
 	}
 
 	if sig.NonRevocationProof.RevocationAlg != int32(ALG_NO_REVOCATION) && Disclosure[rhIndex] == 1 {
-		return fmt.Errorf("Attribute %d is disclosed but is also used as revocation handle, which should remain hidden.", rhIndex)
+		return fmt.Errorf("attribute %d is disclosed but is also used as revocation handle, which should remain hidden", rhIndex)
 	}
 	if verType == opts.ExpectEidNym &&
 		(sig.EidNym == nil || sig.EidNym.Nym == nil || sig.EidNym.ProofSEid == nil) {
-		return fmt.Errorf("no EidNym provided but ExpectEidNym required")
+		return errors.New("no EidNym provided but ExpectEidNym required")
 	}
 
 	if verType == opts.ExpectEidNymRhNym {
 		if sig.EidNym == nil || sig.EidNym.Nym == nil || sig.EidNym.ProofSEid == nil {
-			return fmt.Errorf("no EidNym provided but ExpectEidNymRhNym required")
+			return errors.New("no EidNym provided but ExpectEidNymRhNym required")
 		}
 		if sig.RhNym == nil || sig.RhNym.Nym == nil || sig.RhNym.ProofSRh == nil {
-			return fmt.Errorf("no RhNym provided but ExpectEidNymRhNym required")
+			return errors.New("no RhNym provided but ExpectEidNymRhNym required")
 		}
 	}
 
 	if verType == opts.ExpectStandard {
 		if sig.RhNym != nil {
-			return fmt.Errorf("RhNym available but ExpectStandard required")
+			return errors.New("RhNym available but ExpectStandard required")
 		}
 		if sig.EidNym != nil {
-			return fmt.Errorf("EidNym available but ExpectStandard required")
+			return errors.New("EidNym available but ExpectStandard required")
 		}
 	}
 
@@ -889,7 +889,7 @@ func (sig *Signature) Ver(
 	ProofSRNym := curve.NewZrFromBytes(sig.GetProofSRNym())
 	ProofSAttrs := make([]*math.Zr, len(sig.GetProofSAttrs()))
 	if len(sig.ProofSAttrs) != len(HiddenIndices) {
-		return fmt.Errorf("signature invalid: incorrect amount of s-values for AttributeProofSpec")
+		return errors.New("signature invalid: incorrect amount of s-values for AttributeProofSpec")
 	}
 	for i, b := range sig.ProofSAttrs {
 		ProofSAttrs[i] = curve.NewZrFromBytes(b)
@@ -916,14 +916,14 @@ func (sig *Signature) Ver(
 
 	// Verify signature
 	if APrime.IsInfinity() {
-		return fmt.Errorf("signature invalid: APrime = 1")
+		return errors.New("signature invalid: APrime = 1")
 	}
 	temp1 := curve.Pairing(W, APrime)
 	temp2 := curve.Pairing(curve.GenG2, ABar)
 	temp2.Inverse()
 	temp1.Mul(temp2)
 	if !curve.FExp(temp1).IsUnity() {
-		return fmt.Errorf("signature invalid: APrime and ABar don't have the expected structure")
+		return errors.New("signature invalid: APrime and ABar don't have the expected structure")
 	}
 
 	// Verify ZK proof
@@ -948,7 +948,7 @@ func (sig *Signature) Ver(
 	// Recompute t2
 	t2 := HRand.Mul(ProofSSPrime)
 	t2.Add(BPrime.Mul2(ProofSR3, HSk, ProofSSk))
-	for i := 0; i < len(HiddenIndices)/2; i++ {
+	for i := range len(HiddenIndices) / 2 {
 		t2.Add(HAttrs[HiddenIndices[2*i]].Mul2(ProofSAttrs[2*i], HAttrs[HiddenIndices[2*i+1]], ProofSAttrs[2*i+1]))
 	}
 	if len(HiddenIndices)%2 != 0 {
@@ -1091,21 +1091,21 @@ func (sig *Signature) Ver(
 
 			Nym_eid := H_a_eid.Mul2(meta.EidNymAuditData.Attr, HRand, meta.EidNymAuditData.Rand)
 			if !Nym_eid.Equals(EidNym) {
-				return fmt.Errorf("signature invalid: nym eid validation failed, does not match regenerated nym eid")
+				return errors.New("signature invalid: nym eid validation failed, does not match regenerated nym eid")
 			}
 
 			if meta.EidNymAuditData.Nym != nil && !EidNym.Equals(meta.EidNymAuditData.Nym) {
-				return fmt.Errorf("signature invalid: nym eid validation failed, does not match metadata")
+				return errors.New("signature invalid: nym eid validation failed, does not match metadata")
 			}
 		}
 
 		if len(meta.EidNym) != 0 {
 			NymEID, err := curve.NewG1FromBytes(meta.EidNym)
 			if err != nil {
-				return fmt.Errorf("signature invalid: nym eid validation failed, failed to unmarshal meta nym eid")
+				return errors.New("signature invalid: nym eid validation failed, failed to unmarshal meta nym eid")
 			}
 			if !NymEID.Equals(EidNym) {
-				return fmt.Errorf("signature invalid: nym eid validation failed, signature nym eid does not match metadata")
+				return errors.New("signature invalid: nym eid validation failed, signature nym eid does not match metadata")
 			}
 		}
 	}
@@ -1124,21 +1124,21 @@ func (sig *Signature) Ver(
 
 			Nym_rh := H_a_rh.Mul2(meta.RhNymAuditData.Attr, HRand, meta.RhNymAuditData.Rand)
 			if !Nym_rh.Equals(RhNym) {
-				return fmt.Errorf("signature invalid: nym rh validation failed, does not match regenerated nym rh")
+				return errors.New("signature invalid: nym rh validation failed, does not match regenerated nym rh")
 			}
 
 			if meta.RhNymAuditData.Nym != nil && !RhNym.Equals(meta.RhNymAuditData.Nym) {
-				return fmt.Errorf("signature invalid: nym rh validation failed, does not match metadata")
+				return errors.New("signature invalid: nym rh validation failed, does not match metadata")
 			}
 		}
 
 		if len(meta.RhNym) != 0 {
 			NymRH, err := curve.NewG1FromBytes(meta.RhNym)
 			if err != nil {
-				return fmt.Errorf("signature invalid: nym rh validation failed, failed to unmarshal meta nym rh")
+				return errors.New("signature invalid: nym rh validation failed, failed to unmarshal meta nym rh")
 			}
 			if !NymRH.Equals(RhNym) {
-				return fmt.Errorf("signature invalid: nym rh validation failed, signature nym rh does not match metadata")
+				return errors.New("signature invalid: nym rh validation failed, signature nym rh does not match metadata")
 			}
 		}
 	}
@@ -1184,7 +1184,8 @@ func (sig *Signature) Ver(
 			HRand.Bytes(),
 			ProofSRNym.Bytes(),
 		)
-		return fmt.Errorf("signature invalid: zero-knowledge proof is invalid")
+
+		return errors.New("signature invalid: zero-knowledge proof is invalid")
 	}
 
 	// Signature is valid

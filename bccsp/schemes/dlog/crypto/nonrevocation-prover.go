@@ -32,6 +32,7 @@ func (prover *nopNonRevokedProver) getFSContribution(rh *math.Zr, rRh *math.Zr, 
 func (prover *nopNonRevokedProver) getNonRevokedProof(chal *math.Zr) (*NonRevocationProof, error) {
 	ret := &NonRevocationProof{}
 	ret.RevocationAlg = int32(ALG_NO_REVOCATION)
+
 	return ret, nil
 }
 

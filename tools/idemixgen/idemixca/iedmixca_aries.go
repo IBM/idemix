@@ -8,7 +8,9 @@ package idemixca
 
 import (
 	"crypto/ecdsa"
+	"errors"
 	"fmt"
+	stdmath "math"
 
 	"github.com/IBM/idemix/bbs"
 	"github.com/IBM/idemix/bccsp/schemes/aries"
@@ -61,16 +63,16 @@ func GenerateSignerConfigAries(
 	curve *math.Curve,
 ) ([]byte, error) {
 	if ouString == "" {
-		return nil, fmt.Errorf("the OU attribute value is empty")
+		return nil, errors.New("the OU attribute value is empty")
 	}
 
 	if enrollmentId == "" {
-		return nil, fmt.Errorf("the enrollment id value is empty")
+		return nil, errors.New("the enrollment id value is empty")
 	}
 
 	rng, err := curve.Rand()
 	if err != nil {
-		return nil, fmt.Errorf("Error getting PRNG: %w", err)
+		return nil, fmt.Errorf("error getting PRNG: %w", err)
 	}
 
 	blindSigner := &aries.CredRequest{
@@ -145,6 +147,9 @@ func GenerateSignerConfigAries(
 		return nil, fmt.Errorf("revocationAuthority.Sign failed: %w", err)
 	}
 
+	if roleMask < stdmath.MinInt32 || roleMask > stdmath.MaxInt32 {
+		return nil, fmt.Errorf("roleMask out of range for int32: %d", roleMask)
+	}
 	signer := &im.IdemixMSPSignerConfig{
 		Cred:                            cred,
 		Sk:                              sk.Bytes(),

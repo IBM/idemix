@@ -17,12 +17,13 @@
 package idemix
 
 import (
-	amcl "github.com/IBM/idemix/bccsp/schemes/dlog/crypto/translator/amcl"
-	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
-	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	reflect "reflect"
 	sync "sync"
 	unsafe "unsafe"
+
+	amcl "github.com/IBM/idemix/bccsp/schemes/dlog/crypto/translator/amcl"
+	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
+	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 )
 
 const (

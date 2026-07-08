@@ -55,15 +55,15 @@ func TestNymSigner(t *testing.T) {
 
 			t.Run("happy_path", func(t *testing.T) {
 				sig, err := signer.Sign(sk, nym, rNym, _ipk, []byte("ciao"))
-				assert.NoError(t, err)
+				require.NoError(t, err)
 
 				err = signer.Verify(_ipk, nym, sig, []byte("ciao"), skPos)
-				assert.NoError(t, err)
+				require.NoError(t, err)
 			})
 
 			t.Run("wrong_randomness", func(t *testing.T) {
 				sig, err := signer.Sign(sk, nym, curve.NewRandomZr(rand), _ipk, []byte("ciao"))
-				assert.NoError(t, err)
+				require.NoError(t, err)
 
 				err = signer.Verify(_ipk, nym, sig, []byte("ciao"), skPos)
 				assert.EqualError(t, err, "contribution is not zero")
@@ -71,7 +71,7 @@ func TestNymSigner(t *testing.T) {
 
 			t.Run("wrong_secret_key", func(t *testing.T) {
 				sig, err := signer.Sign(curve.NewRandomZr(rand), nym, rNym, _ipk, []byte("ciao"))
-				assert.NoError(t, err)
+				require.NoError(t, err)
 
 				err = signer.Verify(_ipk, nym, sig, []byte("ciao"), skPos)
 				assert.EqualError(t, err, "contribution is not zero")
@@ -79,7 +79,7 @@ func TestNymSigner(t *testing.T) {
 
 			t.Run("wrong_nym_at_sign", func(t *testing.T) {
 				sig, err := signer.Sign(sk, curve.GenG1.Mul(curve.NewRandomZr(rand)), rNym, _ipk, []byte("ciao"))
-				assert.NoError(t, err)
+				require.NoError(t, err)
 
 				err = signer.Verify(_ipk, nym, sig, []byte("ciao"), skPos)
 				assert.EqualError(t, err, "contribution is not zero")
@@ -87,7 +87,7 @@ func TestNymSigner(t *testing.T) {
 
 			t.Run("wrong_nym_at_verify", func(t *testing.T) {
 				sig, err := signer.Sign(sk, nym, rNym, _ipk, []byte("ciao"))
-				assert.NoError(t, err)
+				require.NoError(t, err)
 
 				err = signer.Verify(_ipk, curve.GenG1.Mul(curve.NewRandomZr(rand)), sig, []byte("ciao"), skPos)
 				assert.EqualError(t, err, "contribution is not zero")

@@ -9,6 +9,7 @@ package bbs
 import (
 	"encoding/binary"
 	"errors"
+	"fmt"
 )
 
 func uint32ToBytes(value uint32) []byte {
@@ -56,7 +57,7 @@ type pokPayload struct {
 	Revealed      []int
 }
 
-// nolint:gomnd
+//nolint:gomnd
 func ParsePoKPayload(bytes []byte) (*pokPayload, error) {
 	if len(bytes) < 2 {
 		return nil, errors.New("invalid size of PoK payload")
@@ -80,10 +81,13 @@ func ParsePoKPayload(bytes []byte) (*pokPayload, error) {
 	}, nil
 }
 
-// nolint:gomnd
+//nolint:gomnd
 func (p *pokPayload) ToBytes() ([]byte, error) {
 	bytes := make([]byte, p.LenInBytes())
 
+	if p.MessagesCount < 0 || p.MessagesCount > 0xFFFF {
+		return nil, fmt.Errorf("MessagesCount out of range for uint16: %d", p.MessagesCount)
+	}
 	binary.BigEndian.PutUint16(bytes, uint16(p.MessagesCount))
 
 	bitvector := bytes[2:]

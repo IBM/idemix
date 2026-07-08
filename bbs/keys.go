@@ -19,10 +19,10 @@ import (
 )
 
 var (
-	// nolint:gochecknoglobals
+	//nolint:gochecknoglobals
 	seedSize = frCompressedSize
 
-	// nolint:gochecknoglobals
+	//nolint:gochecknoglobals
 	generateKeySalt = "BBS-SIG-KEYGEN-SALT-"
 )
 
@@ -119,6 +119,9 @@ func calcData(key *PublicKey, messagesCount int) []byte {
 
 	data = append(data, 0, 0, 0, 0, 0, 0)
 
+	if messagesCount < 0 || messagesCount > 0xFFFFFFFF {
+		panic("messagesCount out of range for uint32")
+	}
 	mcBytes := uint32ToBytes(uint32(messagesCount))
 
 	data = append(data, mcBytes...)
@@ -149,6 +152,7 @@ func (b *BBSLib) UnmarshalPrivateKey(privKeyBytes []byte) (*PrivateKey, error) {
 // Marshal marshals PrivateKey.
 func (k *PrivateKey) Marshal() ([]byte, error) {
 	bytes := k.FR.Bytes()
+
 	return bytes, nil
 }
 

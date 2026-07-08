@@ -9,7 +9,6 @@ package bbs_test
 import (
 	"crypto/rand"
 	"encoding/base64"
-	"fmt"
 	"testing"
 
 	"github.com/IBM/idemix/bbs"
@@ -78,7 +77,7 @@ func TestBlsG2Pub_Verify(t *testing.T) {
 
 func TestBBSG2Pub_SignWithKeyPair(t *testing.T) {
 	for i, c := range ml.Curves {
-		t.Run(fmt.Sprintf("with curve %s", ml.CurveIDToString(ml.CurveID(i))), func(t *testing.T) {
+		t.Run("with curve "+ml.CurveIDToString(ml.CurveID(i)), func(t *testing.T) {
 			pubKey, privKey, err := generateKeyPairRandom(c)
 			require.NoError(t, err)
 
@@ -101,7 +100,7 @@ func TestBBSG2Pub_SignWithKeyPair(t *testing.T) {
 
 func TestBBSG2Pub_Sign(t *testing.T) {
 	for i, curve := range ml.Curves {
-		t.Run(fmt.Sprintf("with curve %s", ml.CurveIDToString(ml.CurveID(i))), func(t *testing.T) {
+		t.Run("with curve "+ml.CurveIDToString(ml.CurveID(i)), func(t *testing.T) {
 			pubKey, privKey, err := generateKeyPairRandom(curve)
 			require.NoError(t, err)
 
@@ -231,7 +230,7 @@ func TestBBSG2Pub_VerifyProof_SeveralDisclosedMessages(t *testing.T) {
 
 func TestBBSG2Pub_DeriveProof(t *testing.T) {
 	for i, curve := range ml.Curves {
-		t.Run(fmt.Sprintf("with curve %s", ml.CurveIDToString(ml.CurveID(i))), func(t *testing.T) {
+		t.Run("with curve "+ml.CurveIDToString(ml.CurveID(i)), func(t *testing.T) {
 			pubKey, privKey, err := generateKeyPairRandom(curve)
 			require.NoError(t, err)
 
@@ -288,8 +287,7 @@ func TestBBSG2Pub_DeriveProof(t *testing.T) {
 // signer doesn't check the well-formedness of the term received from the requester
 func TestBlindSign(t *testing.T) {
 	for i, curve := range ml.Curves {
-		t.Run(fmt.Sprintf("with curve %s", ml.CurveIDToString(ml.CurveID(i))), func(t *testing.T) {
-
+		t.Run("with curve "+ml.CurveIDToString(ml.CurveID(i)), func(t *testing.T) {
 			pubKey, privKey, err := generateKeyPairRandom(curve)
 			require.NoError(t, err)
 

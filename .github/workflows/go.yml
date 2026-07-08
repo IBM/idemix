@@ -22,8 +22,14 @@ jobs:
       with:
         go-version-file: "go.mod"
 
+    - name: Set up tools
+      run: make install-linter-tool
+
     - name: Checks
       run: make checks
+
+    - name: Run linter
+      run: make lint
 
     - name: Legacy guard
       run: |
@@ -59,7 +65,7 @@ jobs:
           bin/
 
     - name: Release
-      uses: softprops/action-gh-release@v1
+      uses: softprops/action-gh-release@v2
       if: startsWith(github.ref, 'refs/tags/')
       with:
         files: |

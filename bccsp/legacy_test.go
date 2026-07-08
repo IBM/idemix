@@ -7,7 +7,6 @@ package idemix_test
 
 import (
 	"crypto/rand"
-	"fmt"
 	"os"
 	"path"
 
@@ -21,7 +20,7 @@ import (
 )
 
 func testWithCurve(id math.CurveID, translator idemix1.Translator) {
-	Describe(fmt.Sprintf("setting up the environment with one issuer and one user with curve %s", curveName(id)), func() {
+	Describe("setting up the environment with one issuer and one user with curve "+curveName(id), func() {
 		var (
 			CSP             bccsp.BCCSP
 			IssuerKey       bccsp.Key
@@ -85,7 +84,7 @@ func testWithCurve(id math.CurveID, translator idemix1.Translator) {
 			Expect(err).NotTo(HaveOccurred())
 			Expect(os.WriteFile(path.Join(rootDir, "nymkey.sk"), raw, 0666)).NotTo(HaveOccurred())
 			raw, err = NymPublicKey.Bytes()
-			Expect(len(raw)).To(Equal(2 * math.Curves[id].CoordByteSize))
+			Expect(raw).To(HaveLen(2 * math.Curves[id].CoordByteSize))
 			Expect(err).NotTo(HaveOccurred())
 			Expect(os.WriteFile(path.Join(rootDir, "nymkey.pk"), raw, 0666)).NotTo(HaveOccurred())
 
@@ -138,7 +137,6 @@ func testWithCurve(id math.CurveID, translator idemix1.Translator) {
 				&bccsp.IdemixCRISignerOpts{},
 			)
 			Expect(err).NotTo(HaveOccurred())
-
 		})
 
 		It("the environment is properly set", func() {
@@ -377,7 +375,7 @@ func testWithCurve(id math.CurveID, translator idemix1.Translator) {
 				Expect(err).NotTo(HaveOccurred())
 
 				sig.EidNym = &idemix1.EIDNym{
-					ProofSEid: []byte("invalid garbageinvalid garbageinvalid garbageinvalid garbageinvalid garbageinvalid garbageinvalid garbageinvalid garbage"),
+					ProofSEid: []byte("invalid garbageinvalid garbage"),
 					Nym:       translator.G1ToProto(math.Curves[id].GenG1),
 				}
 
@@ -456,7 +454,6 @@ func testWithCurve(id math.CurveID, translator idemix1.Translator) {
 				Expect(err.Error()).To(ContainSubstring("no EidNym provided but ExpectEidNym required"))
 				Expect(valid).To(BeFalse())
 			})
-
 		})
 
 		Describe("producing an idemix signature with an eid nym", func() {
@@ -621,7 +618,7 @@ func testWithCurve(id math.CurveID, translator idemix1.Translator) {
 						},
 					},
 				)
-				Expect(err).NotTo(BeNil())
+				Expect(err).To(HaveOccurred())
 				Expect(err.Error()).To(ContainSubstring("signature invalid: nym eid validation failed, signature nym eid does not match metadata"))
 				Expect(valid).To(BeFalse())
 			})
@@ -649,7 +646,7 @@ func testWithCurve(id math.CurveID, translator idemix1.Translator) {
 						},
 					},
 				)
-				Expect(err).NotTo(BeNil())
+				Expect(err).To(HaveOccurred())
 				Expect(err.Error()).To(ContainSubstring("signature invalid: nym eid validation failed, failed to unmarshal meta nym eid"))
 				Expect(valid).To(BeFalse())
 			})
@@ -869,7 +866,6 @@ func testWithCurve(id math.CurveID, translator idemix1.Translator) {
 				Expect(err).NotTo(HaveOccurred())
 				Expect(valid).To(BeTrue())
 			})
-
 		})
 
 		Describe("producing an idemix signature with an eid nym and rh nym", func() {
@@ -1407,7 +1403,6 @@ func testWithCurve(id math.CurveID, translator idemix1.Translator) {
 				Expect(err).NotTo(HaveOccurred())
 				Expect(valid).To(BeTrue())
 			})
-
 		})
 
 		Describe("producing an idemix signature with disclosed attributes", func() {
@@ -1466,7 +1461,6 @@ func testWithCurve(id math.CurveID, translator idemix1.Translator) {
 				Expect(err).NotTo(HaveOccurred())
 				Expect(valid).To(BeTrue())
 			})
-
 		})
 
 		Describe("producing an idemix nym signature", func() {
@@ -1503,11 +1497,9 @@ func testWithCurve(id math.CurveID, translator idemix1.Translator) {
 				Expect(err).NotTo(HaveOccurred())
 				Expect(valid).To(BeTrue())
 			})
-
 		})
 
 		Describe("Idemix Bridge Load", func() {
-
 			Describe("setting up the environment with one issuer and one user", func() {
 				var (
 					CSP             bccsp.BCCSP
@@ -1554,7 +1546,7 @@ func testWithCurve(id math.CurveID, translator idemix1.Translator) {
 					Expect(err).NotTo(HaveOccurred())
 					rawNymKeyPk, err := os.ReadFile(path.Join(rootDir, "nymkey.pk"))
 					Expect(err).NotTo(HaveOccurred())
-					Expect(len(rawNymKeyPk)).To(Equal(2 * math.Curves[id].CoordByteSize))
+					Expect(rawNymKeyPk).To(HaveLen(2 * math.Curves[id].CoordByteSize))
 
 					NymKey, err = CSP.KeyImport(append(rawNymKeySk, rawNymKeyPk...), &bccsp.IdemixNymKeyImportOpts{Temporary: true})
 					Expect(err).NotTo(HaveOccurred())
@@ -1704,7 +1696,6 @@ func testWithCurve(id math.CurveID, translator idemix1.Translator) {
 						Expect(err).NotTo(HaveOccurred())
 						Expect(valid).To(BeTrue())
 					})
-
 				})
 
 				Describe("producing an idemix signature with disclosed attributes", func() {
@@ -1763,7 +1754,6 @@ func testWithCurve(id math.CurveID, translator idemix1.Translator) {
 						Expect(err).NotTo(HaveOccurred())
 						Expect(valid).To(BeTrue())
 					})
-
 				})
 
 				Describe("producing an idemix nym signature", func() {
@@ -1800,7 +1790,6 @@ func testWithCurve(id math.CurveID, translator idemix1.Translator) {
 						Expect(err).NotTo(HaveOccurred())
 						Expect(valid).To(BeTrue())
 					})
-
 				})
 			})
 		})
