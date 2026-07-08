@@ -18,6 +18,7 @@ import (
 
 	idemix "github.com/IBM/idemix/bccsp"
 	"github.com/IBM/idemix/bccsp/keystore"
+	idemixcrypto "github.com/IBM/idemix/bccsp/schemes/dlog/crypto"
 	"github.com/IBM/idemix/bccsp/schemes/dlog/crypto/translator/amcl"
 	bccsp "github.com/IBM/idemix/bccsp/types"
 	im "github.com/IBM/idemix/msp/config"
@@ -69,6 +70,59 @@ const (
 const rhIndex = 3
 const eidIndex = 2
 
+// Curve ID string constants matching the values written by idemixgen into IdemixMSPConfig.CurveId.
+const (
+	curveIDFP256BN_AMCL        = "FP256BN_AMCL"
+	curveIDBN254               = "BN254"
+	curveIDFP256BN_AMCL_MIRACL = "FP256BN_AMCL_MIRACL"
+	curveIDBLS12_377_GURVY     = "BLS12_377_GURVY"
+	curveIDBLS12_381_GURVY     = "BLS12_381_GURVY"
+	curveIDBLS12_381           = "BLS12_381"
+	curveIDBLS12_381_BBS       = "BLS12_381_BBS"
+	curveIDBLS12_381_BBS_GURVY = "BLS12_381_BBS_GURVY"
+)
+
+// curveAndTranslator maps a curve_id string (as stored in IdemixMSPConfig) to the corresponding
+// math.Curve and dlog Translator. Returns an error for unknown curve IDs.
+func curveAndTranslator(curveID string) (*math.Curve, idemixcrypto.Translator, error) {
+	switch curveID {
+	case curveIDFP256BN_AMCL:
+		c := math.Curves[math.FP256BN_AMCL]
+
+		return c, &amcl.Fp256bn{C: c}, nil
+	case curveIDBN254:
+		c := math.Curves[math.BN254]
+
+		return c, &amcl.Gurvy{C: c}, nil
+	case curveIDFP256BN_AMCL_MIRACL:
+		c := math.Curves[math.FP256BN_AMCL_MIRACL]
+
+		return c, &amcl.Fp256bnMiracl{C: c}, nil
+	case curveIDBLS12_377_GURVY:
+		c := math.Curves[math.BLS12_377_GURVY]
+
+		return c, &amcl.Gurvy{C: c}, nil
+	case curveIDBLS12_381_GURVY:
+		c := math.Curves[math.BLS12_381_GURVY]
+
+		return c, &amcl.Gurvy{C: c}, nil
+	case curveIDBLS12_381:
+		c := math.Curves[math.BLS12_381]
+
+		return c, &amcl.Gurvy{C: c}, nil
+	case curveIDBLS12_381_BBS:
+		c := math.Curves[math.BLS12_381_BBS]
+
+		return c, &amcl.Gurvy{C: c}, nil
+	case curveIDBLS12_381_BBS_GURVY:
+		c := math.Curves[math.BLS12_381_BBS_GURVY]
+
+		return c, &amcl.Gurvy{C: c}, nil
+	default:
+		return nil, nil, fmt.Errorf("unknown curve id %q", curveID)
+	}
+}
+
 // Logger defines the logging interface required by Idemixmsp.
 // This interface is compatible with the Go SDK log package and common logging facades.
 type Logger interface {
@@ -87,6 +141,8 @@ type Idemixmsp struct {
 	revocationPK bccsp.Key
 	epoch        int
 	logger       Logger
+	aries        bool
+	exportable   bool
 }
 
 // defaultLogger is a simple logger implementation that wraps zap.SugaredLogger
@@ -141,37 +197,42 @@ func (l *stdLogger) IsEnabledFor(level zapcore.Level) bool {
 	return true // Standard logger always logs
 }
 
-// NewIdemixMsp creates a new instance of idemixmsp
+// NewIdemixMsp creates a new instance of idemixmsp using the dlog scheme.
+// The curve is determined at Setup time from IdemixMSPConfig.CurveId (default: FP256BN_AMCL).
 func NewIdemixMsp(version MSPVersion) (MSP, error) {
-	logger := newDefaultLogger("idemix")
-	logger.Debugf("Creating Idemix-based MSP instance")
+	return NewIdemixMspWithLogger(version, newDefaultLogger("idemix"))
+}
 
-	curve := math.Curves[math.FP256BN_AMCL]
-	csp, err := idemix.New(&keystore.Dummy{}, curve, &amcl.Fp256bn{C: curve}, true)
-	if err != nil {
-		panic(fmt.Sprintf("unexpected condition, error received [%s]", err))
+// NewIdemixMspWithLogger creates a new instance of idemixmsp using the dlog scheme with a custom logger.
+// The curve is determined at Setup time from IdemixMSPConfig.CurveId (default: FP256BN_AMCL).
+// If logger is nil, the default logger is used.
+func NewIdemixMspWithLogger(version MSPVersion, logger Logger) (MSP, error) {
+	if logger == nil {
+		logger = newDefaultLogger("idemix")
 	}
-
-	msp := Idemixmsp{csp: csp, logger: logger}
-	msp.version = version
+	logger.Debugf("Creating Idemix-based MSP instance")
+	msp := Idemixmsp{logger: logger, version: version, aries: false, exportable: true}
 
 	return &msp, nil
 }
 
-// NewIdemixMspAries creates a new
-// instance of idemixmsp
+// NewIdemixMspAries creates a new instance of idemixmsp using the Aries/BBS+ scheme.
+// The curve is determined at Setup time from IdemixMSPConfig.CurveId; only BLS12_381_BBS
+// and BLS12_381_BBS_GURVY are accepted (default: BLS12_381_BBS).
 func NewIdemixMspAries(version MSPVersion) (MSP, error) {
-	logger := newDefaultLogger("idemix")
-	logger.Debugf("Creating Idemix-based MSP instance")
+	return NewIdemixMspAriesWithLogger(version, newDefaultLogger("idemix"))
+}
 
-	curve := math.Curves[math.BLS12_381_BBS]
-	csp, err := idemix.NewAries(&keystore.Dummy{}, curve, &amcl.Gurvy{C: curve}, true)
-	if err != nil {
-		panic(fmt.Sprintf("unexpected condition, error received [%s]", err))
+// NewIdemixMspAriesWithLogger creates a new instance of idemixmsp using the Aries/BBS+ scheme with a custom logger.
+// The curve is determined at Setup time from IdemixMSPConfig.CurveId; only BLS12_381_BBS
+// and BLS12_381_BBS_GURVY are accepted (default: BLS12_381_BBS).
+// If logger is nil, the default logger is used.
+func NewIdemixMspAriesWithLogger(version MSPVersion, logger Logger) (MSP, error) {
+	if logger == nil {
+		logger = newDefaultLogger("idemix")
 	}
-
-	msp := Idemixmsp{csp: csp, logger: logger}
-	msp.version = version
+	logger.Debugf("Creating Idemix-based MSP instance")
+	msp := Idemixmsp{logger: logger, version: version, aries: true, exportable: true}
 
 	return &msp, nil
 }
@@ -192,11 +253,47 @@ func (msp *Idemixmsp) Setup(conf1 *m.MSPConfig) error {
 	msp.name = conf.Name
 	msp.logger.Debugf("Setting up Idemix MSP instance %s", msp.name)
 
-	switch conf1.Type {
-	case int32(IDEMIX):
-	case int32(IDEMIX_ARIES):
-	default:
-		return errors.New("setup error: config is not of type IDEMIX")
+	// Enforce that the config type matches the constructor used.
+	if msp.aries {
+		if conf1.Type != int32(IDEMIX_ARIES) {
+			return fmt.Errorf("setup error: aries MSP requires config of type IDEMIX_ARIES, got %d", conf1.Type)
+		}
+	} else {
+		if conf1.Type != int32(IDEMIX) {
+			return fmt.Errorf("setup error: dlog MSP requires config of type IDEMIX, got %d", conf1.Type)
+		}
+	}
+
+	// Determine the curve from config.CurveId.
+	curveID := conf.CurveId
+	if msp.aries {
+		switch curveID {
+		case "", curveIDBLS12_381_BBS:
+			curveID = curveIDBLS12_381_BBS
+		case curveIDBLS12_381_BBS_GURVY:
+			// accepted
+		default:
+			return fmt.Errorf("setup error: aries MSP requires a BBS curve, got %q", curveID)
+		}
+	} else {
+		if curveID == "" {
+			curveID = curveIDFP256BN_AMCL
+		}
+	}
+
+	curve, tr, err := curveAndTranslator(curveID)
+	if err != nil {
+		return fmt.Errorf("setup error: %w", err)
+	}
+
+	// Build the BCCSP using the curve selected from config.
+	if msp.aries {
+		msp.csp, err = idemix.NewAries(&keystore.Dummy{}, curve, tr, msp.exportable)
+	} else {
+		msp.csp, err = idemix.New(&keystore.Dummy{}, curve, tr, msp.exportable)
+	}
+	if err != nil {
+		return fmt.Errorf("setup error: failed to create BCCSP: %w", err)
 	}
 
 	// Import Issuer Public Key
