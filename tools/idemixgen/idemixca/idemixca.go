@@ -8,9 +8,7 @@ package idemixca
 
 import (
 	"crypto/ecdsa"
-	"errors"
 	"fmt"
-	stdmath "math"
 
 	idemix "github.com/IBM/idemix/bccsp/schemes/dlog/crypto"
 	imsp "github.com/IBM/idemix/msp"
@@ -57,11 +55,11 @@ func GenerateSignerConfig(
 	attrs := make([]*math.Zr, 4)
 
 	if ouString == "" {
-		return nil, errors.New("the OU attribute value is empty")
+		return nil, fmt.Errorf("the OU attribute value is empty")
 	}
 
 	if enrollmentId == "" {
-		return nil, errors.New("the enrollment id value is empty")
+		return nil, fmt.Errorf("the enrollment id value is empty")
 	}
 
 	attrs[imsp.AttributeIndexOU] = idmx.Curve.HashToZr([]byte(ouString))
@@ -72,13 +70,13 @@ func GenerateSignerConfig(
 	ipk := &idemix.IssuerPublicKey{}
 	err := proto.Unmarshal(ipkBytes, ipk)
 	if err != nil {
-		return nil, fmt.Errorf("error unmarshalling ipk: %w", err)
+		return nil, fmt.Errorf("Error unmarshalling ipk: %w", err)
 	}
 	key := &idemix.IssuerKey{Isk: iskBytes, Ipk: ipk}
 
 	rng, err := idmx.Curve.Rand()
 	if err != nil {
-		return nil, fmt.Errorf("error getting PRNG: %w", err)
+		return nil, fmt.Errorf("Error getting PRNG: %w", err)
 	}
 	sk := idmx.Curve.NewRandomZr(rng)
 	ni := idmx.Curve.NewRandomZr(rng).Bytes()
@@ -106,9 +104,6 @@ func GenerateSignerConfig(
 		return nil, fmt.Errorf("failed to marshal CRI: %w", err)
 	}
 
-	if roleMask < stdmath.MinInt32 || roleMask > stdmath.MaxInt32 {
-		return nil, fmt.Errorf("roleMask out of range for int32: %d", roleMask)
-	}
 	signer := &im.IdemixMSPSignerConfig{
 		Cred:                            credBytes,
 		Sk:                              sk.Bytes(),

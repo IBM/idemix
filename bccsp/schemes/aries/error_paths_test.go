@@ -53,7 +53,7 @@ func TestErrorPaths_CredRequest_Blind(t *testing.T) {
 
 	t.Run("wrong_key_type", func(t *testing.T) {
 		_, _, err := cr.Blind(sk, &fakeIPK{}, []byte("nonce"))
-		require.Error(t, err)
+		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "invalid issuer public key")
 	})
 }
@@ -69,23 +69,23 @@ func TestErrorPaths_CredRequest_BlindVerify(t *testing.T) {
 
 	t.Run("wrong_key_type", func(t *testing.T) {
 		err := cr.BlindVerify(validCredReq, &fakeIPK{}, []byte("nonce"))
-		require.Error(t, err)
+		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "invalid issuer public key")
 	})
 
 	t.Run("garbage_cred_request_bytes", func(t *testing.T) {
 		err := cr.BlindVerify([]byte("garbage"), ipk, []byte("nonce"))
-		require.Error(t, err)
+		assert.Error(t, err)
 	})
 
 	t.Run("empty_cred_request_bytes", func(t *testing.T) {
 		err := cr.BlindVerify([]byte{}, ipk, []byte("nonce"))
-		require.Error(t, err)
+		assert.Error(t, err)
 	})
 
 	t.Run("wrong_nonce", func(t *testing.T) {
 		err := cr.BlindVerify(validCredReq, ipk, []byte("wrong-nonce"))
-		require.Error(t, err)
+		assert.Error(t, err)
 	})
 }
 
@@ -97,7 +97,7 @@ func TestErrorPaths_CredRequest_Unblind(t *testing.T) {
 	t.Run("malformed_signature_bytes", func(t *testing.T) {
 		// Not a valid protobuf
 		_, err := cr.Unblind([]byte("not-a-protobuf"), curve.NewRandomZr(rand.Reader).Bytes())
-		require.Error(t, err)
+		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "proto.Unmarshal failed")
 	})
 
@@ -134,7 +134,7 @@ func TestErrorPaths_Signer_Sign(t *testing.T) {
 			attributes, []byte("msg"), 2, 1, []byte("cri"),
 			types.Standard, nil,
 		)
-		require.Error(t, err)
+		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "invalid issuer public key")
 	})
 
@@ -144,7 +144,7 @@ func TestErrorPaths_Signer_Sign(t *testing.T) {
 			attributes, []byte("msg"), 2, 1, []byte("not-a-protobuf"),
 			types.Standard, nil,
 		)
-		require.Error(t, err)
+		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "failed unmarshalling credential revocation information")
 	})
 
@@ -158,8 +158,8 @@ func TestErrorPaths_Signer_Sign(t *testing.T) {
 			attributes, []byte("msg"), 2, 1, criWithBadAlg,
 			types.Standard, nil,
 		)
-		require.Error(t, err)
-		assert.Contains(t, err.Error(), "unsupported revocation algorithm")
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "Unsupported revocation algorithm")
 	})
 
 	t.Run("malformed_credential_bytes", func(t *testing.T) {
@@ -176,7 +176,7 @@ func TestErrorPaths_Signer_Sign(t *testing.T) {
 			attributes, []byte("msg"), 2, 1, cri,
 			types.Standard, nil,
 		)
-		require.Error(t, err)
+		assert.Error(t, err)
 	})
 }
 
@@ -201,7 +201,7 @@ func TestErrorPaths_Signer_Verify(t *testing.T) {
 			attributes, 2, 1, 0, nil, 0,
 			types.ExpectStandard, nil,
 		)
-		require.Error(t, err)
+		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "invalid issuer public key")
 	})
 
@@ -211,7 +211,7 @@ func TestErrorPaths_Signer_Verify(t *testing.T) {
 			attributes, 2, 1, 0, nil, 0,
 			types.ExpectStandard, nil,
 		)
-		require.Error(t, err)
+		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "proto.Unmarshal error")
 	})
 
@@ -222,7 +222,7 @@ func TestErrorPaths_Signer_Verify(t *testing.T) {
 			types.ExpectStandard, nil,
 		)
 		// Empty bytes unmarshal to empty Signature proto with nil NonRevocationProof
-		require.Error(t, err)
+		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "no non-revocation proof")
 	})
 }
@@ -240,7 +240,7 @@ func TestErrorPaths_AuditNymEid(t *testing.T) {
 			&fakeIPK{}, 1, 0, []byte("sig"), "eid",
 			curve.NewRandomZr(rng), types.AuditExpectSignature,
 		)
-		require.Error(t, err)
+		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "invalid issuer public key")
 	})
 
@@ -250,7 +250,7 @@ func TestErrorPaths_AuditNymEid(t *testing.T) {
 			ipk, 1, 0, []byte("garbage"), "eid",
 			curve.NewRandomZr(rng), types.AuditExpectSignature,
 		)
-		require.Error(t, err)
+		assert.Error(t, err)
 	})
 
 	t.Run("garbage_signature_AuditExpectEidNym", func(t *testing.T) {
@@ -259,7 +259,7 @@ func TestErrorPaths_AuditNymEid(t *testing.T) {
 			ipk, 1, 0, []byte("garbage"), "eid",
 			curve.NewRandomZr(rng), types.AuditExpectEidNym,
 		)
-		require.Error(t, err)
+		assert.Error(t, err)
 	})
 
 	t.Run("invalid_audit_type", func(t *testing.T) {
@@ -268,7 +268,7 @@ func TestErrorPaths_AuditNymEid(t *testing.T) {
 			ipk, 1, 0, []byte("sig"), "eid",
 			curve.NewRandomZr(rng), types.AuditVerificationType(99),
 		)
-		require.Error(t, err)
+		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "invalid audit type")
 	})
 }
@@ -286,7 +286,7 @@ func TestErrorPaths_AuditNymRh(t *testing.T) {
 			&fakeIPK{}, 2, 0, []byte("sig"), "rh",
 			curve.NewRandomZr(rng), types.AuditExpectSignature,
 		)
-		require.Error(t, err)
+		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "invalid issuer public key")
 	})
 
@@ -296,7 +296,7 @@ func TestErrorPaths_AuditNymRh(t *testing.T) {
 			ipk, 2, 0, []byte("garbage"), "rh",
 			curve.NewRandomZr(rng), types.AuditExpectSignature,
 		)
-		require.Error(t, err)
+		assert.Error(t, err)
 	})
 
 	t.Run("garbage_signature_AuditExpectEidNymRhNym", func(t *testing.T) {
@@ -305,7 +305,7 @@ func TestErrorPaths_AuditNymRh(t *testing.T) {
 			ipk, 2, 0, []byte("garbage"), "rh",
 			curve.NewRandomZr(rng), types.AuditExpectEidNymRhNym,
 		)
-		require.Error(t, err)
+		assert.Error(t, err)
 	})
 
 	t.Run("invalid_audit_type", func(t *testing.T) {
@@ -314,7 +314,7 @@ func TestErrorPaths_AuditNymRh(t *testing.T) {
 			ipk, 2, 0, []byte("sig"), "rh",
 			curve.NewRandomZr(rng), types.AuditVerificationType(99),
 		)
-		require.Error(t, err)
+		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "invalid audit type")
 	})
 }
@@ -328,7 +328,7 @@ func TestErrorPaths_RevocationAuthority_Sign(t *testing.T) {
 
 	t.Run("nil_key", func(t *testing.T) {
 		_, err := rev.Sign(nil, nil, 0, types.AlgNoRevocation)
-		require.Error(t, err)
+		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "nil input")
 	})
 
@@ -337,7 +337,7 @@ func TestErrorPaths_RevocationAuthority_Sign(t *testing.T) {
 		require.NoError(t, err)
 
 		_, err = rev.Sign(key, nil, 0, types.RevocationAlgorithm(99))
-		require.Error(t, err)
+		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "not supported")
 	})
 }
@@ -351,7 +351,7 @@ func TestErrorPaths_RevocationAuthority_Verify(t *testing.T) {
 
 	t.Run("nil_public_key", func(t *testing.T) {
 		err := rev.Verify(nil, []byte("cri"), 0, types.AlgNoRevocation)
-		require.Error(t, err)
+		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "nil input")
 	})
 
@@ -360,7 +360,7 @@ func TestErrorPaths_RevocationAuthority_Verify(t *testing.T) {
 		require.NoError(t, err)
 
 		err = rev.Verify(&key.PublicKey, []byte("garbage"), 0, types.AlgNoRevocation)
-		require.Error(t, err)
+		assert.Error(t, err)
 	})
 
 	t.Run("corrupted_epoch_signature", func(t *testing.T) {
@@ -376,7 +376,7 @@ func TestErrorPaths_RevocationAuthority_Verify(t *testing.T) {
 		corrupted[len(corrupted)-5] ^= 0xFF
 
 		err = rev.Verify(&key.PublicKey, corrupted, 0, types.AlgNoRevocation)
-		require.Error(t, err)
+		assert.Error(t, err)
 	})
 }
 
@@ -385,7 +385,7 @@ func TestErrorPaths_ParseBlindedMessages(t *testing.T) {
 
 	t.Run("too_short_bytes", func(t *testing.T) {
 		_, err := aries.ParseBlindedMessages([]byte{0x01, 0x02, 0x03}, curve)
-		require.Error(t, err)
+		assert.Error(t, err)
 	})
 
 	t.Run("garbage_bytes_full_length", func(t *testing.T) {
@@ -395,12 +395,12 @@ func TestErrorPaths_ParseBlindedMessages(t *testing.T) {
 			garbage[i] = 0xAB
 		}
 		_, err := aries.ParseBlindedMessages(garbage, curve)
-		require.Error(t, err)
+		assert.Error(t, err)
 	})
 
 	t.Run("empty_bytes", func(t *testing.T) {
 		_, err := aries.ParseBlindedMessages([]byte{}, curve)
-		require.Error(t, err)
+		assert.Error(t, err)
 	})
 }
 
@@ -410,12 +410,12 @@ func TestErrorPaths_Issuer_NewKeyFromBytes(t *testing.T) {
 
 	t.Run("garbage_bytes", func(t *testing.T) {
 		_, err := issuer.NewKeyFromBytes([]byte("garbage"), []string{"a", "b"})
-		require.Error(t, err)
+		assert.Error(t, err)
 	})
 
 	t.Run("empty_bytes", func(t *testing.T) {
 		_, err := issuer.NewKeyFromBytes([]byte{}, []string{"a", "b"})
-		require.Error(t, err)
+		assert.Error(t, err)
 	})
 }
 
@@ -425,12 +425,12 @@ func TestErrorPaths_Issuer_NewPublicKeyFromBytes(t *testing.T) {
 
 	t.Run("garbage_bytes", func(t *testing.T) {
 		_, err := issuer.NewPublicKeyFromBytes([]byte("garbage"), []string{"a", "b"})
-		require.Error(t, err)
+		assert.Error(t, err)
 	})
 
 	t.Run("empty_bytes", func(t *testing.T) {
 		_, err := issuer.NewPublicKeyFromBytes([]byte{}, []string{"a", "b"})
-		require.Error(t, err)
+		assert.Error(t, err)
 	})
 }
 
@@ -444,25 +444,25 @@ func TestErrorPaths_Issuer_Bases(t *testing.T) {
 
 	t.Run("wrong_key_type", func(t *testing.T) {
 		_, err := issuer.Bases(&fakeIPK{}, types.Dlog, 2, 1, 0)
-		require.Error(t, err)
+		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "invalid issuer public key")
 	})
 
 	t.Run("invalid_ipk_type", func(t *testing.T) {
 		_, err := issuer.Bases(ipk, types.CommitmentBasesRequest(99), 2, 1, 0)
-		require.Error(t, err)
+		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "invalid ipk type")
 	})
 
 	t.Run("duplicate_indices", func(t *testing.T) {
 		_, err := issuer.Bases(ipk, types.Dlog, 1, 1, 0)
-		require.Error(t, err)
+		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "invalid indices")
 	})
 
 	t.Run("index_out_of_range", func(t *testing.T) {
 		_, err := issuer.Bases(ipk, types.Dlog, 99, 1, 0)
-		require.Error(t, err)
+		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "invalid indices")
 	})
 }
@@ -476,12 +476,12 @@ func TestErrorPaths_User_NewKeyFromBytes(t *testing.T) {
 
 	t.Run("empty_bytes", func(t *testing.T) {
 		_, err := user.NewKeyFromBytes([]byte{})
-		require.Error(t, err)
+		assert.Error(t, err)
 	})
 
 	t.Run("wrong_length_bytes", func(t *testing.T) {
 		_, err := user.NewKeyFromBytes([]byte{0x01, 0x02, 0x03})
-		require.Error(t, err)
+		assert.Error(t, err)
 	})
 }
 
@@ -494,6 +494,6 @@ func TestErrorPaths_User_NewPublicNymFromBytes(t *testing.T) {
 
 	t.Run("garbage_bytes", func(t *testing.T) {
 		_, err := user.NewPublicNymFromBytes([]byte("garbage"))
-		require.Error(t, err)
+		assert.Error(t, err)
 	})
 }

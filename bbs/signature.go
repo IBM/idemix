@@ -57,7 +57,6 @@ func (s *Signature) ToBytes() ([]byte, error) {
 // Verify is used for signature verification.
 func (s *Signature) Verify(messages []*SignatureMessage, pubKey *PublicKeyWithGenerators) error {
 	p2 := ComputeB(s.S, messages, pubKey, s.curve)
-
 	return s.VerifyWithB(messages, pubKey, p2)
 }
 

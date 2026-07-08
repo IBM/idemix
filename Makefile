@@ -48,21 +48,3 @@ fmt: ## Run gofmt on the entire project
 # tidy up go modules
 tidy:
 	@go mod tidy
-
-.PHONY: lint
-# run various linters
-lint:
-	@echo "Running Go Linters..."
-	golangci-lint run --color=always --timeout=4m
-
-.PHONY: lint-auto-fix
-# run linters with auto-fix
-lint-auto-fix:
-	@echo "Running Go Linters with auto-fix..."
-	golangci-lint run --color=always --timeout=4m --fix
-
-.PHONY: install-linter-tool
-# install golangci-lint
-install-linter-tool:
-	@echo "Installing golangci Linter"
-	@curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/HEAD/install.sh | sh -s -- -b $(HOME)/go/bin v2.12.2

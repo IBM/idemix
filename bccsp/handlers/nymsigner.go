@@ -7,6 +7,7 @@ package handlers
 
 import (
 	"errors"
+	"fmt"
 
 	"github.com/IBM/idemix/bccsp/types"
 )
@@ -34,11 +35,11 @@ func (s *NymSigner) Sign(k types.Key, digest []byte, opts types.SignerOpts) ([]b
 	// handle the smartcard case
 	if signerOpts.IsSmartcard {
 		if s.SmartcardNymSignatureScheme == nil {
-			return nil, errors.New("smartcard mode is unsupported")
+			return nil, fmt.Errorf("smartcard mode is unsupported")
 		}
 
 		if signerOpts.Smartcard == nil {
-			return nil, errors.New("no s/w smartcard supplied in opts")
+			return nil, fmt.Errorf("no s/w smartcard supplied in opts")
 		}
 
 		sigma, nym, rNym, err := s.SmartcardNymSignatureScheme.Sign(signerOpts.Smartcard, ipk.pk, digest)
@@ -109,10 +110,10 @@ func (v *NymVerifier) Verify(k types.Key, signature, digest []byte, opts types.S
 	// handle the smartcard case
 	if signerOpts.IsSmartcard {
 		if v.SmartcardNymSignatureScheme == nil {
-			return false, errors.New("smartcard mode is unsupported")
+			return false, fmt.Errorf("smartcard mode is unsupported")
 		}
 		if signerOpts.NymEid == nil {
-			return false, errors.New("nym eid missing")
+			return false, fmt.Errorf("nym eid missing")
 		}
 
 		err := v.SmartcardNymSignatureScheme.Verify(

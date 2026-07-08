@@ -173,6 +173,5 @@ func (v *Verifier) Verify(k types.Key, signature, digest []byte, opts types.Sign
 	if err != nil {
 		return false, err
 	}
-
 	return true, nil
 }

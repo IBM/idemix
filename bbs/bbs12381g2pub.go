@@ -110,6 +110,7 @@ func (bbs *BBSG2Pub) Sign(messages [][]byte, privKeyBytes []byte) ([]byte, error
 
 // VerifyProof verifies BBS+ signature proof for one ore more revealed messages.
 func (bbs *BBSG2Pub) VerifyProof(messagesBytes [][]byte, proof, nonce, pubKeyBytes []byte) error {
+
 	messages := MessagesToFr(messagesBytes, bbs.curve)
 
 	return bbs.VerifyProofFr(messages, proof, nonce, pubKeyBytes)
@@ -139,7 +140,7 @@ func (bbs *BBSG2Pub) VerifyProofFr(messages []*SignatureMessage, proof, nonce, p
 	}
 
 	if len(payload.Revealed) > len(messages) {
-		return errors.New("payload revealed bigger from messages")
+		return fmt.Errorf("payload revealed bigger from messages")
 	}
 
 	revealedMessages := make(map[int]*SignatureMessage)
@@ -159,6 +160,7 @@ func (bbs *BBSG2Pub) VerifyProofFr(messages []*SignatureMessage, proof, nonce, p
 // DeriveProof derives a proof of BBS+ signature with some messages disclosed.
 func (bbs *BBSG2Pub) DeriveProof(messages [][]byte, sigBytes, nonce, pubKeyBytes []byte,
 	revealedIndexes []int) ([]byte, error) {
+
 	return bbs.DeriveProofZr(MessagesToFr(messages, bbs.curve), sigBytes, nonce, pubKeyBytes, revealedIndexes)
 }
 
@@ -166,6 +168,7 @@ func (bbs *BBSG2Pub) DeriveProof(messages [][]byte, sigBytes, nonce, pubKeyBytes
 // The messages are supplied as scalars and not bytes.
 func (bbs *BBSG2Pub) DeriveProofZr(messagesFr []*SignatureMessage, sigBytes, nonce, pubKeyBytes []byte,
 	revealedIndexes []int) ([]byte, error) {
+
 	if len(revealedIndexes) == 0 {
 		return nil, errors.New("no message to reveal")
 	}

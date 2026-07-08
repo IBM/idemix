@@ -12,6 +12,7 @@ import (
 	"fmt"
 
 	"github.com/IBM/idemix/bbs"
+	math "github.com/IBM/mathlib"
 	ml "github.com/IBM/mathlib"
 )
 
@@ -105,7 +106,7 @@ func (b *POKOfBlindedMessages) VerifyProof(messages []bool, commitment *ml.G1, c
 
 // VerifyBlinding verifies that `msgCommit` is a valid
 // commitment of a set of messages against the appropriate bases.
-func VerifyBlinding(messageBitmap []bool, msgCommit *ml.G1, bmProof *POKOfBlindedMessages, PK *bbs.PublicKey, nonce []byte, curve *ml.Curve) error {
+func VerifyBlinding(messageBitmap []bool, msgCommit *ml.G1, bmProof *POKOfBlindedMessages, PK *bbs.PublicKey, nonce []byte, curve *math.Curve) error {
 	challengeBytes := msgCommit.Bytes()
 	challengeBytes = append(challengeBytes, bmProof.C.Bytes()...)
 	challengeBytes = append(challengeBytes, nonce...)
@@ -178,7 +179,7 @@ func BlindMessagesZr(zrs []*ml.Zr, PK *bbs.PublicKey, blindedMsgCount int, nonce
 }
 
 // BlindSign signs disclosed and blinded messages using private key in compressed form.
-func BlindSign(messages []*bbs.SignatureMessage, msgCount int, commitment *ml.G1, privKeyBytes []byte, curve *ml.Curve) ([]byte, error) {
+func BlindSign(messages []*bbs.SignatureMessage, msgCount int, commitment *ml.G1, privKeyBytes []byte, curve *math.Curve) ([]byte, error) {
 	bl := bbs.NewBBSLib(curve)
 
 	privKey, err := bl.UnmarshalPrivateKey(privKeyBytes)

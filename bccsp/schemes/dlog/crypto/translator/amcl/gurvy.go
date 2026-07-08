@@ -18,7 +18,6 @@ func (a *Gurvy) G1ToProto(g1 *math.G1) *ECP {
 	bytes := g1.Bytes()
 
 	l := len(bytes) / 2
-
 	return &ECP{
 		X: bytes[:l],
 		Y: bytes[l:],
@@ -39,20 +38,19 @@ func (a *Gurvy) G1FromProto(e *ECP) (*math.G1, error) {
 	l := len(e.X)
 	copy(bytes, e.X)
 	copy(bytes[l:], e.Y)
-
 	return a.C.NewG1FromBytes(bytes)
 }
 
 func (a *Gurvy) G2ToProto(g2 *math.G2) *ECP2 {
 	bytes := g2.Bytes()
 	l := len(bytes) / 4
-
 	return &ECP2{
 		Xa: bytes[0:l],
 		Xb: bytes[l : 2*l],
 		Ya: bytes[2*l : 3*l],
 		Yb: bytes[3*l:],
 	}
+
 }
 
 func (a *Gurvy) G2FromProto(e *ECP2) (*math.G2, error) {
@@ -62,6 +60,5 @@ func (a *Gurvy) G2FromProto(e *ECP2) (*math.G2, error) {
 	copy(bytes[l:2*l], e.Xb)
 	copy(bytes[2*l:3*l], e.Ya)
 	copy(bytes[3*l:], e.Yb)
-
 	return a.C.NewG2FromBytes(bytes)
 }

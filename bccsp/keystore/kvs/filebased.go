@@ -25,7 +25,7 @@ func NewFileBased(path string) (*FileBasedKVS, error) {
 	}
 
 	if os.IsNotExist(err) {
-		err = os.MkdirAll(path, 0750)
+		err = os.MkdirAll(path, 0770)
 		if err != nil {
 			return nil, fmt.Errorf("could not create path [%s]: [%w]", path, err)
 		}

@@ -25,15 +25,15 @@ func (nym NymRH) AuditNymRh(
 ) error {
 	// Validate inputs
 	if ipk == nil {
-		return errors.New("cannot verify idemix signature: received nil input")
+		return fmt.Errorf("cannot verify idemix signature: received nil input")
 	}
 
 	if len(nym) == 0 {
-		return errors.New("no RhNym provided")
+		return fmt.Errorf("no RhNym provided")
 	}
 
 	if len(ipk.HAttrs) <= rhIndex {
-		return errors.New("could not access H_a_rh in array")
+		return fmt.Errorf("could not access H_a_rh in array")
 	}
 
 	H_a_rh, err := t.G1FromProto(ipk.HAttrs[rhIndex])

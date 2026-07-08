@@ -12,8 +12,7 @@ import (
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/asn1"
-	"errors"
-	"fmt"
+	fmt "fmt"
 	"io"
 	"math/big"
 
@@ -49,9 +48,9 @@ func (i *Idemix) LongTermRevocationKeyFromBytes(raw []byte) (*ecdsa.PrivateKey, 
 
 func longTermRevocationKeyFromBytes(raw []byte) (*ecdsa.PrivateKey, error) {
 	priv := &ecdsa.PrivateKey{}
-	priv.D = new(big.Int).SetBytes(raw) //nolint:staticcheck
-	priv.Curve = elliptic.P384()
-	priv.X, priv.Y = elliptic.P384().ScalarBaseMult(priv.D.Bytes()) //nolint:staticcheck
+	priv.D = new(big.Int).SetBytes(raw)
+	priv.PublicKey.Curve = elliptic.P384()
+	priv.PublicKey.X, priv.PublicKey.Y = elliptic.P384().ScalarBaseMult(priv.D.Bytes())
 
 	return priv, nil
 }
@@ -66,7 +65,7 @@ func (i *Idemix) CreateCRI(key *ecdsa.PrivateKey, unrevokedHandles []*math.Zr, e
 
 func createCRI(key *ecdsa.PrivateKey, unrevokedHandles []*math.Zr, epoch int, alg RevocationAlgorithm, rng io.Reader, curve *math.Curve, t Translator) (*CredentialRevocationInformation, error) {
 	if key == nil || rng == nil {
-		return nil, errors.New("createCRI received nil input")
+		return nil, fmt.Errorf("CreateCRI received nil input")
 	}
 	cri := &CredentialRevocationInformation{}
 	cri.RevocationAlg = int32(alg)
@@ -97,7 +96,7 @@ func createCRI(key *ecdsa.PrivateKey, unrevokedHandles []*math.Zr, epoch int, al
 	if alg == ALG_NO_REVOCATION {
 		return cri, nil
 	} else {
-		return nil, errors.New("the specified revocation algorithm is not supported")
+		return nil, fmt.Errorf("the specified revocation algorithm is not supported.")
 	}
 }
 
@@ -112,7 +111,7 @@ func (i *Idemix) VerifyEpochPK(pk *ecdsa.PublicKey, epochPK *amcl.ECP2, epochPkS
 
 func verifyEpochPK(pk *ecdsa.PublicKey, epochPK *amcl.ECP2, epochPkSig []byte, epoch int, alg RevocationAlgorithm) error {
 	if pk == nil || epochPK == nil {
-		return errors.New("epochPK invalid: received nil input")
+		return fmt.Errorf("EpochPK invalid: received nil input")
 	}
 	cri := &CredentialRevocationInformation{}
 	cri.RevocationAlg = int32(alg)
@@ -130,7 +129,7 @@ func verifyEpochPK(pk *ecdsa.PublicKey, epochPK *amcl.ECP2, epochPkSig []byte, e
 	}
 
 	if !ecdsa.Verify(pk, digest[:], sig.R, sig.S) {
-		return errors.New("epochPKSig invalid")
+		return fmt.Errorf("EpochPKSig invalid")
 	}
 
 	return nil

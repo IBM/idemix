@@ -18,7 +18,7 @@ func (b *BBSLib) parseFr(data []byte) *ml.Zr {
 }
 
 var (
-	//nolint:gochecknoglobals
+	// nolint:gochecknoglobals
 	f2192Bytes = []byte{
 		0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x1,
 		0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0,
@@ -34,7 +34,6 @@ func f2192(curve *ml.Curve) *ml.Zr {
 	}
 	val := curve.NewZrFromBytes(f2192Bytes)
 	f2192Cache[curve] = val
-
 	return val
 }
 
@@ -45,7 +44,7 @@ func FrFromOKM(message []byte, curve *ml.Curve) *ml.Zr {
 	)
 
 	// We pass a null key so error is impossible here.
-	h, _ := blake2b.New384(nil)
+	h, _ := blake2b.New384(nil) //nolint:errcheck
 
 	// blake2b.digest() does not return an error.
 	_, _ = h.Write(message)

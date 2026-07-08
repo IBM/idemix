@@ -11,6 +11,7 @@ import (
 	"github.com/IBM/idemix/bccsp/schemes/aries"
 	idemix "github.com/IBM/idemix/bccsp/types"
 	math "github.com/IBM/mathlib"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -33,20 +34,20 @@ func TestRevocation(t *testing.T) {
 
 	t.Run("sign_and_verify_happy_path", func(t *testing.T) {
 		err := rev.Verify(&revocationKey.PublicKey, cri, epoch, idemix.AlgNoRevocation)
-		require.NoError(t, err)
+		assert.NoError(t, err)
 	})
 
 	t.Run("wrong_epoch_fails", func(t *testing.T) {
 		err := rev.Verify(&revocationKey.PublicKey, cri, epoch+1, idemix.AlgNoRevocation)
-		require.Error(t, err)
+		assert.Error(t, err)
 	})
 
 	t.Run("key_roundtrip", func(t *testing.T) {
-		bytes := revocationKey.D.Bytes() //nolint:staticcheck
+		bytes := revocationKey.D.Bytes()
 		restoredKey, err := rev.NewKeyFromBytes(bytes)
 		require.NoError(t, err)
 
 		err = rev.Verify(&restoredKey.PublicKey, cri, epoch, idemix.AlgNoRevocation)
-		require.NoError(t, err)
+		assert.NoError(t, err)
 	})
 }

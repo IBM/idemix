@@ -9,6 +9,7 @@ import (
 	"fmt"
 
 	idemix "github.com/IBM/idemix/bccsp/schemes/dlog/crypto"
+	"github.com/IBM/idemix/bccsp/types"
 	bccsp "github.com/IBM/idemix/bccsp/types"
 	"google.golang.org/protobuf/proto"
 )
@@ -35,7 +36,7 @@ func (o *IssuerSecretKey) Bytes() ([]byte, error) {
 	return proto.Marshal(o.SK)
 }
 
-func (o *IssuerSecretKey) Public() bccsp.IssuerPublicKey {
+func (o *IssuerSecretKey) Public() types.IssuerPublicKey {
 	return &IssuerPublicKey{o.SK.Ipk}
 }
 
@@ -46,7 +47,7 @@ type Issuer struct {
 }
 
 // NewKey generates a new issuer key-pair
-func (i *Issuer) NewKey(attributeNames []string) (res bccsp.IssuerSecretKey, err error) {
+func (i *Issuer) NewKey(attributeNames []string) (res types.IssuerSecretKey, err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			res = nil
@@ -64,7 +65,7 @@ func (i *Issuer) NewKey(attributeNames []string) (res bccsp.IssuerSecretKey, err
 	return
 }
 
-func (i *Issuer) NewKeyFromBytes(raw []byte, attributes []string) (res bccsp.IssuerSecretKey, err error) {
+func (i *Issuer) NewKeyFromBytes(raw []byte, attributes []string) (res types.IssuerSecretKey, err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			res = nil
@@ -82,11 +83,11 @@ func (i *Issuer) NewKeyFromBytes(raw []byte, attributes []string) (res bccsp.Iss
 	return
 }
 
-func (i *Issuer) Bases(ipk bccsp.IssuerPublicKey, ipkType bccsp.CommitmentBasesRequest, RhIndex, EidIndex, SKIndex int) (map[bccsp.CommitmentType]any, error) {
+func (i *Issuer) Bases(ipk types.IssuerPublicKey, ipkType types.CommitmentBasesRequest, RhIndex, EidIndex, SKIndex int) (map[types.CommitmentType]any, error) {
 	panic("not implemented")
 }
 
-func (i *Issuer) NewPublicKeyFromBytes(raw []byte, attributes []string) (res bccsp.IssuerPublicKey, err error) {
+func (i *Issuer) NewPublicKeyFromBytes(raw []byte, attributes []string) (res types.IssuerPublicKey, err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			res = nil
@@ -141,5 +142,5 @@ func (i *Issuer) NewPublicKeyFromBytes(raw []byte, attributes []string) (res bcc
 
 	res = &IssuerPublicKey{PK: ipk}
 
-	return res, err
+	return
 }

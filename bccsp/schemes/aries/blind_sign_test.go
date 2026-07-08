@@ -13,11 +13,13 @@ import (
 
 	"github.com/IBM/idemix/bbs"
 	"github.com/IBM/idemix/bccsp/schemes/aries"
+	math "github.com/IBM/mathlib"
 	ml "github.com/IBM/mathlib"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-func generateKeyPairRandom(curve *ml.Curve) (*bbs.PublicKey, *bbs.PrivateKey, error) {
+func generateKeyPairRandom(curve *math.Curve) (*bbs.PublicKey, *bbs.PrivateKey, error) {
 	seed := make([]byte, 32)
 
 	_, err := rand.Read(seed)
@@ -29,7 +31,7 @@ func generateKeyPairRandom(curve *ml.Curve) (*bbs.PublicKey, *bbs.PrivateKey, er
 }
 
 func TestBlindSignMessages(t *testing.T) {
-	curve := ml.Curves[ml.BLS12_381_BBS]
+	curve := math.Curves[math.BLS12_381_BBS]
 
 	pubKey, privKey, err := generateKeyPairRandom(curve)
 	require.NoError(t, err)
@@ -72,16 +74,16 @@ func TestBlindSignMessages(t *testing.T) {
 	}
 
 	bm, err := aries.BlindMessages(blindedMessagesBytes, pubKey, blindMsgCount, []byte("nonce578"), curve)
-	require.NoError(t, err)
+	assert.NoError(t, err)
 
 	S := bm.S
 
 	bmBytes := bm.Bytes()
 	bm, err = aries.ParseBlindedMessages(bmBytes, curve)
-	require.NoError(t, err)
+	assert.NoError(t, err)
 
 	err = aries.VerifyBlinding(blindedMessagesBitmap, bm.C, bm.PoK, pubKey, []byte("nonce578"), curve)
-	require.NoError(t, err)
+	assert.NoError(t, err)
 
 	bls := bbs.New(curve)
 
@@ -104,7 +106,7 @@ func TestBlindSignMessages(t *testing.T) {
 }
 
 func TestBlindSignZr(t *testing.T) {
-	curve := ml.Curves[ml.BLS12_381_BBS]
+	curve := math.Curves[math.BLS12_381_BBS]
 
 	pubKey, privKey, err := generateKeyPairRandom(curve)
 	require.NoError(t, err)
@@ -133,10 +135,10 @@ func TestBlindSignZr(t *testing.T) {
 	}
 
 	bm, err := aries.BlindMessagesZr(blindedMessagesZr, pubKey, blindMsgCount, []byte("nonce23423"), curve)
-	require.NoError(t, err)
+	assert.NoError(t, err)
 
 	err = aries.VerifyBlinding(blindedMessagesBitmap, bm.C, bm.PoK, pubKey, []byte("nonce23423"), curve)
-	require.NoError(t, err)
+	assert.NoError(t, err)
 
 	privKeyBytes, err := privKey.Marshal()
 	require.NoError(t, err)

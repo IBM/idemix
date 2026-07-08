@@ -36,7 +36,6 @@ func getRoleMaskFromIdemixRoles(roles []Role) int {
 	for _, role := range roles {
 		mask = mask | role.getValue()
 	}
-
 	return mask
 }
 

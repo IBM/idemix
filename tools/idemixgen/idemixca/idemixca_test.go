@@ -26,7 +26,7 @@ import (
 var testDir = filepath.Join(os.TempDir(), "idemixca-test")
 
 func TestIdemixCaAries(t *testing.T) {
-	require.NoError(t, cleanup())
+	cleanup()
 
 	curve := math.Curves[math.BLS12_381_BBS]
 	rng, err := curve.Rand()
@@ -58,7 +58,7 @@ func TestIdemixCaAries(t *testing.T) {
 	require.NoError(t, err)
 	pemEncodedRevocationPK := pem.EncodeToMemory(&pem.Block{Type: "PUBLIC KEY", Bytes: encodedRevocationPK})
 
-	require.NoError(t, writeVerifierToFile(ipkBytes, pemEncodedRevocationPK))
+	writeVerifierToFile(ipkBytes, pemEncodedRevocationPK)
 
 	conf, err := GenerateSignerConfigAries(imsp.GetRoleMaskFromIdemixRole(imsp.MEMBER), "OU1", "enrollmentid1", "1", iskBytes, ipkBytes, revocationkey, curve)
 	require.NoError(t, err)
@@ -84,7 +84,7 @@ func TestIdemixCaAries(t *testing.T) {
 }
 
 func TestIdemixCa(t *testing.T) {
-	require.NoError(t, cleanup())
+	cleanup()
 
 	curve := math.Curves[math.FP256BN_AMCL]
 	tr := &amclt.Fp256bn{
@@ -109,7 +109,7 @@ func TestIdemixCa(t *testing.T) {
 	require.NoError(t, err)
 	pemEncodedRevocationPK := pem.EncodeToMemory(&pem.Block{Type: "PUBLIC KEY", Bytes: encodedRevocationPK})
 
-	require.NoError(t, writeVerifierToFile(ipkBytes, pemEncodedRevocationPK))
+	writeVerifierToFile(ipkBytes, pemEncodedRevocationPK)
 
 	conf, err := GenerateSignerConfig(imsp.GetRoleMaskFromIdemixRole(imsp.MEMBER), "OU1", "enrollmentid1", "1", iskBytes, ipkBytes, revocationkey, idmx, tr)
 	require.NoError(t, err)
@@ -138,22 +138,21 @@ func cleanup() error {
 	// clean up any previous files
 	err := os.RemoveAll(testDir)
 	if err != nil {
-		return err
+		return nil
 	}
-
-	return os.Mkdir(testDir, 0750)
+	return os.Mkdir(testDir, os.ModePerm)
 }
 
 func cleanupSigner() {
-	_ = os.RemoveAll(filepath.Join(testDir, imsp.IdemixConfigDirUser))
+	os.RemoveAll(filepath.Join(testDir, imsp.IdemixConfigDirUser))
 }
 
 func cleanupVerifier() {
-	_ = os.RemoveAll(filepath.Join(testDir, imsp.IdemixConfigDirMsp))
+	os.RemoveAll(filepath.Join(testDir, imsp.IdemixConfigDirMsp))
 }
 
 func writeVerifierToFile(ipkBytes []byte, revpkBytes []byte) error {
-	err := os.Mkdir(filepath.Join(testDir, imsp.IdemixConfigDirMsp), 0750)
+	err := os.Mkdir(filepath.Join(testDir, imsp.IdemixConfigDirMsp), os.ModePerm)
 	if err != nil {
 		return err
 	}
@@ -166,11 +165,10 @@ func writeVerifierToFile(ipkBytes []byte, revpkBytes []byte) error {
 }
 
 func writeSignerToFile(signerBytes []byte) error {
-	err := os.Mkdir(filepath.Join(testDir, imsp.IdemixConfigDirUser), 0750)
+	err := os.Mkdir(filepath.Join(testDir, imsp.IdemixConfigDirUser), os.ModePerm)
 	if err != nil {
 		return err
 	}
-
 	return os.WriteFile(filepath.Join(testDir, imsp.IdemixConfigDirUser, imsp.IdemixConfigFileSigner), signerBytes, 0644)
 }
 

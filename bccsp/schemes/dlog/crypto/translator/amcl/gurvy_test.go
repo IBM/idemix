@@ -11,7 +11,6 @@ import (
 
 	math "github.com/IBM/mathlib"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 func TestGurvyTranslatorGen(t *testing.T) {
@@ -23,14 +22,14 @@ func TestGurvyTranslatorGen(t *testing.T) {
 	genG1 := curve.GenG1
 	ecp := tr.G1ToProto(genG1)
 	p, err := tr.G1FromProto(ecp)
-	require.NoError(t, err)
+	assert.NoError(t, err)
 	assert.True(t, p.Equals(genG1))
 
 	genG2 := curve.GenG2
 	ecp2 := tr.G2ToProto(genG2)
 	p2, err := tr.G2FromProto(ecp2)
 	assert.True(t, p2.Equals(genG2))
-	require.NoError(t, err)
+	assert.NoError(t, err)
 }
 
 func TestGurvyTranslatorRndG1(t *testing.T) {
@@ -40,7 +39,7 @@ func TestGurvyTranslatorRndG1(t *testing.T) {
 	}
 
 	rnd, err := curve.Rand()
-	require.NoError(t, err)
+	assert.NoError(t, err)
 
 	g := curve.GenG1
 	r := curve.NewRandomZr(rnd)
@@ -51,7 +50,7 @@ func TestGurvyTranslatorRndG1(t *testing.T) {
 
 	h1, err := tr.G1FromProto(ecp)
 	assert.True(t, h.Equals(h1))
-	require.NoError(t, err)
+	assert.NoError(t, err)
 }
 
 func TestGurvyTranslatorRndG2(t *testing.T) {
@@ -61,7 +60,7 @@ func TestGurvyTranslatorRndG2(t *testing.T) {
 	}
 
 	rnd, err := curve.Rand()
-	require.NoError(t, err)
+	assert.NoError(t, err)
 
 	g := curve.GenG2
 	r := curve.NewRandomZr(rnd)
@@ -72,5 +71,5 @@ func TestGurvyTranslatorRndG2(t *testing.T) {
 
 	h1, err := tr.G2FromProto(ecp)
 	assert.True(t, h.Equals(h1))
-	require.NoError(t, err)
+	assert.NoError(t, err)
 }

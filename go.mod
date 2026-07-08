@@ -3,7 +3,7 @@ module github.com/IBM/idemix
 go 1.26.3
 
 require (
-	github.com/IBM/mathlib v0.2.1-0.20260708043658-e8f8fcd199a4
+	github.com/IBM/mathlib v0.2.0
 	github.com/alecthomas/kingpin/v2 v2.4.0
 	github.com/hyperledger/fabric-protos-go-apiv2 v0.3.7
 	github.com/onsi/ginkgo/v2 v2.32.0
@@ -25,6 +25,7 @@ require (
 	github.com/google/go-cmp v0.7.0 // indirect
 	github.com/google/pprof v0.0.0-20260604005048-7023385849c0 // indirect
 	github.com/hyperledger/fabric-amcl v0.0.0-20230602173724-9e02669dceb2 // indirect
+	github.com/kilic/bls12-381 v0.1.0 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/xhit/go-str2duration/v2 v2.1.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect

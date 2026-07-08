@@ -27,7 +27,6 @@ func benchMessages(n int) [][]byte {
 	for i := range msgs {
 		msgs[i] = fmt.Appendf(nil, "bench-message-%d", i)
 	}
-
 	return msgs
 }
 
@@ -42,7 +41,6 @@ func benchKeyPair() (*bbs.PublicKey, *bbs.PrivateKey) {
 	if err != nil {
 		panic(err)
 	}
-
 	return pub, priv
 }
 
@@ -56,7 +54,6 @@ func benchRevealedIndexes(msgCount int) []int {
 	for i := 0; i < msgCount; i += 2 {
 		idxs = append(idxs, i)
 	}
-
 	return idxs
 }
 
@@ -79,7 +76,7 @@ func BenchmarkSign(b *testing.B) {
 
 			b.ReportAllocs()
 			b.ResetTimer()
-			for range b.N {
+			for i := 0; i < b.N; i++ {
 				_, err := scheme.Sign(msgs, privKeyBytes)
 				if err != nil {
 					b.Fatal(err)
@@ -106,7 +103,7 @@ func BenchmarkVerify(b *testing.B) {
 
 			b.ReportAllocs()
 			b.ResetTimer()
-			for range b.N {
+			for i := 0; i < b.N; i++ {
 				err := scheme.Verify(msgs, sigBytes, pubKeyBytes)
 				if err != nil {
 					b.Fatal(err)
@@ -135,7 +132,7 @@ func BenchmarkDeriveProof(b *testing.B) {
 
 			b.ReportAllocs()
 			b.ResetTimer()
-			for range b.N {
+			for i := 0; i < b.N; i++ {
 				_, err := scheme.DeriveProof(msgs, sigBytes, nonce, pubKeyBytes, revealed)
 				if err != nil {
 					b.Fatal(err)
@@ -191,7 +188,7 @@ func BenchmarkVerifyProof(b *testing.B) {
 
 			b.ReportAllocs()
 			b.ResetTimer()
-			for i := range b.N {
+			for i := 0; i < b.N; i++ {
 				err := scheme.VerifyProof(revealedMsgs, proofPool[i%proofPoolSize], nonce, pubKeyBytes)
 				if err != nil {
 					b.Fatalf("failed at i=%d: %v", i, err)
@@ -211,7 +208,7 @@ func BenchmarkSignWithKey(b *testing.B) {
 
 			b.ReportAllocs()
 			b.ResetTimer()
-			for range b.N {
+			for i := 0; i < b.N; i++ {
 				_, err := scheme.SignWithKey(msgs, priv)
 				if err != nil {
 					b.Fatal(err)
@@ -232,7 +229,7 @@ func BenchmarkToPublicKeyWithGenerators(b *testing.B) {
 
 			b.ReportAllocs()
 			b.ResetTimer()
-			for range b.N {
+			for i := 0; i < b.N; i++ {
 				_, err := pub.ToPublicKeyWithGenerators(n)
 				if err != nil {
 					b.Fatal(err)
@@ -260,7 +257,7 @@ func BenchmarkComputeB(b *testing.B) {
 
 			b.ReportAllocs()
 			b.ResetTimer()
-			for range b.N {
+			for i := 0; i < b.N; i++ {
 				_ = bbs.ComputeB(s, messagesFr, pubKeyWithGens, benchCurve)
 			}
 		})
@@ -274,7 +271,7 @@ func BenchmarkFrFromOKM(b *testing.B) {
 
 	b.ReportAllocs()
 	b.ResetTimer()
-	for range b.N {
+	for i := 0; i < b.N; i++ {
 		_ = bbs.FrFromOKM(msg, benchCurve)
 	}
 }
@@ -287,7 +284,7 @@ func BenchmarkMessagesToFr(b *testing.B) {
 
 			b.ReportAllocs()
 			b.ResetTimer()
-			for range b.N {
+			for i := 0; i < b.N; i++ {
 				_ = bbs.MessagesToFr(msgs, benchCurve)
 			}
 		})
@@ -313,7 +310,7 @@ func BenchmarkNewCommitmentBuilder(b *testing.B) {
 
 			b.ReportAllocs()
 			b.ResetTimer()
-			for range b.N {
+			for i := 0; i < b.N; i++ {
 				cb := bbs.NewCommitmentBuilder(n)
 				for j := range n {
 					cb.Add(pubKeyWithGens.H[j], scalars[j])
@@ -340,7 +337,7 @@ func BenchmarkParseSignature(b *testing.B) {
 
 	b.ReportAllocs()
 	b.ResetTimer()
-	for range b.N {
+	for i := 0; i < b.N; i++ {
 		_, err := lib.ParseSignature(sigBytes)
 		if err != nil {
 			b.Fatal(err)
@@ -366,7 +363,7 @@ func BenchmarkSignatureToBytes(b *testing.B) {
 
 	b.ReportAllocs()
 	b.ResetTimer()
-	for range b.N {
+	for i := 0; i < b.N; i++ {
 		_, err := sig.ToBytes()
 		if err != nil {
 			b.Fatal(err)
@@ -386,7 +383,7 @@ func BenchmarkGenerateKeyPair(b *testing.B) {
 
 	b.ReportAllocs()
 	b.ResetTimer()
-	for range b.N {
+	for i := 0; i < b.N; i++ {
 		_, _, err := lib.GenerateKeyPair(sha256.New, seed)
 		if err != nil {
 			b.Fatal(err)
@@ -400,7 +397,7 @@ func BenchmarkPublicKeyMarshal(b *testing.B) {
 
 	b.ReportAllocs()
 	b.ResetTimer()
-	for range b.N {
+	for i := 0; i < b.N; i++ {
 		_, err := pub.Marshal()
 		if err != nil {
 			b.Fatal(err)
@@ -416,7 +413,7 @@ func BenchmarkUnmarshalPublicKey(b *testing.B) {
 
 	b.ReportAllocs()
 	b.ResetTimer()
-	for range b.N {
+	for i := 0; i < b.N; i++ {
 		_, err := lib.UnmarshalPublicKey(pubKeyBytes)
 		if err != nil {
 			b.Fatal(err)
@@ -455,7 +452,7 @@ func BenchmarkParseSignatureProof(b *testing.B) {
 
 	b.ReportAllocs()
 	b.ResetTimer()
-	for range b.N {
+	for i := 0; i < b.N; i++ {
 		_, err := lib.ParseSignatureProof(sigProofBytes)
 		if err != nil {
 			b.Fatal(err)
@@ -474,7 +471,7 @@ func BenchmarkPairing(b *testing.B) {
 
 	b.ReportAllocs()
 	b.ResetTimer()
-	for range b.N {
+	for i := 0; i < b.N; i++ {
 		gt := benchCurve.Pairing(q, p)
 		_ = benchCurve.FExp(gt)
 	}
@@ -492,7 +489,7 @@ func BenchmarkPairing2(b *testing.B) {
 
 	b.ReportAllocs()
 	b.ResetTimer()
-	for range b.N {
+	for i := 0; i < b.N; i++ {
 		gt := benchCurve.Pairing2(q1, p1, q2, p2)
 		_ = benchCurve.FExp(gt)
 	}
@@ -508,7 +505,7 @@ func BenchmarkG1ScalarMul(b *testing.B) {
 
 	b.ReportAllocs()
 	b.ResetTimer()
-	for range b.N {
+	for i := 0; i < b.N; i++ {
 		_ = p.Mul(s)
 	}
 }
@@ -520,7 +517,7 @@ func BenchmarkG1Add(b *testing.B) {
 
 	b.ReportAllocs()
 	b.ResetTimer()
-	for range b.N {
+	for i := 0; i < b.N; i++ {
 		r := p.Copy()
 		r.Add(q)
 	}
@@ -533,7 +530,7 @@ func BenchmarkHashToG1(b *testing.B) {
 
 	b.ReportAllocs()
 	b.ResetTimer()
-	for range b.N {
+	for i := 0; i < b.N; i++ {
 		dst := []byte("BLS12381G1_XMD:BLAKE2B_SSWU_RO_BBS+_SIGNATURES:1_0_0")
 		_ = benchCurve.HashToG1WithDomain(data, dst)
 	}

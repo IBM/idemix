@@ -8,6 +8,7 @@ package bridge_test
 import (
 	"crypto/rand"
 	"fmt"
+	"io"
 
 	"github.com/IBM/idemix/bccsp/handlers"
 	"github.com/IBM/idemix/bccsp/schemes/dlog/bridge"
@@ -20,6 +21,15 @@ import (
 	. "github.com/onsi/gomega"
 	"google.golang.org/protobuf/proto"
 )
+
+func rndOrPanic(curve *math.Curve) io.Reader {
+	rnd, err := curve.Rand()
+	if err != nil {
+		panic(err)
+	}
+
+	return rnd
+}
 
 var _ = Describe("Idemix Bridge", func() {
 	var (
@@ -396,13 +406,13 @@ var _ = Describe("Idemix Bridge", func() {
 
 			It("fail on nil inputs", func() {
 				raw, err := Revocation.Sign(nil, nil, 0, 0)
-				Expect(err).To(MatchError("failed creating CRI: createCRI received nil input"))
+				Expect(err).To(MatchError("failed creating CRI: CreateCRI received nil input"))
 				Expect(raw).To(BeNil())
 			})
 
 			It("fail on invalid handlers", func() {
 				raw, err := Revocation.Sign(nil, [][]byte{{0, 2, 3, 4}}, 0, 0)
-				Expect(err).To(MatchError(ContainSubstring("createCRI received nil input")))
+				Expect(err).To(MatchError(ContainSubstring("CreateCRI received nil input")))
 				Expect(raw).To(BeNil())
 			})
 		})
@@ -410,7 +420,7 @@ var _ = Describe("Idemix Bridge", func() {
 		Context("verify", func() {
 			It("fail on nil inputs", func() {
 				err := Revocation.Verify(nil, nil, 0, 0)
-				Expect(err).To(MatchError("epochPK invalid: received nil input"))
+				Expect(err).To(MatchError("EpochPK invalid: received nil input"))
 			})
 
 			It("fail on malformed cri", func() {
@@ -839,7 +849,7 @@ var _ = Describe("Idemix Bridge", func() {
 					nil,
 					&types.IdemixCRISignerOpts{},
 				)
-				Expect(err).To(MatchError("epochPKSig invalid"))
+				Expect(err).To(MatchError("EpochPKSig invalid"))
 				Expect(valid).To(BeFalse())
 			})
 		})

@@ -121,6 +121,7 @@ func main() {
 	}
 
 	switch command {
+
 	case genIssuerKey.FullCommand():
 		var isk, ipk []byte
 		var err error
@@ -150,8 +151,8 @@ func main() {
 		checkDirectoryNotExists(path, fmt.Sprintf("Directory %s already exists", path))
 
 		// write private and public keys to the file
-		handleError(os.MkdirAll(filepath.Join(*outputDir, IdemixDirIssuer), 0750))
-		handleError(os.MkdirAll(filepath.Join(*outputDir, imsp.IdemixConfigDirMsp), 0750))
+		handleError(os.MkdirAll(filepath.Join(*outputDir, IdemixDirIssuer), 0770))
+		handleError(os.MkdirAll(filepath.Join(*outputDir, imsp.IdemixConfigDirMsp), 0770))
 		writeFile(filepath.Join(*outputDir, IdemixDirIssuer, IdemixConfigIssuerSecretKey), isk)
 		writeFile(filepath.Join(*outputDir, IdemixDirIssuer, IdemixConfigRevocationKey), pemEncodedRevocationSK)
 		writeFile(filepath.Join(*outputDir, IdemixDirIssuer, imsp.IdemixConfigFileIssuerPublicKey), ipk)
@@ -159,7 +160,7 @@ func main() {
 		writeFile(filepath.Join(*outputDir, imsp.IdemixConfigDirMsp, imsp.IdemixConfigFileIssuerPublicKey), ipk)
 
 	case genSignerConfig.FullCommand():
-		var roleMask int
+		roleMask := 0
 		if *genCredIsAdmin {
 			roleMask = imsp.GetRoleMaskFromIdemixRole(imsp.ADMIN)
 		} else {
@@ -198,18 +199,19 @@ func main() {
 		checkDirectoryNotExists(path, fmt.Sprintf("This MSP config already contains a directory \"%s\"", path))
 
 		// Write config to file
-		handleError(os.MkdirAll(filepath.Join(*outputDir, imsp.IdemixConfigDirUser), 0750))
+		handleError(os.MkdirAll(filepath.Join(*outputDir, imsp.IdemixConfigDirUser), 0770))
 		writeFile(filepath.Join(*outputDir, imsp.IdemixConfigDirUser, imsp.IdemixConfigFileSigner), config)
 
 		// Write CA public info in case genCAInput != outputDir
 		if *genCAInput != *outputDir {
-			handleError(os.MkdirAll(filepath.Join(*outputDir, imsp.IdemixConfigDirMsp), 0750))
+			handleError(os.MkdirAll(filepath.Join(*outputDir, imsp.IdemixConfigDirMsp), 0770))
 			writeFile(filepath.Join(*outputDir, imsp.IdemixConfigDirMsp, imsp.IdemixConfigFileRevocationPublicKey), rpk)
 			writeFile(filepath.Join(*outputDir, imsp.IdemixConfigDirMsp, imsp.IdemixConfigFileIssuerPublicKey), ipkBytes)
 		}
 
 	case version.FullCommand():
 		printVersion()
+
 	}
 }
 
@@ -247,9 +249,7 @@ func readRevocationKey() *ecdsa.PrivateKey {
 
 	block, _ := pem.Decode(keyBytes)
 	if block == nil {
-		handleError(errors.New("failed to decode ECDSA private key"))
-
-		return nil
+		handleError(fmt.Errorf("failed to decode ECDSA private key"))
 	}
 	key, err := x509.ParseECPrivateKey(block.Bytes)
 	handleError(err)

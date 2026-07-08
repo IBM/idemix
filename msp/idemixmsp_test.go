@@ -51,7 +51,6 @@ func setupWithTypeAndVersion(configPath string, ID string, version MSPVersion, m
 	if err != nil {
 		return nil, fmt.Errorf("Setting up MSP failed: %w", err)
 	}
-
 	return msp, nil
 }
 
@@ -135,7 +134,7 @@ func TestSetupBad(t *testing.T) {
 
 	err = msp1.Setup(conf)
 	require.Error(t, err)
-	require.Contains(t, err.Error(), "issuer public key must have attributes OU, Role, EnrollmentId, and RevocationHandle")
+	require.Contains(t, err.Error(), "issuer public key must have have attributes OU, Role, EnrollmentId, and RevocationHandle")
 
 	// Create MSP config with bad IPK bytes
 	ipkBytes = []byte("barf")
@@ -279,6 +278,7 @@ func TestPrincipalIdentityWrongIdentity(t *testing.T) {
 	err = id2.SatisfiesPrincipal(principal)
 	require.Error(t, err, "Identity MSP principal for different user should fail")
 	require.Contains(t, err.Error(), "the identities do not match")
+
 }
 
 func TestPrincipalIdentityBadIdentity(t *testing.T) {
@@ -352,7 +352,7 @@ func TestAnonymityPrincipalV11(t *testing.T) {
 
 	err = id1.SatisfiesPrincipal(principal)
 	require.Error(t, err)
-	require.Contains(t, err.Error(), "anonymity MSP Principals are unsupported in MSPv1_1")
+	require.Contains(t, err.Error(), "Anonymity MSP Principals are unsupported in MSPv1_1")
 }
 
 func TestIdemixIsWellFormed(t *testing.T) {
@@ -420,6 +420,7 @@ func TestPrincipalOUWrongOU(t *testing.T) {
 	err = id1.SatisfiesPrincipal(principal)
 	require.Error(t, err, "OU MSP principal should have failed for user of different OU")
 	require.Contains(t, err.Error(), "user is not part of the desired organizational unit")
+
 }
 
 func TestPrincipalOUWrongMSP(t *testing.T) {
@@ -444,6 +445,7 @@ func TestPrincipalOUWrongMSP(t *testing.T) {
 	err = id1.SatisfiesPrincipal(principal)
 	require.Error(t, err, "OU MSP principal should have failed for user of different MSP")
 	require.Contains(t, err.Error(), "the identity is a member of a different MSP")
+
 }
 
 func TestPrincipalOUBad(t *testing.T) {
@@ -733,7 +735,7 @@ func TestPrincipalCombinedV11(t *testing.T) {
 
 	err = id1.SatisfiesPrincipal(principalsCombined)
 	require.Error(t, err)
-	require.Contains(t, err.Error(), "combined MSP Principals are unsupported in MSPv1_1")
+	require.Contains(t, err.Error(), "Combined MSP Principals are unsupported in MSPv1_1")
 }
 
 func TestRoleClientV11(t *testing.T) {

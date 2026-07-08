@@ -51,10 +51,10 @@ func TestCredRequest(t *testing.T) {
 	sk, err := userProto.NewKey()
 	require.NoError(t, err)
 
-	credReq, blinding, err := cr.Blind(sk, ipk, []byte("la land"))
+	credReq, blinding, err := cr.Blind(sk, ipk, []byte("la la land"))
 	require.NoError(t, err)
 
-	err = cr.BlindVerify(credReq, ipk, []byte("la land"))
+	err = cr.BlindVerify(credReq, ipk, []byte("la la land"))
 	require.NoError(t, err)
 
 	allAttrs := []types.IdemixAttribute{
@@ -72,7 +72,7 @@ func TestCredRequest(t *testing.T) {
 
 	t.Run("full_lifecycle", func(t *testing.T) {
 		err := credProto.Verify(sk, ipk, cred, allAttrs)
-		require.NoError(t, err)
+		assert.NoError(t, err)
 	})
 
 	t.Run("verify_with_hidden_last_attr", func(t *testing.T) {
@@ -83,7 +83,7 @@ func TestCredRequest(t *testing.T) {
 			{Type: types.IdemixHiddenAttribute},
 		}
 		err := credProto.Verify(sk, ipk, cred, attrs)
-		require.NoError(t, err)
+		assert.NoError(t, err)
 	})
 
 	t.Run("verify_with_hidden_first_and_last_attr", func(t *testing.T) {
@@ -94,7 +94,7 @@ func TestCredRequest(t *testing.T) {
 			{Type: types.IdemixHiddenAttribute},
 		}
 		err := credProto.Verify(sk, ipk, cred, attrs)
-		require.NoError(t, err)
+		assert.NoError(t, err)
 	})
 
 	t.Run("wrong_attr_at_position_0", func(t *testing.T) {

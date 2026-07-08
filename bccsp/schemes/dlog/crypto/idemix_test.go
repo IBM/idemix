@@ -12,7 +12,6 @@ import (
 	"testing"
 
 	math "github.com/IBM/mathlib"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/IBM/idemix/bccsp/schemes/dlog/crypto/translator/amcl"
@@ -71,7 +70,6 @@ func TestIdemixAllCurves(t *testing.T) {
 }
 
 func testIdemix(t *testing.T, curve *math.Curve, tr Translator) {
-	t.Helper()
 	idmx := &Idemix{
 		Curve: curve,
 	}
@@ -101,14 +99,12 @@ func testIdemix(t *testing.T, curve *math.Curve, tr Translator) {
 	// Test issuer key generation
 	if err != nil {
 		t.Fatalf("Error getting rng: \"%s\"", err)
-
 		return
 	}
 	// Create a new key pair
 	key, err := idmx.NewIssuerKey(AttributeNames, rng, tr)
 	if err != nil {
 		t.Fatalf("Issuer key generation should have succeeded but gave error \"%s\"", err)
-
 		return
 	}
 
@@ -116,7 +112,6 @@ func testIdemix(t *testing.T, curve *math.Curve, tr Translator) {
 	err = key.GetIpk().Check(curve, tr)
 	if err != nil {
 		t.Fatalf("Issuer public key should be valid")
-
 		return
 	}
 
@@ -148,7 +143,7 @@ func testIdemix(t *testing.T, curve *math.Curve, tr Translator) {
 	require.NoError(t, err, "NewCredRequest failed: \"%s\"", err)
 
 	cred, err := idmx.NewCredential(key, m, attrs, rng, tr)
-	require.NoError(t, err, "failed to issue a credential: \"%s\"", err)
+	require.NoError(t, err, "Failed to issue a credential: \"%s\"", err)
 
 	require.NoError(t, cred.Ver(sk, key.Ipk, idmx.Curve, tr), "credential should be valid")
 
@@ -206,14 +201,12 @@ func testIdemix(t *testing.T, curve *math.Curve, tr Translator) {
 	err = sig.Ver(disclosure, key.Ipk, msg, nil, 0, 2, &revocationKey.PublicKey, epoch, idmx.Curve, tr, opts.BestEffort, nil)
 	if err != nil {
 		t.Fatalf("Signature should be valid but verification returned error: %s", err)
-
 		return
 	}
 
 	err = sig.Ver(disclosure, key.Ipk, msg, nil, 0, 2, &revocationKey.PublicKey, epoch, idmx.Curve, tr, opts.ExpectStandard, nil)
 	if err != nil {
 		t.Fatalf("Signature should be valid but verification returned error: %s", err)
-
 		return
 	}
 
@@ -238,7 +231,6 @@ func testIdemix(t *testing.T, curve *math.Curve, tr Translator) {
 	err = sig.Ver(disclosure, key.Ipk, msg, nil, 0, 2, &revocationKey.PublicKey, epoch, idmx.Curve, tr, opts.BestEffort, nil)
 	if err != nil {
 		t.Fatalf("Signature should be valid but verification returned error: %s", err)
-
 		return
 	}
 	err = sig.Ver(disclosure, key.Ipk, msg, attrs, rhindex, 2, &revocationKey.PublicKey, epoch, idmx.Curve, tr, opts.ExpectEidNym, nil)
@@ -309,7 +301,6 @@ func testIdemix(t *testing.T, curve *math.Curve, tr Translator) {
 	err = nymsig.Ver(Nym, key.Ipk, []byte("testing"), idmx.Curve, tr)
 	if err != nil {
 		t.Fatalf("NymSig should be valid but verification returned error: %s", err)
-
 		return
 	}
 }
@@ -335,7 +326,6 @@ func TestCredentialVerParallelGurvy254(t *testing.T) {
 }
 
 func testCredentialVerParallel(t *testing.T, curve *math.Curve, tr Translator) {
-	t.Helper()
 	idmx := &Idemix{
 		Curve: curve,
 	}
@@ -362,14 +352,14 @@ func testCredentialVerParallel(t *testing.T, curve *math.Curve, tr Translator) {
 			defer waitGroup.Done()
 
 			rng, err := curve.Rand()
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			sk := curve.NewRandomZr(rng)
 			ni := curve.NewRandomZr(rng)
 			m, err := idmx.NewCredRequest(sk, ni.Bytes(), key.Ipk, rng, tr)
-			assert.NoError(t, err, "NewCredRequest failed: \"%s\"", err)
+			require.NoError(t, err, "NewCredRequest failed: \"%s\"", err)
 			cred, err := idmx.NewCredential(key, m, attrs, rng, tr)
-			assert.NoError(t, err, "failed to issue a credential: \"%s\"", err)
-			assert.NoError(t, cred.Ver(sk, key.Ipk, idmx.Curve, tr), "credential should be valid")
+			require.NoError(t, err, "Failed to issue a credential: \"%s\"", err)
+			require.NoError(t, cred.Ver(sk, key.Ipk, idmx.Curve, tr), "credential should be valid")
 		}()
 	}
 	waitGroup.Wait()
@@ -396,7 +386,6 @@ func TestSigParallelGurvy254(t *testing.T) {
 }
 
 func testSigParallel(t *testing.T, curve *math.Curve, tr Translator) {
-	t.Helper()
 	idmx := &Idemix{
 		Curve: curve,
 	}
@@ -427,7 +416,7 @@ func testSigParallel(t *testing.T, curve *math.Curve, tr Translator) {
 	require.NoError(t, err, "NewCredRequest failed: \"%s\"", err)
 
 	cred, err := idmx.NewCredential(key, m, attrs, rng, tr)
-	require.NoError(t, err, "failed to issue a credential: \"%s\"", err)
+	require.NoError(t, err, "Failed to issue a credential: \"%s\"", err)
 	require.NoError(t, cred.Ver(sk, key.Ipk, idmx.Curve, tr), "credential should be valid")
 
 	// Generate a revocation key pair
@@ -459,13 +448,12 @@ func testSigParallel(t *testing.T, curve *math.Curve, tr Translator) {
 			msg := []byte{1, 2, 3, 4, 5}
 			rhindex := 4
 			sig, _, err := idmx.NewSignature(cred, sk, Nym, RandNym, key.Ipk, disclosure, msg, rhindex, 0, cri, rng, tr, opts.Standard, nil)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			err = sig.Ver(disclosure, key.Ipk, msg, nil, 0, 2, &revocationKey.PublicKey, epoch, idmx.Curve, tr, opts.BestEffort, nil)
 			if err != nil {
 				t.Logf("Signature should be valid but verification returned error: %s", err)
 				t.Fail()
-
 				return
 			}
 
@@ -473,31 +461,28 @@ func testSigParallel(t *testing.T, curve *math.Curve, tr Translator) {
 			if err != nil {
 				t.Logf("Signature should be valid but verification returned error: %s", err)
 				t.Fail()
-
 				return
 			}
 
 			err = sig.Ver(disclosure, key.Ipk, msg, nil, 0, 2, &revocationKey.PublicKey, epoch, idmx.Curve, tr, opts.ExpectEidNym, nil)
-			assert.Error(t, err)
-			assert.Equal(t, "no EidNym provided but ExpectEidNym required", err.Error())
+			require.Error(t, err)
+			require.Equal(t, "no EidNym provided but ExpectEidNym required", err.Error())
 
 			eidIndex := 2
 			sig, meta, err := idmx.NewSignature(cred, sk, Nym, RandNym, key.Ipk, disclosure, msg, rhindex, eidIndex, cri, rng, tr, opts.EidNym, nil)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			// assert that the returned randomness is the right one
 			H_a_eid, err := tr.G1FromProto(key.Ipk.HAttrs[eidIndex])
 			if err != nil {
 				t.Logf("G1FromProto returned error: %s", err)
 				t.Fail()
-
 				return
 			}
 			HRand, err := tr.G1FromProto(key.Ipk.HRand)
 			if err != nil {
 				t.Logf("G1FromProto returned error: %s", err)
 				t.Fail()
-
 				return
 			}
 			Nym_eid := H_a_eid.Mul2(attrs[eidIndex], HRand, meta.EidNymAuditData.Rand)
@@ -505,50 +490,48 @@ func testSigParallel(t *testing.T, curve *math.Curve, tr Translator) {
 			if err != nil {
 				t.Logf("G1FromProto returned error: %s", err)
 				t.Fail()
-
 				return
 			}
-			assert.True(t, Nym_eid.Equals(EidNym))
+			require.True(t, Nym_eid.Equals(EidNym))
 
 			err = sig.Ver(disclosure, key.Ipk, msg, nil, 0, 2, &revocationKey.PublicKey, epoch, idmx.Curve, tr, opts.BestEffort, nil)
 			if err != nil {
 				t.Logf("Signature should be valid but verification returned error: %s", err)
 				t.Fail()
-
 				return
 			}
 			err = sig.Ver(disclosure, key.Ipk, msg, attrs, rhindex, 2, &revocationKey.PublicKey, epoch, idmx.Curve, tr, opts.ExpectEidNym, nil)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			err = sig.Ver(disclosure, key.Ipk, msg, attrs, rhindex, 2, &revocationKey.PublicKey, epoch, idmx.Curve, tr, opts.ExpectStandard, nil)
-			assert.Error(t, err)
-			assert.Equal(t, "EidNym available but ExpectStandard required", err.Error())
+			require.Error(t, err)
+			require.Equal(t, "EidNym available but ExpectStandard required", err.Error())
 
 			// supply the meta to audit the nym eid
 			err = sig.Ver(disclosure, key.Ipk, msg, attrs, 0, 2, &revocationKey.PublicKey, epoch, idmx.Curve, tr, opts.BestEffort, meta)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			err = sig.Ver(disclosure, key.Ipk, msg, attrs, 0, 2, &revocationKey.PublicKey, epoch, idmx.Curve, tr, opts.ExpectEidNym, meta)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			// tamper with the randomness of the nym eid to expect a failed verification
 			meta.EidNymAuditData.Attr = curve.NewZrFromInt(35)
 			err = sig.Ver(disclosure, key.Ipk, msg, attrs, 0, 2, &revocationKey.PublicKey, epoch, idmx.Curve, tr, opts.BestEffort, meta)
-			assert.Error(t, err)
-			assert.Equal(t, "signature invalid: nym eid validation failed, does not match regenerated nym eid", err.Error())
+			require.Error(t, err)
+			require.Equal(t, "signature invalid: nym eid validation failed, does not match regenerated nym eid", err.Error())
 			err = sig.Ver(disclosure, key.Ipk, msg, attrs, 0, 2, &revocationKey.PublicKey, epoch, idmx.Curve, tr, opts.ExpectEidNym, meta)
-			assert.Error(t, err)
-			assert.Equal(t, "signature invalid: nym eid validation failed, does not match regenerated nym eid", err.Error())
+			require.Error(t, err)
+			require.Equal(t, "signature invalid: nym eid validation failed, does not match regenerated nym eid", err.Error())
 
 			// Test signing selective disclosure
 			disclosure = []byte{0, 1, 1, 1, 0}
 			sig, _, err = idmx.NewSignature(cred, sk, Nym, RandNym, key.Ipk, disclosure, msg, rhindex, 0, cri, rng, tr, opts.Standard, nil)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			err = sig.Ver(disclosure, key.Ipk, msg, attrs, rhindex, 2, &revocationKey.PublicKey, epoch, idmx.Curve, tr, opts.BestEffort, nil)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			err = sig.Ver(disclosure, key.Ipk, msg, attrs, rhindex, 2, &revocationKey.PublicKey, epoch, idmx.Curve, tr, opts.ExpectStandard, nil)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			err = sig.Ver(disclosure, key.Ipk, msg, attrs, rhindex, 2, &revocationKey.PublicKey, epoch, idmx.Curve, tr, opts.ExpectEidNym, nil)
-			assert.Error(t, err)
-			assert.Equal(t, "no EidNym provided but ExpectEidNym required", err.Error())
+			require.Error(t, err)
+			require.Equal(t, "no EidNym provided but ExpectEidNym required", err.Error())
 		}()
 	}
 
@@ -564,51 +547,50 @@ func testSigParallel(t *testing.T, curve *math.Curve, tr Translator) {
 
 			eidIndex := 2
 			sig, meta, err := idmx.NewSignature(cred, sk, Nym, RandNym, key.Ipk, disclosure, msg, rhindex, eidIndex, cri, rng, tr, opts.EidNym, nil)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			// assert that the returned randomness is the right one
 			H_a_eid, err := tr.G1FromProto(key.Ipk.HAttrs[eidIndex])
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			HRand, err := tr.G1FromProto(key.Ipk.HRand)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			Nym_eid := H_a_eid.Mul2(attrs[eidIndex], HRand, meta.EidNymAuditData.Rand)
 			EidNym, err := tr.G1FromProto(sig.EidNym.Nym)
-			assert.NoError(t, err)
-			assert.True(t, Nym_eid.Equals(EidNym))
+			require.NoError(t, err)
+			require.True(t, Nym_eid.Equals(EidNym))
 
 			// and now do it with the function
 			err = sig.AuditNymEid(key.Ipk, attrs[eidIndex], eidIndex, meta.EidNymAuditData.Rand, idmx.Curve, tr)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			err = NymEID(meta.EidNymAuditData.Nym.Bytes()).AuditNymEid(key.Ipk, attrs[eidIndex], eidIndex, meta.EidNymAuditData.Rand, idmx.Curve, tr)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			err = sig.Ver(disclosure, key.Ipk, msg, nil, 0, 2, &revocationKey.PublicKey, epoch, idmx.Curve, tr, opts.BestEffort, nil)
 			if err != nil {
 				t.Logf("Signature should be valid but verification returned error: %s", err)
 				t.Fail()
-
 				return
 			}
 			err = sig.Ver(disclosure, key.Ipk, msg, attrs, rhindex, 2, &revocationKey.PublicKey, epoch, idmx.Curve, tr, opts.ExpectEidNym, nil)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			err = sig.Ver(disclosure, key.Ipk, msg, attrs, rhindex, 2, &revocationKey.PublicKey, epoch, idmx.Curve, tr, opts.ExpectStandard, nil)
-			assert.Error(t, err)
-			assert.Equal(t, "EidNym available but ExpectStandard required", err.Error())
+			require.Error(t, err)
+			require.Equal(t, "EidNym available but ExpectStandard required", err.Error())
 
 			// supply the meta to audit the nym eid
 			err = sig.Ver(disclosure, key.Ipk, msg, attrs, 0, 2, &revocationKey.PublicKey, epoch, idmx.Curve, tr, opts.BestEffort, meta)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			err = sig.Ver(disclosure, key.Ipk, msg, attrs, 0, 2, &revocationKey.PublicKey, epoch, idmx.Curve, tr, opts.ExpectEidNym, meta)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			// tamper with the randomness of the nym eid to expect a failed verification
 			meta.EidNymAuditData.Attr = curve.NewZrFromInt(35)
 			err = sig.Ver(disclosure, key.Ipk, msg, attrs, 0, 2, &revocationKey.PublicKey, epoch, idmx.Curve, tr, opts.BestEffort, meta)
-			assert.Error(t, err)
-			assert.Equal(t, "signature invalid: nym eid validation failed, does not match regenerated nym eid", err.Error())
+			require.Error(t, err)
+			require.Equal(t, "signature invalid: nym eid validation failed, does not match regenerated nym eid", err.Error())
 			err = sig.Ver(disclosure, key.Ipk, msg, attrs, 0, 2, &revocationKey.PublicKey, epoch, idmx.Curve, tr, opts.ExpectEidNym, meta)
-			assert.Error(t, err)
-			assert.Equal(t, "signature invalid: nym eid validation failed, does not match regenerated nym eid", err.Error())
+			require.Error(t, err)
+			require.Equal(t, "signature invalid: nym eid validation failed, does not match regenerated nym eid", err.Error())
 		}()
 	}
 
@@ -624,79 +606,78 @@ func testSigParallel(t *testing.T, curve *math.Curve, tr Translator) {
 
 			eidIndex := 2
 			sig, meta, err := idmx.NewSignature(cred, sk, Nym, RandNym, key.Ipk, disclosure, msg, rhindex, eidIndex, cri, rng, tr, opts.EidNymRhNym, nil)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			// assert that the returned randomness is the right one
 			H_a_eid, err := tr.G1FromProto(key.Ipk.HAttrs[eidIndex])
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			HRand, err := tr.G1FromProto(key.Ipk.HRand)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			Nym_eid := H_a_eid.Mul2(attrs[eidIndex], HRand, meta.EidNymAuditData.Rand)
 			EidNym, err := tr.G1FromProto(sig.EidNym.Nym)
-			assert.NoError(t, err)
-			assert.True(t, Nym_eid.Equals(EidNym))
+			require.NoError(t, err)
+			require.True(t, Nym_eid.Equals(EidNym))
 
 			// and now do it with the function
 			err = sig.AuditNymEid(key.Ipk, attrs[eidIndex], eidIndex, meta.EidNymAuditData.Rand, idmx.Curve, tr)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			err = NymEID(meta.EidNymAuditData.Nym.Bytes()).AuditNymEid(key.Ipk, attrs[eidIndex], eidIndex, meta.EidNymAuditData.Rand, idmx.Curve, tr)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			err = sig.AuditNymRh(key.Ipk, attrs[rhindex], rhindex, meta.RhNymAuditData.Rand, idmx.Curve, tr)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			err = NymRH(meta.RhNymAuditData.Nym.Bytes()).AuditNymRh(key.Ipk, attrs[rhindex], rhindex, meta.RhNymAuditData.Rand, idmx.Curve, tr)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			err = sig.Ver(disclosure, key.Ipk, msg, nil, rhindex, 2, &revocationKey.PublicKey, epoch, idmx.Curve, tr, opts.BestEffort, nil)
 			if err != nil {
 				t.Logf("Signature should be valid but verification returned error: %s", err)
 				t.Fail()
-
 				return
 			}
 			err = sig.Ver(disclosure, key.Ipk, msg, attrs, rhindex, eidIndex, &revocationKey.PublicKey, epoch, idmx.Curve, tr, opts.ExpectEidNymRhNym, nil)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			err = sig.Ver(disclosure, key.Ipk, msg, attrs, rhindex, eidIndex, &revocationKey.PublicKey, epoch, idmx.Curve, tr, opts.ExpectEidNym, nil)
-			assert.Error(t, err)
+			require.Error(t, err)
 			err = sig.Ver(disclosure, key.Ipk, msg, attrs, rhindex, eidIndex, &revocationKey.PublicKey, epoch, idmx.Curve, tr, opts.ExpectStandard, nil)
-			assert.Error(t, err)
-			assert.Equal(t, "RhNym available but ExpectStandard required", err.Error())
+			require.Error(t, err)
+			require.Equal(t, "RhNym available but ExpectStandard required", err.Error())
 
 			// supply the meta to audit the nym eid and rh
 			err = sig.Ver(disclosure, key.Ipk, msg, attrs, rhindex, eidIndex, &revocationKey.PublicKey, epoch, idmx.Curve, tr, opts.BestEffort, meta)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			err = sig.Ver(disclosure, key.Ipk, msg, attrs, rhindex, eidIndex, &revocationKey.PublicKey, epoch, idmx.Curve, tr, opts.ExpectEidNym, meta)
-			assert.Error(t, err)
+			require.Error(t, err)
 			err = sig.Ver(disclosure, key.Ipk, msg, attrs, rhindex, eidIndex, &revocationKey.PublicKey, epoch, idmx.Curve, tr, opts.ExpectEidNymRhNym, meta)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			// tamper with the randomness of the nym eid to expect a failed verification
 			tmp := meta.EidNymAuditData.Attr
 			meta.EidNymAuditData.Attr = curve.NewZrFromInt(35)
 			err = sig.Ver(disclosure, key.Ipk, msg, attrs, rhindex, eidIndex, &revocationKey.PublicKey, epoch, idmx.Curve, tr, opts.BestEffort, meta)
-			assert.Error(t, err)
-			assert.Equal(t, "signature invalid: nym eid validation failed, does not match regenerated nym eid", err.Error())
+			require.Error(t, err)
+			require.Equal(t, "signature invalid: nym eid validation failed, does not match regenerated nym eid", err.Error())
 			err = sig.Ver(disclosure, key.Ipk, msg, attrs, rhindex, eidIndex, &revocationKey.PublicKey, epoch, idmx.Curve, tr, opts.ExpectEidNym, meta)
-			assert.Error(t, err)
-			assert.Equal(t, "signature invalid: nym eid validation failed, does not match regenerated nym eid", err.Error())
+			require.Error(t, err)
+			require.Equal(t, "signature invalid: nym eid validation failed, does not match regenerated nym eid", err.Error())
 			err = sig.Ver(disclosure, key.Ipk, msg, attrs, rhindex, eidIndex, &revocationKey.PublicKey, epoch, idmx.Curve, tr, opts.ExpectEidNymRhNym, meta)
-			assert.Error(t, err)
-			assert.Equal(t, "signature invalid: nym eid validation failed, does not match regenerated nym eid", err.Error())
+			require.Error(t, err)
+			require.Equal(t, "signature invalid: nym eid validation failed, does not match regenerated nym eid", err.Error())
 			meta.EidNymAuditData.Attr = tmp
 
 			// tamper with the randomness of the nym rh to expect a failed verification
 			meta.RhNymAuditData.Attr = curve.NewZrFromInt(35)
 			err = sig.Ver(disclosure, key.Ipk, msg, attrs, rhindex, eidIndex, &revocationKey.PublicKey, epoch, idmx.Curve, tr, opts.BestEffort, meta)
-			assert.Error(t, err)
-			assert.Equal(t, "signature invalid: nym rh validation failed, does not match regenerated nym rh", err.Error())
+			require.Error(t, err)
+			require.Equal(t, "signature invalid: nym rh validation failed, does not match regenerated nym rh", err.Error())
 			err = sig.Ver(disclosure, key.Ipk, msg, attrs, rhindex, eidIndex, &revocationKey.PublicKey, epoch, idmx.Curve, tr, opts.ExpectEidNymRhNym, meta)
-			assert.Error(t, err)
-			assert.Equal(t, "signature invalid: nym rh validation failed, does not match regenerated nym rh", err.Error())
+			require.Error(t, err)
+			require.Equal(t, "signature invalid: nym rh validation failed, does not match regenerated nym rh", err.Error())
 			err = sig.Ver(disclosure, key.Ipk, msg, attrs, rhindex, eidIndex, &revocationKey.PublicKey, epoch, idmx.Curve, tr, opts.ExpectEidNym, meta)
-			assert.Error(t, err)
-			assert.Equal(t, "signature invalid: zero-knowledge proof is invalid", err.Error())
+			require.Error(t, err)
+			require.Equal(t, "signature invalid: zero-knowledge proof is invalid", err.Error())
 		}()
 	}
 
@@ -712,15 +693,15 @@ func testSigParallel(t *testing.T, curve *math.Curve, tr Translator) {
 			// Test signing selective disclosure
 			disclosure := []byte{0, 1, 1, 1, 0}
 			sig, _, err := idmx.NewSignature(cred, sk, Nym, RandNym, key.Ipk, disclosure, msg, rhindex, 0, cri, rng, tr, opts.Standard, nil)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			err = sig.Ver(disclosure, key.Ipk, msg, attrs, rhindex, 2, &revocationKey.PublicKey, epoch, idmx.Curve, tr, opts.BestEffort, nil)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			err = sig.Ver(disclosure, key.Ipk, msg, attrs, rhindex, 2, &revocationKey.PublicKey, epoch, idmx.Curve, tr, opts.ExpectStandard, nil)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			err = sig.Ver(disclosure, key.Ipk, msg, attrs, rhindex, 2, &revocationKey.PublicKey, epoch, idmx.Curve, tr, opts.ExpectEidNym, nil)
-			assert.Error(t, err)
-			assert.Equal(t, "no EidNym provided but ExpectEidNym required", err.Error())
+			require.Error(t, err)
+			require.Equal(t, "no EidNym provided but ExpectEidNym required", err.Error())
 		}()
 	}
 
@@ -748,7 +729,6 @@ func TestNymSigParallelGurvy254(t *testing.T) {
 }
 
 func testNymSigParallel(t *testing.T, curve *math.Curve, tr Translator) {
-	t.Helper()
 	idmx := &Idemix{
 		Curve: curve,
 	}
@@ -779,7 +759,7 @@ func testNymSigParallel(t *testing.T, curve *math.Curve, tr Translator) {
 	require.NoError(t, err)
 
 	cred, err := idmx.NewCredential(key, m, attrs, rng, tr)
-	require.NoError(t, err, "failed to issue a credential: \"%s\"", err)
+	require.NoError(t, err, "Failed to issue a credential: \"%s\"", err)
 	require.NoError(t, cred.Ver(sk, key.Ipk, idmx.Curve, tr), "credential should be valid")
 
 	// Generate a revocation key pair
@@ -807,13 +787,12 @@ func testNymSigParallel(t *testing.T, curve *math.Curve, tr Translator) {
 
 			// Test NymSignatures
 			nymsig, err := idmx.NewNymSignature(sk, Nym, RandNym, key.Ipk, []byte("testing"), rng, tr)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			err = nymsig.Ver(Nym, key.Ipk, []byte("testing"), idmx.Curve, tr)
 			if err != nil {
 				t.Logf("NymSig should be valid but verification returned error: %s", err)
 				t.Fail()
-
 				return
 			}
 		}()
@@ -843,7 +822,6 @@ func TestIPKCheckGurvy254(t *testing.T) {
 }
 
 func testIPKCheck(t *testing.T, curve *math.Curve, tr Translator) {
-	t.Helper()
 	idmx := &Idemix{
 		Curve: curve,
 	}
@@ -856,7 +834,7 @@ func testIPKCheck(t *testing.T, curve *math.Curve, tr Translator) {
 			// Test weak BB sigs:
 			// Test KeyGen
 			rng, err := curve.Rand()
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			// Test idemix functionality
 			AttributeNames := []string{"Attr1", "Attr2", "Attr3", "Attr4", "Attr5"}
@@ -867,11 +845,11 @@ func testIPKCheck(t *testing.T, curve *math.Curve, tr Translator) {
 
 			// Create a new key pair
 			key, err := idmx.NewIssuerKey(AttributeNames, rng, tr)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			// Check that the key is valid
 			err = key.GetIpk().Check(curve, tr)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 		}()
 	}
 	waitGroup.Wait()

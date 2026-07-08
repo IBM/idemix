@@ -7,7 +7,6 @@ package bridge
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
 
 	idemix "github.com/IBM/idemix/bccsp/schemes/dlog/crypto"
@@ -59,7 +58,7 @@ func (c *Credential) Sign(key types.IssuerSecretKey, credentialRequest []byte, a
 			} else if v, ok := attributes[i].Value.(int64); ok {
 				value = v
 			} else {
-				return nil, errors.New("invalid int type for IdemixIntAttribute attribute")
+				return nil, fmt.Errorf("invalid int type for IdemixIntAttribute attribute")
 			}
 			attrValues[i] = c.Idemix.Curve.NewZrFromInt(value)
 		default:
@@ -112,7 +111,7 @@ func (c *Credential) Verify(sk *math.Zr, ipk types.IssuerPublicKey, credential [
 			} else if v, ok := attributes[i].Value.(int64); ok {
 				value = v
 			} else {
-				return errors.New("invalid int type for IdemixIntAttribute attribute")
+				return fmt.Errorf("invalid int type for IdemixIntAttribute attribute")
 			}
 
 			if !bytes.Equal(

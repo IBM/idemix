@@ -16,6 +16,5 @@ func newRandOrPanic(curve *math.Curve) io.Reader {
 	if err != nil {
 		panic(err)
 	}
-
 	return rng
 }
