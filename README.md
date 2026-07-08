@@ -34,16 +34,16 @@ The elliptic curve is no longer hardcoded at construction time. Instead, `Setup`
 
 Supported `curve_id` values and their backends:
 
-| `curve_id` | Backend | Notes |
-|---|---|---|
-| `FP256BN_AMCL` | AMCL | Default for dlog |
-| `BN254` | Gurvy | |
-| `FP256BN_AMCL_MIRACL` | AMCL | Legacy compatibility |
-| `BLS12_377_GURVY` | Gurvy | |
-| `BLS12_381_GURVY` | Gurvy | |
-| `BLS12_381` | Kilic | |
-| `BLS12_381_BBS` | Kilic | Default for Aries |
-| `BLS12_381_BBS_GURVY` | Gurvy | |
+| `curve_id` | Backend               | Notes |
+|---|-----------------------|---|
+| `FP256BN_AMCL` | AMCL                  | Default for dlog |
+| `BN254` | Gurvy                 | |
+| `FP256BN_AMCL_MIRACL` | AMCL                  | Legacy compatibility |
+| `BLS12_377_GURVY` | Gurvy                 | |
+| `BLS12_381_GURVY` | Gurvy                 | |
+| `BLS12_381` | Gurvy (it was Kilic)  | |
+| `BLS12_381_BBS` | Gurvy (it was Kilic)  | Default for Aries |
+| `BLS12_381_BBS_GURVY` | Gurvy                 | |
 
 The `curve_id` value is written into the MSP config by `idemixgen --curve <curve_id>`. An empty `curve_id` triggers the per-scheme default (backward-compatible). `Setup` errors if the config type (`IDEMIX` vs `IDEMIX_ARIES`) does not match the constructor used, or if an Aries MSP is configured with a non-BBS curve.
 

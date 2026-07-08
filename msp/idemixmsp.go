@@ -88,27 +88,35 @@ func curveAndTranslator(curveID string) (*math.Curve, idemixcrypto.Translator, e
 	switch curveID {
 	case curveIDFP256BN_AMCL:
 		c := math.Curves[math.FP256BN_AMCL]
+
 		return c, &amcl.Fp256bn{C: c}, nil
 	case curveIDBN254:
 		c := math.Curves[math.BN254]
+
 		return c, &amcl.Gurvy{C: c}, nil
 	case curveIDFP256BN_AMCL_MIRACL:
 		c := math.Curves[math.FP256BN_AMCL_MIRACL]
+
 		return c, &amcl.Fp256bnMiracl{C: c}, nil
 	case curveIDBLS12_377_GURVY:
 		c := math.Curves[math.BLS12_377_GURVY]
+
 		return c, &amcl.Gurvy{C: c}, nil
 	case curveIDBLS12_381_GURVY:
 		c := math.Curves[math.BLS12_381_GURVY]
+
 		return c, &amcl.Gurvy{C: c}, nil
 	case curveIDBLS12_381:
 		c := math.Curves[math.BLS12_381]
+
 		return c, &amcl.Gurvy{C: c}, nil
 	case curveIDBLS12_381_BBS:
 		c := math.Curves[math.BLS12_381_BBS]
+
 		return c, &amcl.Gurvy{C: c}, nil
 	case curveIDBLS12_381_BBS_GURVY:
 		c := math.Curves[math.BLS12_381_BBS_GURVY]
+
 		return c, &amcl.Gurvy{C: c}, nil
 	default:
 		return nil, nil, fmt.Errorf("unknown curve id %q", curveID)
@@ -203,8 +211,8 @@ func NewIdemixMspWithLogger(version MSPVersion, logger Logger) (MSP, error) {
 		logger = newDefaultLogger("idemix")
 	}
 	logger.Debugf("Creating Idemix-based MSP instance")
-	msp := Idemixmsp{logger: logger, version: version
-, aries: false, exportable: true}
+	msp := Idemixmsp{logger: logger, version: version, aries: false, exportable: true}
+
 	return &msp, nil
 }
 
@@ -224,8 +232,8 @@ func NewIdemixMspAriesWithLogger(version MSPVersion, logger Logger) (MSP, error)
 		logger = newDefaultLogger("idemix")
 	}
 	logger.Debugf("Creating Idemix-based MSP instance")
-	msp := Idemixmsp{logger: logger, version: version
-, aries: true, exportable: true}
+	msp := Idemixmsp{logger: logger, version: version, aries: true, exportable: true}
+
 	return &msp, nil
 }
 
@@ -252,7 +260,7 @@ func (msp *Idemixmsp) Setup(conf1 *m.MSPConfig) error {
 		}
 	} else {
 		if conf1.Type != int32(IDEMIX) {
-			return errors.New("setup error: dlog MSP requires config of type IDEMIX, got %d", conf1.Type)
+			return fmt.Errorf("setup error: dlog MSP requires config of type IDEMIX, got %d", conf1.Type)
 		}
 	}
 

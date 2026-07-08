@@ -1,5 +1,5 @@
-github.com/IBM/mathlib v0.2.1-0.20260708043658-e8f8fcd199a4 h1:HRDczSMpaugF7rq8AirQX7dvL9iK7TCyPnI+QkrqCX8=
-github.com/IBM/mathlib v0.2.1-0.20260708043658-e8f8fcd199a4/go.mod h1:r5/+9SWcYCm1TSZE9HRXq9/ejjdtS0Ab2MjLYBuF9S4=
+github.com/IBM/mathlib v0.3.0 h1:lYmtMn43OZRzuw8yVnKqPPZD4MnWV34fffFM/X4apvk=
+github.com/IBM/mathlib v0.3.0/go.mod h1:r5/+9SWcYCm1TSZE9HRXq9/ejjdtS0Ab2MjLYBuF9S4=
 github.com/Masterminds/semver/v3 v3.5.0 h1:kQceYJfbupGfZOKZQg0kou0DgAKhzDg2NZPAwZ/2OOE=
 github.com/Masterminds/semver/v3 v3.5.0/go.mod h1:4V+yj/TJE1HU9XfppCwVMZq3I84lprf4nC11bSS5beM=
 github.com/alecthomas/kingpin/v2 v2.4.0 h1:f48lwail6p8zpO1bC4TxtqACaGqHYA22qkHjHpqDjYY=
