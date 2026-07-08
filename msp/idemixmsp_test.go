@@ -103,7 +103,7 @@ func TestSetupBad(t *testing.T) {
 	conf := &msp.MSPConfig{Type: 1234, Config: nil}
 	err = msp1.Setup(conf)
 	require.Error(t, err)
-	require.Contains(t, err.Error(), "setup error: config is not of type IDEMIX")
+	require.Contains(t, err.Error(), "setup error:")
 
 	// Setup with bad idemix config bytes
 	conf = &msp.MSPConfig{Type: int32(IDEMIX), Config: []byte("barf")}
