@@ -25,17 +25,23 @@ var (
 		0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0,
 		0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0,
 	}
-	f2192Cache = make(map[*ml.Curve]*ml.Zr)
+	//nolint:gochecknoglobals
+	f2192Cache = func() map[*ml.Curve]*ml.Zr {
+		m := make(map[*ml.Curve]*ml.Zr, len(ml.Curves))
+		for _, c := range ml.Curves {
+			m[c] = c.NewZrFromBytes(f2192Bytes)
+		}
+
+		return m
+	}()
 )
 
 func f2192(curve *ml.Curve) *ml.Zr {
 	if cached, ok := f2192Cache[curve]; ok {
 		return cached
 	}
-	val := curve.NewZrFromBytes(f2192Bytes)
-	f2192Cache[curve] = val
 
-	return val
+	return curve.NewZrFromBytes(f2192Bytes)
 }
 
 func FrFromOKM(message []byte, curve *ml.Curve) *ml.Zr {
