@@ -115,7 +115,7 @@ func BenchmarkIssuerNewKey(b *testing.B) {
 	attrs := []string{"attr1", "attr2", "eid", "rh"}
 
 	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		_, err := issuer.NewKey(attrs)
 		if err != nil {
 			b.Fatal(err)
@@ -132,7 +132,7 @@ func BenchmarkIssuerNewKeyFromBytes(b *testing.B) {
 	attrNames := []string{"attr1", "attr2", "eid", "rh"}
 
 	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		_, err := env.issuer.NewKeyFromBytes(skBytes, attrNames)
 		if err != nil {
 			b.Fatal(err)
@@ -149,7 +149,7 @@ func BenchmarkIssuerNewPublicKeyFromBytes(b *testing.B) {
 	attrNames := []string{"attr1", "attr2", "eid", "rh"}
 
 	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		_, err := env.issuer.NewPublicKeyFromBytes(pkBytes, attrNames)
 		if err != nil {
 			b.Fatal(err)
@@ -163,7 +163,7 @@ func BenchmarkUserMakeNym(b *testing.B) {
 	env := newBenchEnv(b)
 
 	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		_, _, err := env.user.MakeNym(env.sk, env.ipk)
 		if err != nil {
 			b.Fatal(err)
@@ -177,7 +177,7 @@ func BenchmarkCredRequestBlind(b *testing.B) {
 	env := newBenchEnv(b)
 
 	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		_, _, err := env.cr.Blind(env.sk, env.ipk, []byte("nonce"))
 		if err != nil {
 			b.Fatal(err)
@@ -193,7 +193,7 @@ func BenchmarkCredRequestBlindVerify(b *testing.B) {
 	}
 
 	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		err := env.cr.BlindVerify(credReq, env.ipk, []byte("nonce"))
 		if err != nil {
 			b.Fatal(err)
@@ -221,7 +221,7 @@ func BenchmarkCredRequestUnblind(b *testing.B) {
 	}
 
 	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		_, err := env.cr.Unblind(blindedCred, blinding)
 		if err != nil {
 			b.Fatal(err)
@@ -247,7 +247,7 @@ func BenchmarkCredSign(b *testing.B) {
 	}
 
 	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		_, err := credProto.Sign(env.isk, credReq, allAttrs)
 		if err != nil {
 			b.Fatal(err)
@@ -266,7 +266,7 @@ func BenchmarkCredVerify(b *testing.B) {
 	}
 
 	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		err := credProto.Verify(env.sk, env.ipk, env.cred, allAttrs)
 		if err != nil {
 			b.Fatal(err)
@@ -292,7 +292,7 @@ func BenchmarkSignerSign(b *testing.B) {
 	for _, tc := range cases {
 		b.Run(tc.name, func(b *testing.B) {
 			b.ResetTimer()
-			for i := 0; i < b.N; i++ {
+			for range b.N {
 				_, _, err := env.signer.Sign(env.cred, env.sk, env.nym, env.rNym, env.ipk, env.attrs, []byte("msg"), rhIndex, eidIndex, nil, tc.sigType, nil)
 				if err != nil {
 					b.Fatal(err)
@@ -324,7 +324,7 @@ func BenchmarkSignerVerify(b *testing.B) {
 
 		b.Run(tc.name, func(b *testing.B) {
 			b.ResetTimer()
-			for i := 0; i < b.N; i++ {
+			for range b.N {
 				err := env.signer.Verify(env.ipk, sig, []byte("msg"), env.attrs, rhIndex, eidIndex, 0, nil, 0, tc.verType, nil)
 				if err != nil {
 					b.Fatal(err)
@@ -355,7 +355,7 @@ func BenchmarkNymSignerSign(b *testing.B) {
 	nym := cb.Build()
 
 	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		_, err := nymSigner.Sign(sk, nym, rNym, env.ipk, []byte("msg"))
 		if err != nil {
 			b.Fatal(err)
@@ -387,7 +387,7 @@ func BenchmarkNymSignerVerify(b *testing.B) {
 	}
 
 	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		err := nymSigner.Verify(env.ipk, nym, sig, []byte("msg"), 0)
 		if err != nil {
 			b.Fatal(err)
@@ -411,7 +411,7 @@ func BenchmarkRevocationSign(b *testing.B) {
 	}
 
 	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		_, err := rev.Sign(key, nil, 0, types.AlgNoRevocation)
 		if err != nil {
 			b.Fatal(err)
@@ -438,7 +438,7 @@ func BenchmarkRevocationVerify(b *testing.B) {
 	}
 
 	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		err := rev.Verify(&key.PublicKey, cri, 0, types.AlgNoRevocation)
 		if err != nil {
 			b.Fatal(err)
@@ -458,7 +458,7 @@ func BenchmarkAuditNymEid(b *testing.B) {
 	}
 
 	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		err := env.signer.AuditNymEid(env.ipk, eidIndex, 0, sig, "nymeid", m.EidNymAuditData.Rand, types.AuditExpectSignature)
 		if err != nil {
 			b.Fatal(err)
@@ -476,7 +476,7 @@ func BenchmarkAuditNymRh(b *testing.B) {
 	}
 
 	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		err := env.signer.AuditNymRh(env.ipk, rhIndex, 0, sig, "nymrh", m.RhNymAuditData.Rand, types.AuditExpectSignature)
 		if err != nil {
 			b.Fatal(err)

@@ -7,7 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package idemix
 
 import (
-	fmt "fmt"
+	"errors"
 	"io"
 
 	math "github.com/IBM/mathlib"
@@ -98,7 +98,7 @@ func (m *CredRequest) Check(ipk *IssuerPublicKey, curve *math.Curve, tr Translat
 	}
 
 	if Nym == nil || IssuerNonce == nil || ProofC == nil || ProofS == nil {
-		return fmt.Errorf("one of the proof values is undefined")
+		return errors.New("one of the proof values is undefined")
 	}
 
 	// Verify Proof
@@ -118,7 +118,7 @@ func (m *CredRequest) Check(ipk *IssuerPublicKey, curve *math.Curve, tr Translat
 	copy(proofData[index:], ipk.Hash)
 
 	if !ProofC.Equals(curve.HashToZr(proofData)) {
-		return fmt.Errorf("zero knowledge proof is invalid")
+		return errors.New("zero knowledge proof is invalid")
 	}
 
 	return nil

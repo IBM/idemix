@@ -7,7 +7,6 @@ package idemix_test
 
 import (
 	"crypto/rand"
-	"fmt"
 	"reflect"
 	"runtime"
 	"strings"
@@ -20,27 +19,29 @@ import (
 	imsp "github.com/IBM/idemix/msp"
 	math "github.com/IBM/mathlib"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func setupAries(b *testing.B) (bccsp.BCCSP, bccsp.Key, bccsp.Key, bccsp.Key, []byte) {
+	b.Helper()
 	curve := math.Curves[math.BLS12_381_BBS]
 	translator := &amcl.Gurvy{C: curve}
 
 	CSP, err := idemix.NewAries(NewDummyKeyStore(), curve, translator, true)
-	assert.NoError(b, err)
+	require.NoError(b, err)
 
 	AttributeNames := []string{imsp.AttributeNameOU, imsp.AttributeNameRole, imsp.AttributeNameEnrollmentId, imsp.AttributeNameRevocationHandle}
 	IssuerKey, err := CSP.KeyGen(&bccsp.IdemixIssuerKeyGenOpts{Temporary: true, AttributeNames: AttributeNames})
-	assert.NoError(b, err)
+	require.NoError(b, err)
 	IssuerPublicKey, err := IssuerKey.PublicKey()
-	assert.NoError(b, err)
+	require.NoError(b, err)
 
 	UserKey, err := CSP.KeyGen(&bccsp.IdemixUserSecretKeyGenOpts{Temporary: true})
-	assert.NoError(b, err)
+	require.NoError(b, err)
 
 	IssuerNonce := make([]byte, curve.ScalarByteSize)
 	n, err := rand.Read(IssuerNonce)
-	assert.NoError(b, err)
+	require.NoError(b, err)
 	assert.Equal(b, curve.ScalarByteSize, n)
 
 	blindCredReqOpts := &bccsp.IdemixBlindCredentialRequestSignerOpts{IssuerPK: IssuerPublicKey, IssuerNonce: IssuerNonce}
@@ -49,7 +50,7 @@ func setupAries(b *testing.B) (bccsp.BCCSP, bccsp.Key, bccsp.Key, bccsp.Key, []b
 		nil,
 		blindCredReqOpts,
 	)
-	assert.NoError(b, err)
+	require.NoError(b, err)
 
 	credential, err := CSP.Sign(
 		IssuerKey,
@@ -63,14 +64,14 @@ func setupAries(b *testing.B) (bccsp.BCCSP, bccsp.Key, bccsp.Key, bccsp.Key, []b
 			},
 		},
 	)
-	assert.NoError(b, err)
+	require.NoError(b, err)
 
 	cr := &aries.CredRequest{
 		Curve: curve,
 	}
 
 	credential, err = cr.Unblind(credential, blindCredReqOpts.Blinding)
-	assert.NoError(b, err)
+	require.NoError(b, err)
 
 	valid, err := CSP.Verify(
 		IssuerPublicKey,
@@ -78,7 +79,7 @@ func setupAries(b *testing.B) (bccsp.BCCSP, bccsp.Key, bccsp.Key, bccsp.Key, []b
 		nil,
 		&bccsp.IdemixBlindCredentialRequestSignerOpts{IssuerNonce: IssuerNonce},
 	)
-	assert.NoError(b, err)
+	require.NoError(b, err)
 	assert.True(b, valid)
 
 	valid, err = CSP.Verify(
@@ -95,7 +96,7 @@ func setupAries(b *testing.B) (bccsp.BCCSP, bccsp.Key, bccsp.Key, bccsp.Key, []b
 			},
 		},
 	)
-	assert.NoError(b, err)
+	require.NoError(b, err)
 	assert.True(b, valid)
 
 	NymKey, err := CSP.KeyDeriv(UserKey, &bccsp.IdemixNymKeyDerivationOpts{Temporary: true, IssuerPK: IssuerPublicKey})
@@ -105,24 +106,25 @@ func setupAries(b *testing.B) (bccsp.BCCSP, bccsp.Key, bccsp.Key, bccsp.Key, []b
 }
 
 func setupLegacy(b *testing.B) (bccsp.BCCSP, bccsp.Key, bccsp.Key, bccsp.Key, []byte) {
+	b.Helper()
 	curve := math.Curves[math.BLS12_381_BBS]
 	translator := &amcl.Gurvy{C: curve}
 
 	CSP, err := idemix.New(NewDummyKeyStore(), curve, translator, true)
-	assert.NoError(b, err)
+	require.NoError(b, err)
 
 	AttributeNames := []string{imsp.AttributeNameOU, imsp.AttributeNameRole, imsp.AttributeNameEnrollmentId, imsp.AttributeNameRevocationHandle}
 	IssuerKey, err := CSP.KeyGen(&bccsp.IdemixIssuerKeyGenOpts{Temporary: true, AttributeNames: AttributeNames})
-	assert.NoError(b, err)
+	require.NoError(b, err)
 	IssuerPublicKey, err := IssuerKey.PublicKey()
-	assert.NoError(b, err)
+	require.NoError(b, err)
 
 	UserKey, err := CSP.KeyGen(&bccsp.IdemixUserSecretKeyGenOpts{Temporary: true})
-	assert.NoError(b, err)
+	require.NoError(b, err)
 
 	IssuerNonce := make([]byte, curve.ScalarByteSize)
 	n, err := rand.Read(IssuerNonce)
-	assert.NoError(b, err)
+	require.NoError(b, err)
 	assert.Equal(b, curve.ScalarByteSize, n)
 
 	// Credential Request for User
@@ -131,7 +133,7 @@ func setupLegacy(b *testing.B) (bccsp.BCCSP, bccsp.Key, bccsp.Key, bccsp.Key, []
 		nil,
 		&bccsp.IdemixCredentialRequestSignerOpts{IssuerPK: IssuerPublicKey, IssuerNonce: IssuerNonce},
 	)
-	assert.NoError(b, err)
+	require.NoError(b, err)
 
 	// Credential
 	credential, err := CSP.Sign(
@@ -146,7 +148,7 @@ func setupLegacy(b *testing.B) (bccsp.BCCSP, bccsp.Key, bccsp.Key, bccsp.Key, []
 			},
 		},
 	)
-	assert.NoError(b, err)
+	require.NoError(b, err)
 
 	valid, err := CSP.Verify(
 		IssuerPublicKey,
@@ -154,7 +156,7 @@ func setupLegacy(b *testing.B) (bccsp.BCCSP, bccsp.Key, bccsp.Key, bccsp.Key, []
 		nil,
 		&bccsp.IdemixCredentialRequestSignerOpts{IssuerNonce: IssuerNonce},
 	)
-	assert.NoError(b, err)
+	require.NoError(b, err)
 	assert.True(b, valid)
 
 	valid, err = CSP.Verify(
@@ -171,11 +173,11 @@ func setupLegacy(b *testing.B) (bccsp.BCCSP, bccsp.Key, bccsp.Key, bccsp.Key, []
 			},
 		},
 	)
-	assert.NoError(b, err)
+	require.NoError(b, err)
 	assert.True(b, valid)
 
 	NymKey, err := CSP.KeyDeriv(UserKey, &bccsp.IdemixNymKeyDerivationOpts{Temporary: true, IssuerPK: IssuerPublicKey})
-	assert.NoError(b, err)
+	require.NoError(b, err)
 
 	return CSP, IssuerPublicKey, UserKey, NymKey, credential
 }
@@ -193,19 +195,17 @@ func stackNameFromSetupFnName(fname string) string {
 }
 
 func Benchmark_SignVerify(b *testing.B) {
-
 	setups := []func(b *testing.B) (bccsp.BCCSP, bccsp.Key, bccsp.Key, bccsp.Key, []byte){
 		setupLegacy,
 		setupAries,
 	}
 
 	for _, setupFn := range setups {
-
 		CSP, IssuerPublicKey, UserKey, NymKey, credential := setupFn(b)
 
 		b.ResetTimer()
 
-		b.Run(fmt.Sprintf("sign-%s", stackNameFromSetupFnName(runtime.FuncForPC(reflect.ValueOf(setupFn).Pointer()).Name())), func(b *testing.B) {
+		b.Run("sign-"+stackNameFromSetupFnName(runtime.FuncForPC(reflect.ValueOf(setupFn).Pointer()).Name()), func(b *testing.B) {
 			b.RunParallel(func(pb *testing.PB) {
 				for pb.Next() {
 					signOpts := &bccsp.IdemixSignerOpts{
@@ -229,7 +229,7 @@ func Benchmark_SignVerify(b *testing.B) {
 						nil,
 						signOpts,
 					)
-					assert.NoError(b, err)
+					require.NoError(b, err)
 
 					_ = signature
 				}
@@ -237,14 +237,14 @@ func Benchmark_SignVerify(b *testing.B) {
 		})
 
 		RevocationKey, err := CSP.KeyGen(&bccsp.IdemixRevocationKeyGenOpts{Temporary: true})
-		assert.NoError(b, err)
+		require.NoError(b, err)
 
 		cri, err := CSP.Sign(
 			RevocationKey,
 			nil,
 			&bccsp.IdemixCRISignerOpts{},
 		)
-		assert.NoError(b, err)
+		require.NoError(b, err)
 
 		signOpts := &bccsp.IdemixSignerOpts{
 			Credential: credential,
@@ -268,11 +268,11 @@ func Benchmark_SignVerify(b *testing.B) {
 			nil,
 			signOpts,
 		)
-		assert.NoError(b, err)
+		require.NoError(b, err)
 
 		b.ResetTimer()
 
-		b.Run(fmt.Sprintf("verify-%s", stackNameFromSetupFnName(runtime.FuncForPC(reflect.ValueOf(setupFn).Pointer()).Name())), func(b *testing.B) {
+		b.Run("verify-"+stackNameFromSetupFnName(runtime.FuncForPC(reflect.ValueOf(setupFn).Pointer()).Name()), func(b *testing.B) {
 			b.RunParallel(func(pb *testing.PB) {
 				for pb.Next() {
 					valid, err := CSP.Verify(
@@ -293,8 +293,8 @@ func Benchmark_SignVerify(b *testing.B) {
 							Metadata:         signOpts.Metadata,
 						},
 					)
-					assert.NoError(b, err)
-					assert.True(b, valid)
+					require.NoError(b, err)
+					require.True(b, valid)
 				}
 			})
 		})

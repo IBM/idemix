@@ -8,14 +8,13 @@ package handlers
 import (
 	"errors"
 
-	"github.com/IBM/idemix/bccsp/types"
 	bccsp "github.com/IBM/idemix/bccsp/types"
 )
 
 // CredentialRequestSigner produces credential requests
 type CredentialRequestSigner struct {
 	// CredRequest implements the underlying cryptographic algorithms
-	CredRequest types.CredRequest
+	CredRequest bccsp.CredRequest
 }
 
 func (c *CredentialRequestSigner) Sign(k bccsp.Key, digest []byte, opts bccsp.SignerOpts) ([]byte, error) {
@@ -39,7 +38,7 @@ func (c *CredentialRequestSigner) Sign(k bccsp.Key, digest []byte, opts bccsp.Si
 }
 
 type BlindCredentialRequestSigner struct {
-	CredRequest types.BlindCredRequest
+	CredRequest bccsp.BlindCredRequest
 }
 
 func (c *BlindCredentialRequestSigner) Sign(k bccsp.Key, digest []byte, opts bccsp.SignerOpts) ([]byte, error) {
@@ -72,7 +71,7 @@ func (c *BlindCredentialRequestSigner) Sign(k bccsp.Key, digest []byte, opts bcc
 // CredentialRequestVerifier verifies credential requests
 type CredentialRequestVerifier struct {
 	// CredRequest implements the underlying cryptographic algorithms
-	CredRequest types.CredRequest
+	CredRequest bccsp.CredRequest
 }
 
 func (c *CredentialRequestVerifier) Verify(k bccsp.Key, signature, digest []byte, opts bccsp.SignerOpts) (bool, error) {
@@ -94,7 +93,7 @@ func (c *CredentialRequestVerifier) Verify(k bccsp.Key, signature, digest []byte
 }
 
 type BlindCredentialRequestVerifier struct {
-	CredRequest types.BlindCredRequest
+	CredRequest bccsp.BlindCredRequest
 }
 
 func (c *BlindCredentialRequestVerifier) Verify(k bccsp.Key, signature, digest []byte, opts bccsp.SignerOpts) (bool, error) {
@@ -116,7 +115,7 @@ func (c *BlindCredentialRequestVerifier) Verify(k bccsp.Key, signature, digest [
 }
 
 type CredentialSigner struct {
-	Credential types.Credential
+	Credential bccsp.Credential
 }
 
 func (s *CredentialSigner) Sign(k bccsp.Key, digest []byte, opts bccsp.SignerOpts) (signature []byte, err error) {
@@ -138,7 +137,7 @@ func (s *CredentialSigner) Sign(k bccsp.Key, digest []byte, opts bccsp.SignerOpt
 }
 
 type CredentialVerifier struct {
-	Credential types.Credential
+	Credential bccsp.Credential
 }
 
 func (v *CredentialVerifier) Verify(k bccsp.Key, signature, digest []byte, opts bccsp.SignerOpts) (valid bool, err error) {

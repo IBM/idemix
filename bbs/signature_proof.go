@@ -125,7 +125,7 @@ func (v *defaultVC2ProofVerifier) Verify(challenge *ml.Zr, pubKey *PublicKeyWith
 	pr := v.curve.GenG1.Copy()
 	pr.Sub(v.curve.GenG1)
 
-	for i := 0; i < len(basesDisclosed); i++ {
+	for i := range basesDisclosed {
 		b := basesDisclosed[i]
 		s := exponents[i]
 
@@ -153,7 +153,10 @@ func (sp *PoKOfSignatureProof) ToBytes() []byte {
 
 	proof1Bytes := sp.proofVC1.ToBytes()
 	lenBytes := make([]byte, 4)
-	binary.BigEndian.PutUint32(lenBytes, uint32(len(proof1Bytes)))
+	if len(proof1Bytes) > 0xFFFFFFFF {
+		panic("proof1Bytes length out of range for uint32")
+	}
+	binary.BigEndian.PutUint32(lenBytes, uint32(len(proof1Bytes))) // #nosec G115 -- length is validated above
 	bytes = append(bytes, lenBytes...)
 	bytes = append(bytes, proof1Bytes...)
 
@@ -209,7 +212,10 @@ func (pg1 *ProofG1) ToBytes() []byte {
 	bytes = append(bytes, commitmentBytes...)
 
 	lenBytes := make([]byte, 4)
-	binary.BigEndian.PutUint32(lenBytes, uint32(len(pg1.Responses)))
+	if len(pg1.Responses) > 0xFFFFFFFF {
+		panic("pg1.Responses length out of range for uint32")
+	}
+	binary.BigEndian.PutUint32(lenBytes, uint32(len(pg1.Responses))) // #nosec G115 -- length is validated above
 	bytes = append(bytes, lenBytes...)
 
 	for i := range pg1.Responses {

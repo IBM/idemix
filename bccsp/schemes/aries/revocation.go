@@ -12,6 +12,7 @@ import (
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/asn1"
+	"errors"
 	"fmt"
 	"io"
 	"math/big"
@@ -35,9 +36,9 @@ func (r *RevocationAuthority) NewKey() (*ecdsa.PrivateKey, error) {
 // NewKeyFromBytes generates a long term signing key that will be used for revocation from the passed bytes
 func (r *RevocationAuthority) NewKeyFromBytes(raw []byte) (*ecdsa.PrivateKey, error) {
 	priv := &ecdsa.PrivateKey{}
-	priv.D = new(big.Int).SetBytes(raw)
-	priv.PublicKey.Curve = elliptic.P384()
-	priv.PublicKey.X, priv.PublicKey.Y = elliptic.P384().ScalarBaseMult(priv.D.Bytes())
+	priv.D = new(big.Int).SetBytes(raw) //nolint:staticcheck
+	priv.Curve = elliptic.P384()
+	priv.X, priv.Y = elliptic.P384().ScalarBaseMult(priv.D.Bytes()) //nolint:staticcheck
 
 	return priv, nil
 }
@@ -46,7 +47,7 @@ func (r *RevocationAuthority) NewKeyFromBytes(raw []byte) (*ecdsa.PrivateKey, er
 // Users can use the CRI to prove that they are not revoked.
 func (r *RevocationAuthority) Sign(key *ecdsa.PrivateKey, _ [][]byte, epoch int, alg types.RevocationAlgorithm) ([]byte, error) {
 	if key == nil {
-		return nil, fmt.Errorf("CreateCRI received nil input")
+		return nil, errors.New("createCRI received nil input")
 	}
 
 	cri := &CredentialRevocationInformation{}
@@ -78,7 +79,7 @@ func (r *RevocationAuthority) Sign(key *ecdsa.PrivateKey, _ [][]byte, epoch int,
 	if alg == types.AlgNoRevocation {
 		return proto.Marshal(cri)
 	} else {
-		return nil, fmt.Errorf("the specified revocation algorithm is not supported.")
+		return nil, errors.New("the specified revocation algorithm is not supported")
 	}
 }
 
@@ -89,7 +90,7 @@ func (r *RevocationAuthority) Sign(key *ecdsa.PrivateKey, _ [][]byte, epoch int,
 // is used in this epoch.
 func (r *RevocationAuthority) Verify(pk *ecdsa.PublicKey, criRaw []byte, epoch int, alg types.RevocationAlgorithm) error {
 	if pk == nil {
-		return fmt.Errorf("CreateCRI received nil input")
+		return errors.New("createCRI received nil input")
 	}
 
 	cri := &CredentialRevocationInformation{}
@@ -116,7 +117,7 @@ func (r *RevocationAuthority) Verify(pk *ecdsa.PublicKey, criRaw []byte, epoch i
 	}
 
 	if !ecdsa.Verify(pk, digest[:], sig.R, sig.S) {
-		return fmt.Errorf("EpochPKSig invalid")
+		return errors.New("epochPKSig invalid")
 	}
 
 	return nil

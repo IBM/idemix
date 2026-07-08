@@ -143,7 +143,6 @@ func TestPrincipalIdentityWrongIdentityAries(t *testing.T) {
 	err = id2.SatisfiesPrincipal(principal)
 	require.Error(t, err, "Identity MSP principal for different user should fail")
 	require.Contains(t, err.Error(), "the identities do not match")
-
 }
 
 func TestPrincipalIdentityBadIdentityAries(t *testing.T) {
@@ -217,7 +216,7 @@ func TestAnonymityPrincipalV11Aries(t *testing.T) {
 
 	err = id1.SatisfiesPrincipal(principal)
 	require.Error(t, err)
-	require.Contains(t, err.Error(), "Anonymity MSP Principals are unsupported in MSPv1_1")
+	require.Contains(t, err.Error(), "anonymity MSP Principals are unsupported in MSPv1_1")
 }
 
 func TestIdemixIsWellFormedAries(t *testing.T) {
@@ -285,7 +284,6 @@ func TestPrincipalOUWrongOUAries(t *testing.T) {
 	err = id1.SatisfiesPrincipal(principal)
 	require.Error(t, err, "OU MSP principal should have failed for user of different OU")
 	require.Contains(t, err.Error(), "user is not part of the desired organizational unit")
-
 }
 
 func TestPrincipalOUWrongMSPAries(t *testing.T) {
@@ -310,7 +308,6 @@ func TestPrincipalOUWrongMSPAries(t *testing.T) {
 	err = id1.SatisfiesPrincipal(principal)
 	require.Error(t, err, "OU MSP principal should have failed for user of different MSP")
 	require.Contains(t, err.Error(), "the identity is a member of a different MSP")
-
 }
 
 func TestPrincipalOUBadAries(t *testing.T) {
@@ -600,7 +597,7 @@ func TestPrincipalCombinedV11Aries(t *testing.T) {
 
 	err = id1.SatisfiesPrincipal(principalsCombined)
 	require.Error(t, err)
-	require.Contains(t, err.Error(), "Combined MSP Principals are unsupported in MSPv1_1")
+	require.Contains(t, err.Error(), "combined MSP Principals are unsupported in MSPv1_1")
 }
 
 func TestRoleClientV11Aries(t *testing.T) {

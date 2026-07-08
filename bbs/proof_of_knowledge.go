@@ -32,7 +32,6 @@ type PoKOfSignature struct {
 // NewPoKOfSignature creates a new PoKOfSignature.
 func (bl *BBSLib) NewPoKOfSignature(signature *Signature, messages []*SignatureMessage, revealedIndexes []int,
 	pubKey *PublicKeyWithGenerators) (*PoKOfSignature, error) {
-
 	p := &PoKOfSignatureProvider{
 		VC2SignatureProvider: &defaultVC2SignatureProvider{
 			bl: bl,
@@ -67,7 +66,6 @@ func (p *PoKOfSignatureProvider) PoKOfSignature(signature *Signature, messages [
 
 func (p *PoKOfSignatureProvider) PoKOfSignatureB(signature *Signature, messages []*SignatureMessage, revealedIndexes []int,
 	pubKey *PublicKeyWithGenerators, b *ml.G1) (*PoKOfSignature, error) {
-
 	if p.VerifySig {
 		err := signature.VerifyWithB(messages, pubKey, b)
 		if err != nil {
@@ -112,7 +110,7 @@ func (p *PoKOfSignatureProvider) PoKOfSignatureB(signature *Signature, messages 
 		revealedMessages[messages[ind].Idx] = messages[ind]
 	}
 
-	pokVC2, secrets2 := p.VC2SignatureProvider.New(d, r3, pubKey, sPrime, messages, revealedMessages)
+	pokVC2, secrets2 := p.New(d, r3, pubKey, sPrime, messages, revealedMessages)
 
 	return &PoKOfSignature{
 		aPrime:           aPrime,
