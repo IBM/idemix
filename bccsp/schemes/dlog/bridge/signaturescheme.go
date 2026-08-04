@@ -206,6 +206,7 @@ func (s *SignatureScheme) AuditNymRh(
 func (s *SignatureScheme) Verify(
 	ipk bccsp.IssuerPublicKey,
 	signature, digest []byte,
+	nym *math.G1,
 	attributes []bccsp.IdemixAttribute,
 	rhIndex, eidIndex, _ int,
 	revocationPublicKey *ecdsa.PublicKey,
@@ -263,6 +264,7 @@ func (s *SignatureScheme) Verify(
 		disclosure,
 		iipk.PK,
 		digest,
+		nym,
 		attrValues,
 		rhIndex,
 		eidIndex,

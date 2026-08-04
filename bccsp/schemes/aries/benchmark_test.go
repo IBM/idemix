@@ -325,7 +325,7 @@ func BenchmarkSignerVerify(b *testing.B) {
 		b.Run(tc.name, func(b *testing.B) {
 			b.ResetTimer()
 			for range b.N {
-				err := env.signer.Verify(env.ipk, sig, []byte("msg"), env.attrs, rhIndex, eidIndex, 0, nil, 0, tc.verType, nil)
+				err := env.signer.Verify(env.ipk, sig, []byte("msg"), env.nym, env.attrs, rhIndex, eidIndex, 0, nil, 0, tc.verType, nil)
 				if err != nil {
 					b.Fatal(err)
 				}

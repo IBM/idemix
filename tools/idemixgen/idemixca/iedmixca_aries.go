@@ -70,6 +70,10 @@ func GenerateSignerConfigAries(
 		return nil, errors.New("the enrollment id value is empty")
 	}
 
+	if revocationHandle == "" {
+		return nil, errors.New("the revocation handle value is empty")
+	}
+
 	rng, err := curve.Rand()
 	if err != nil {
 		return nil, fmt.Errorf("error getting PRNG: %w", err)

@@ -205,6 +205,7 @@ func TestSmartcardHybrid(t *testing.T) {
 			Metadata: &types.IdemixSignerMetadata{
 				EidNym: nymEid.Bytes(),
 			},
+			Nym: handlers.NewNymPublicKey(nym, translator),
 		},
 	)
 	require.NoError(t, err)
@@ -347,6 +348,7 @@ func TestSmartcardCSP(t *testing.T) {
 			Metadata: &types.IdemixSignerMetadata{
 				EidNym: nymEid.Bytes(),
 			},
+			Nym: handlers.NewNymPublicKey(opts.NymG1, translator),
 		},
 	)
 	require.NoError(t, err)
@@ -408,6 +410,7 @@ func TestSmartcardCSP(t *testing.T) {
 			Metadata: &types.IdemixSignerMetadata{
 				EidNym: nymEid.Bytes(),
 			},
+			Nym: handlers.NewNymPublicKey(opts.NymG1, translator),
 		},
 	)
 	require.NoError(t, err)
@@ -466,7 +469,7 @@ func TestSmartcardCSP(t *testing.T) {
 		Curve: curve,
 		Rng:   rng,
 	}
-	err = verifier.Verify(ipk, sig, nil, []types.IdemixAttribute{
+	err = verifier.Verify(ipk, sig, nil, opts.NymG1, []types.IdemixAttribute{
 		{
 			Type: types.IdemixHiddenAttribute,
 		},

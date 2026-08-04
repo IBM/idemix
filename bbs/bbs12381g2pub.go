@@ -71,7 +71,13 @@ func New(curve *ml.Curve) *BBSG2Pub {
 const frCompressedSize = 32
 
 // Verify makes BLS BBS12-381 signature verification.
-func (bbs *BBSG2Pub) Verify(messages [][]byte, sigBytes, pubKeyBytes []byte) error {
+func (bbs *BBSG2Pub) Verify(messages [][]byte, sigBytes, pubKeyBytes []byte) (err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			err = fmt.Errorf("failure [%s]", r)
+		}
+	}()
+
 	signature, err := bbs.lib.ParseSignature(sigBytes)
 	if err != nil {
 		return fmt.Errorf("parse signature: %w", err)
@@ -109,18 +115,40 @@ func (bbs *BBSG2Pub) Sign(messages [][]byte, privKeyBytes []byte) ([]byte, error
 }
 
 // VerifyProof verifies BBS+ signature proof for one ore more revealed messages.
-func (bbs *BBSG2Pub) VerifyProof(messagesBytes [][]byte, proof, nonce, pubKeyBytes []byte) error {
+func (bbs *BBSG2Pub) VerifyProof(messagesBytes [][]byte, proof, nonce, pubKeyBytes []byte) (err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			err = fmt.Errorf("failure [%s]", r)
+		}
+	}()
+
 	messages := MessagesToFr(messagesBytes, bbs.curve)
 
 	return bbs.VerifyProofFr(messages, proof, nonce, pubKeyBytes)
 }
 
+// MaxMessagesCount bounds the number of messages a BBS+ proof may claim to cover.
+// Generator derivation in ToPublicKeyWithGenerators performs one hash-to-curve operation
+// per message, so an unbounded, attacker-controlled count (up to 0xFFFF on the wire) can be
+// used to force excessive CPU work during verification.
+const MaxMessagesCount = 1024
+
 // VerifyProofFr verifies BBS+ signature proof for one ore more revealed messages.
 // The messages are supplied as scalars and not bytes.
-func (bbs *BBSG2Pub) VerifyProofFr(messages []*SignatureMessage, proof, nonce, pubKeyBytes []byte) error {
+func (bbs *BBSG2Pub) VerifyProofFr(messages []*SignatureMessage, proof, nonce, pubKeyBytes []byte) (err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			err = fmt.Errorf("failure [%s]", r)
+		}
+	}()
+
 	payload, err := ParsePoKPayload(proof)
 	if err != nil {
 		return fmt.Errorf("parse signature proof: %w", err)
+	}
+
+	if payload.MessagesCount < 0 || payload.MessagesCount > MaxMessagesCount {
+		return fmt.Errorf("invalid message count in proof: %d", payload.MessagesCount)
 	}
 
 	signatureProof, err := bbs.lib.ParseSignatureProof(proof[payload.LenInBytes():])
@@ -328,36 +356,13 @@ func (cb *commitmentBuilder) Build() *ml.G1 {
 }
 
 func sumOfG1Products(bases []*ml.G1, scalars []*ml.Zr) *ml.G1 {
-	var res *ml.G1
-
-	i := 0
-	for ; i+1 < len(bases); i += 2 {
-		b1 := bases[i]
-		s1 := FrToRepr(scalars[i])
-		b2 := bases[i+1]
-		s2 := FrToRepr(scalars[i+1])
-
-		g := b1.Mul2(s1, b2, s2)
-		if res == nil {
-			res = g
-		} else {
-			res.Add(g)
-		}
+	if len(bases) == 0 {
+		return nil
 	}
 
-	if i < len(bases) {
-		b := bases[i]
-		s := FrToRepr(scalars[i])
+	curve := ml.Curves[bases[0].CurveID()]
 
-		g := b.Mul(s)
-		if res == nil {
-			res = g
-		} else {
-			res.Add(g)
-		}
-	}
-
-	return res
+	return curve.MultiScalarMul(bases, scalars)
 }
 
 func compareTwoPairings(p1 *ml.G1, q1 *ml.G2,

@@ -228,11 +228,21 @@ var _ = Describe("Signature", func() {
 		var (
 			Verifier            *handlers.Verifier
 			fakeSignatureScheme *mock.SignatureScheme
+			nymPK               bccsp.Key
+			nymG1               *math.G1
 		)
 
 		BeforeEach(func() {
 			fakeSignatureScheme = &mock.SignatureScheme{}
 			Verifier = &handlers.Verifier{SignatureScheme: fakeSignatureScheme}
+
+			curve := math.Curves[math.FP256BN_AMCL]
+			nymG1 = curve.GenG1.Mul(curve.NewZrFromInt(1234))
+
+			nymSK, err := handlers.NewNymSecretKey(curve.NewZrFromInt(0), nymG1, &amcl.Fp256bn{C: curve}, false)
+			Expect(err).NotTo(HaveOccurred())
+			nymPK, err = nymSK.PublicKey()
+			Expect(err).NotTo(HaveOccurred())
 		})
 
 		Context("and the underlying cryptographic algorithm succeed", func() {
@@ -247,6 +257,7 @@ var _ = Describe("Signature", func() {
 					[]byte("a digest"),
 					&bccsp.IdemixSignerOpts{
 						RevocationPublicKey: handlers.NewRevocationPublicKey(nil),
+						Nym:                 nymPK,
 					},
 				)
 				Expect(err).NotTo(HaveOccurred())
@@ -266,6 +277,7 @@ var _ = Describe("Signature", func() {
 					[]byte("a digest"),
 					&bccsp.IdemixSignerOpts{
 						RevocationPublicKey: handlers.NewRevocationPublicKey(nil),
+						Nym:                 nymPK,
 					},
 				)
 				Expect(err).To(MatchError("verify error"))
@@ -352,6 +364,58 @@ var _ = Describe("Signature", func() {
 					)
 					Expect(err).To(MatchError("invalid options, expected *revocationPublicKey"))
 					Expect(valid).To(BeFalse())
+				})
+			})
+
+			Context("and the nym is nil", func() {
+				It("returns error", func() {
+					valid, err := Verifier.Verify(
+						handlers.NewIssuerPublicKey(nil),
+						[]byte("a signature"),
+						[]byte("a digest"),
+						&bccsp.IdemixSignerOpts{
+							RevocationPublicKey: handlers.NewRevocationPublicKey(nil),
+						},
+					)
+					Expect(err).To(MatchError("invalid options, missing nym key"))
+					Expect(valid).To(BeFalse())
+				})
+			})
+
+			Context("and the nym is not of type *nymPublicKey", func() {
+				It("returns error", func() {
+					valid, err := Verifier.Verify(
+						handlers.NewIssuerPublicKey(nil),
+						[]byte("a signature"),
+						[]byte("a digest"),
+						&bccsp.IdemixSignerOpts{
+							RevocationPublicKey: handlers.NewRevocationPublicKey(nil),
+							Nym:                 handlers.NewIssuerPublicKey(nil),
+						},
+					)
+					Expect(err).To(MatchError("invalid nym key, expected *nymPublicKey"))
+					Expect(valid).To(BeFalse())
+				})
+			})
+
+			Context("and the nym does not match the nym bound to the signature", func() {
+				BeforeEach(func() {
+					fakeSignatureScheme.VerifyReturns(errors.New("invalid nym, does not match the nym bound to the signature"))
+				})
+
+				It("returns an error", func() {
+					valid, err := Verifier.Verify(
+						handlers.NewIssuerPublicKey(nil),
+						[]byte("a signature"),
+						[]byte("a digest"),
+						&bccsp.IdemixSignerOpts{
+							RevocationPublicKey: handlers.NewRevocationPublicKey(nil),
+							Nym:                 nymPK,
+						},
+					)
+					Expect(err).To(MatchError("invalid nym, does not match the nym bound to the signature"))
+					Expect(valid).To(BeFalse())
+					Expect(fakeSignatureScheme.VerifyCallCount()).To(Equal(1))
 				})
 			})
 		})

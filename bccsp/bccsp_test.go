@@ -282,6 +282,7 @@ var _ = Describe("Idemix Bridge Compatibility", func() {
 						RhIndex:  4,
 						EidIndex: 2,
 						Epoch:    0,
+						Nym:      NymPublicKey,
 					},
 				)
 				Expect(err).NotTo(HaveOccurred())
@@ -342,6 +343,7 @@ var _ = Describe("Idemix Bridge Compatibility", func() {
 						RhIndex:  4,
 						EidIndex: 2,
 						Epoch:    0,
+						Nym:      NymPublicKey,
 					},
 				)
 				Expect(err).NotTo(HaveOccurred())

@@ -36,7 +36,7 @@ type PoKOfSignatureProof struct {
 // GetBytesForChallenge creates bytes for proof challenge.
 func (sp *PoKOfSignatureProof) GetBytesForChallenge(revealedMessages map[int]*SignatureMessage,
 	pubKey *PublicKeyWithGenerators) []byte {
-	hiddenCount := pubKey.MessagesCount - len(revealedMessages)
+	hiddenCount := max(pubKey.MessagesCount-len(revealedMessages), 0)
 
 	bytesLen := (7 + hiddenCount) * sp.curve.CompressedG1ByteSize //nolint:gomnd
 	bytes := make([]byte, 0, bytesLen)
@@ -181,6 +181,10 @@ func NewProofG1(commitment *ml.G1, responses []*ml.Zr) *ProofG1 {
 
 // Verify verifies the ProofG1.
 func (pg1 *ProofG1) Verify(bases []*ml.G1, commitment *ml.G1, challenge *ml.Zr) error {
+	if len(pg1.Responses) != len(bases) {
+		return errors.New("invalid proof: responses length does not match bases length")
+	}
+
 	contribution := pg1.getChallengeContribution(bases, commitment, challenge)
 	contribution.Sub(pg1.Commitment)
 
@@ -227,7 +231,13 @@ func (pg1 *ProofG1) ToBytes() []byte {
 }
 
 // ParseSignatureProof parses a signature proof.
-func (b *BBSLib) ParseSignatureProof(sigProofBytes []byte) (*PoKOfSignatureProof, error) {
+func (b *BBSLib) ParseSignatureProof(sigProofBytes []byte) (proof *PoKOfSignatureProof, err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			err = fmt.Errorf("failure [%s]", r)
+		}
+	}()
+
 	if len(sigProofBytes) < b.g1CompressedSize*3 {
 		return nil, errors.New("invalid size of signature proof")
 	}
@@ -245,8 +255,16 @@ func (b *BBSLib) ParseSignatureProof(sigProofBytes []byte) (*PoKOfSignatureProof
 		offset += b.g1CompressedSize
 	}
 
+	if len(sigProofBytes) < offset+4 {
+		return nil, errors.New("invalid size of signature proof")
+	}
+
 	proof1BytesLen := int(uint32FromBytes(sigProofBytes[offset : offset+4]))
 	offset += 4
+
+	if proof1BytesLen < 0 || offset+proof1BytesLen > len(sigProofBytes) {
+		return nil, errors.New("invalid size of signature proof")
+	}
 
 	proofVc1, err := b.ParseProofG1(sigProofBytes[offset : offset+proof1BytesLen])
 	if err != nil {

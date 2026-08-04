@@ -606,13 +606,20 @@ func (s *Signer) Sign(
 func (s *Signer) Verify(
 	key types.IssuerPublicKey,
 	signature, msg []byte,
+	nym *math.G1,
 	attributes []types.IdemixAttribute,
 	rhIndex, eidIndex, skIndex int,
 	_ *ecdsa.PublicKey,
 	_ int,
 	verType types.VerificationType,
 	meta *types.IdemixSignerMetadata,
-) error {
+) (err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			err = fmt.Errorf("failure [%s]", r)
+		}
+	}()
+
 	ipk, ok := key.(*IssuerPublicKey)
 	if !ok {
 		return fmt.Errorf("invalid issuer public key, expected *IssuerPublicKey, got [%T]", ipk)
@@ -621,7 +628,7 @@ func (s *Signer) Verify(
 	lib := bbs.NewBBSLib(s.Curve)
 
 	sig := &Signature{}
-	err := proto.Unmarshal(signature, sig)
+	err = proto.Unmarshal(signature, sig)
 	if err != nil {
 		return fmt.Errorf("proto.Unmarshal error: %w", err)
 	}
@@ -680,12 +687,19 @@ func (s *Signer) Verify(
 	if err != nil {
 		return fmt.Errorf("parse nym commit: %w", err)
 	}
+	if nym != nil && !nym.Equals(Nym) {
+		return errors.New("invalid nym, does not match the nym bound to the signature")
+	}
 
 	var nymProof *bbs.ProofG1
 	if verType != types.ExpectSmartcard && verType != types.ExpectSmartcardNoNyms {
 		nymProof, err = lib.ParseProofG1(sig.NymProof)
 		if err != nil {
 			return fmt.Errorf("parse nym proof: %w", err)
+		}
+
+		if len(nymProof.Responses) <= AttributeIndexInNym {
+			return errors.New("invalid nym proof: not enough responses")
 		}
 	}
 
@@ -695,6 +709,10 @@ func (s *Signer) Verify(
 		nymEidProof, err = lib.ParseProofG1(sig.NymEidProof)
 		if err != nil {
 			return fmt.Errorf("parse nym proof: %w", err)
+		}
+
+		if len(nymEidProof.Responses) <= AttributeIndexInNym {
+			return errors.New("invalid nym eid proof: not enough responses")
 		}
 
 		NymEid, err = s.Curve.NewG1FromBytes(sig.NymEid)
@@ -709,6 +727,10 @@ func (s *Signer) Verify(
 		rhNymProof, err = lib.ParseProofG1(sig.NymRhProof)
 		if err != nil {
 			return fmt.Errorf("parse rh proof: %w", err)
+		}
+
+		if len(rhNymProof.Responses) <= AttributeIndexInNym {
+			return errors.New("invalid rh nym proof: not enough responses")
 		}
 
 		RhNym, err = s.Curve.NewG1FromBytes(sig.NymRh)
@@ -843,9 +865,16 @@ func (s *Signer) Verify(
 		}
 	}
 
+	vc2ResponsesLen := len(signatureProof.ProofVC2.Responses)
+
 	if verType != types.ExpectSmartcard && verType != types.ExpectSmartcardNoNyms {
+		skRespIdx := IndexOffsetVC2Attributes + skIndex
+		if skRespIdx < 0 || skRespIdx >= vc2ResponsesLen {
+			return errors.New("invalid signature: sk index out of range")
+		}
+
 		// verify that `sk` in the Nym is the same as the one in the signature
-		if !nymProof.Responses[AttributeIndexInNym].Equals(signatureProof.ProofVC2.Responses[IndexOffsetVC2Attributes+skIndex]) {
+		if !nymProof.Responses[AttributeIndexInNym].Equals(signatureProof.ProofVC2.Responses[skRespIdx]) {
 			return errors.New("failed equality proof for sk")
 		}
 
@@ -857,6 +886,10 @@ func (s *Signer) Verify(
 	}
 
 	if verifyEIDNym {
+		if sig.NymEidIdx < 0 || int(sig.NymEidIdx) >= vc2ResponsesLen {
+			return errors.New("invalid signature: nym eid index out of range")
+		}
+
 		// verify that eid in the NymEid is the same as the one in the signature
 		if !nymEidProof.Responses[AttributeIndexInNym].Equals(signatureProof.ProofVC2.Responses[sig.NymEidIdx]) {
 			return errors.New("failed equality proof for eid")
@@ -870,6 +903,10 @@ func (s *Signer) Verify(
 	}
 
 	if verifyRHNym {
+		if sig.NymRhIdx < 0 || int(sig.NymRhIdx) >= vc2ResponsesLen {
+			return errors.New("invalid signature: nym rh index out of range")
+		}
+
 		// verify that rh in the RhNym is the same as the one in the signature
 		if !rhNymProof.Responses[AttributeIndexInNym].Equals(signatureProof.ProofVC2.Responses[sig.NymRhIdx]) {
 			return errors.New("failed equality proof for rh")
@@ -901,7 +938,13 @@ func (s *Signer) AuditNymEid(
 	enrollmentID string,
 	RNymEid *math.Zr,
 	verType types.AuditVerificationType,
-) error {
+) (err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			err = fmt.Errorf("failure [%s]", r)
+		}
+	}()
+
 	ipk, ok := key.(*IssuerPublicKey)
 	if !ok {
 		return fmt.Errorf("invalid issuer public key, expected *IssuerPublicKey, got [%T]", ipk)
@@ -955,7 +998,13 @@ func (s *Signer) AuditNymRh(
 	revocationHandle string,
 	RNymRh *math.Zr,
 	verType types.AuditVerificationType,
-) error {
+) (err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			err = fmt.Errorf("failure [%s]", r)
+		}
+	}()
+
 	ipk, ok := key.(*IssuerPublicKey)
 	if !ok {
 		return fmt.Errorf("invalid issuer public key, expected *IssuerPublicKey, got [%T]", ipk)

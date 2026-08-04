@@ -70,20 +70,21 @@ type SignatureScheme struct {
 		result2 *types.IdemixSignerMetadata
 		result3 error
 	}
-	VerifyStub        func(types.IssuerPublicKey, []byte, []byte, []types.IdemixAttribute, int, int, int, *ecdsa.PublicKey, int, types.VerificationType, *types.IdemixSignerMetadata) error
+	VerifyStub        func(types.IssuerPublicKey, []byte, []byte, *math.G1, []types.IdemixAttribute, int, int, int, *ecdsa.PublicKey, int, types.VerificationType, *types.IdemixSignerMetadata) error
 	verifyMutex       sync.RWMutex
 	verifyArgsForCall []struct {
 		arg1  types.IssuerPublicKey
 		arg2  []byte
 		arg3  []byte
-		arg4  []types.IdemixAttribute
-		arg5  int
+		arg4  *math.G1
+		arg5  []types.IdemixAttribute
 		arg6  int
 		arg7  int
-		arg8  *ecdsa.PublicKey
-		arg9  int
-		arg10 types.VerificationType
-		arg11 *types.IdemixSignerMetadata
+		arg8  int
+		arg9  *ecdsa.PublicKey
+		arg10 int
+		arg11 types.VerificationType
+		arg12 *types.IdemixSignerMetadata
 	}
 	verifyReturns struct {
 		result1 error
@@ -337,7 +338,7 @@ func (fake *SignatureScheme) SignReturnsOnCall(i int, result1 []byte, result2 *t
 	}{result1, result2, result3}
 }
 
-func (fake *SignatureScheme) Verify(arg1 types.IssuerPublicKey, arg2 []byte, arg3 []byte, arg4 []types.IdemixAttribute, arg5 int, arg6 int, arg7 int, arg8 *ecdsa.PublicKey, arg9 int, arg10 types.VerificationType, arg11 *types.IdemixSignerMetadata) error {
+func (fake *SignatureScheme) Verify(arg1 types.IssuerPublicKey, arg2 []byte, arg3 []byte, arg4 *math.G1, arg5 []types.IdemixAttribute, arg6 int, arg7 int, arg8 int, arg9 *ecdsa.PublicKey, arg10 int, arg11 types.VerificationType, arg12 *types.IdemixSignerMetadata) error {
 	var arg2Copy []byte
 	if arg2 != nil {
 		arg2Copy = make([]byte, len(arg2))
@@ -348,10 +349,10 @@ func (fake *SignatureScheme) Verify(arg1 types.IssuerPublicKey, arg2 []byte, arg
 		arg3Copy = make([]byte, len(arg3))
 		copy(arg3Copy, arg3)
 	}
-	var arg4Copy []types.IdemixAttribute
-	if arg4 != nil {
-		arg4Copy = make([]types.IdemixAttribute, len(arg4))
-		copy(arg4Copy, arg4)
+	var arg5Copy []types.IdemixAttribute
+	if arg5 != nil {
+		arg5Copy = make([]types.IdemixAttribute, len(arg5))
+		copy(arg5Copy, arg5)
 	}
 	fake.verifyMutex.Lock()
 	ret, specificReturn := fake.verifyReturnsOnCall[len(fake.verifyArgsForCall)]
@@ -359,21 +360,22 @@ func (fake *SignatureScheme) Verify(arg1 types.IssuerPublicKey, arg2 []byte, arg
 		arg1  types.IssuerPublicKey
 		arg2  []byte
 		arg3  []byte
-		arg4  []types.IdemixAttribute
-		arg5  int
+		arg4  *math.G1
+		arg5  []types.IdemixAttribute
 		arg6  int
 		arg7  int
-		arg8  *ecdsa.PublicKey
-		arg9  int
-		arg10 types.VerificationType
-		arg11 *types.IdemixSignerMetadata
-	}{arg1, arg2Copy, arg3Copy, arg4Copy, arg5, arg6, arg7, arg8, arg9, arg10, arg11})
+		arg8  int
+		arg9  *ecdsa.PublicKey
+		arg10 int
+		arg11 types.VerificationType
+		arg12 *types.IdemixSignerMetadata
+	}{arg1, arg2Copy, arg3Copy, arg4, arg5Copy, arg6, arg7, arg8, arg9, arg10, arg11, arg12})
 	stub := fake.VerifyStub
 	fakeReturns := fake.verifyReturns
-	fake.recordInvocation("Verify", []interface{}{arg1, arg2Copy, arg3Copy, arg4Copy, arg5, arg6, arg7, arg8, arg9, arg10, arg11})
+	fake.recordInvocation("Verify", []interface{}{arg1, arg2Copy, arg3Copy, arg4, arg5Copy, arg6, arg7, arg8, arg9, arg10, arg11, arg12})
 	fake.verifyMutex.Unlock()
 	if stub != nil {
-		return stub(arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10, arg11)
+		return stub(arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10, arg11, arg12)
 	}
 	if specificReturn {
 		return ret.result1
@@ -387,17 +389,17 @@ func (fake *SignatureScheme) VerifyCallCount() int {
 	return len(fake.verifyArgsForCall)
 }
 
-func (fake *SignatureScheme) VerifyCalls(stub func(types.IssuerPublicKey, []byte, []byte, []types.IdemixAttribute, int, int, int, *ecdsa.PublicKey, int, types.VerificationType, *types.IdemixSignerMetadata) error) {
+func (fake *SignatureScheme) VerifyCalls(stub func(types.IssuerPublicKey, []byte, []byte, *math.G1, []types.IdemixAttribute, int, int, int, *ecdsa.PublicKey, int, types.VerificationType, *types.IdemixSignerMetadata) error) {
 	fake.verifyMutex.Lock()
 	defer fake.verifyMutex.Unlock()
 	fake.VerifyStub = stub
 }
 
-func (fake *SignatureScheme) VerifyArgsForCall(i int) (types.IssuerPublicKey, []byte, []byte, []types.IdemixAttribute, int, int, int, *ecdsa.PublicKey, int, types.VerificationType, *types.IdemixSignerMetadata) {
+func (fake *SignatureScheme) VerifyArgsForCall(i int) (types.IssuerPublicKey, []byte, []byte, *math.G1, []types.IdemixAttribute, int, int, int, *ecdsa.PublicKey, int, types.VerificationType, *types.IdemixSignerMetadata) {
 	fake.verifyMutex.RLock()
 	defer fake.verifyMutex.RUnlock()
 	argsForCall := fake.verifyArgsForCall[i]
-	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3, argsForCall.arg4, argsForCall.arg5, argsForCall.arg6, argsForCall.arg7, argsForCall.arg8, argsForCall.arg9, argsForCall.arg10, argsForCall.arg11
+	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3, argsForCall.arg4, argsForCall.arg5, argsForCall.arg6, argsForCall.arg7, argsForCall.arg8, argsForCall.arg9, argsForCall.arg10, argsForCall.arg11, argsForCall.arg12
 }
 
 func (fake *SignatureScheme) VerifyReturns(result1 error) {
