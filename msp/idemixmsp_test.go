@@ -12,6 +12,7 @@ import (
 
 	idemix "github.com/IBM/idemix/bccsp/schemes/dlog/crypto"
 	amclt "github.com/IBM/idemix/bccsp/schemes/dlog/crypto/translator/amcl"
+	bccsp "github.com/IBM/idemix/bccsp/types"
 	im "github.com/IBM/idemix/msp/config"
 	math "github.com/IBM/mathlib"
 	"github.com/hyperledger/fabric-protos-go-apiv2/msp"
@@ -236,6 +237,62 @@ func TestIdentitySerializationWrongMSP(t *testing.T) {
 	_, err = msp1.DeserializeIdentity(idBytes)
 	require.Error(t, err, "DeserializeIdentity should have failed for ID of other MSP")
 	require.Contains(t, err.Error(), "expected MSP ID MSP1OU1, received MSP2OU1")
+}
+
+// TestNymSwapAttack demonstrates and confirms the fix for the following attack:
+// an adversary takes a legitimately-obtained Idemixidentity - with its genuine
+// associationProof, OU and Role untouched - and swaps out only its NymPublicKey
+// for a different, unrelated (but well-formed) pseudonym. Both pseudonyms are
+// properly derived from the *same* credential secret key, so this is not a case
+// of a malformed or garbage nym: it is a valid pseudonym that simply was not the
+// one the association proof was actually generated for.
+//
+// Before the fix, Idemixidentity.verifyProof did not pass the claimed
+// NymPublicKey to the verifier, so the cryptographic check only established
+// "some valid credential/nym pair produced this proof" without ever confirming
+// that pair matches the nym the caller is presenting as the identity's public
+// pseudonym. That let an adversary re-attribute a valid anonymous credential
+// proof to an arbitrary pseudonym of their choosing.
+func TestNymSwapAttack(t *testing.T) {
+	mspI, err := setup("testdata/idemix/MSP1OU1", "MSP1OU1")
+	require.NoError(t, err)
+
+	id, err := getDefaultSigner(mspI)
+	require.NoError(t, err)
+
+	signingID, ok := id.(*IdemixSigningIdentity)
+	require.True(t, ok)
+
+	idemixMsp, ok := mspI.(*Idemixmsp)
+	require.True(t, ok)
+
+	// The adversary derives another, unlinkable pseudonym from the very same
+	// credential secret key. This nym is perfectly well-formed - it is just not
+	// the one bound into signingID.associationProof.
+	otherNymKey, err := idemixMsp.csp.KeyDeriv(
+		signingID.UserKey,
+		&bccsp.IdemixNymKeyDerivationOpts{Temporary: true, IssuerPK: idemixMsp.ipk},
+	)
+	require.NoError(t, err)
+	otherNymPublicKey, err := otherNymKey.PublicKey()
+	require.NoError(t, err)
+
+	originalNymBytes, err := signingID.NymPublicKey.Bytes()
+	require.NoError(t, err)
+	otherNymBytes, err := otherNymPublicKey.Bytes()
+	require.NoError(t, err)
+	require.NotEqual(t, originalNymBytes, otherNymBytes, "the two pseudonyms must be different for this attack to make sense")
+
+	// Forge an identity: same associationProof, OU and Role as the genuine
+	// identity, but with the swapped-in NymPublicKey.
+	forged := newIdemixIdentity(idemixMsp, otherNymPublicKey, signingID.Role, signingID.OU, signingID.associationProof)
+
+	err = idemixMsp.Validate(forged)
+	require.Error(t, err, "the forged identity must be rejected: its claimed nym does not match the nym bound to the association proof")
+	require.Contains(t, err.Error(), "invalid nym")
+
+	// The genuine identity, unmodified, must still validate correctly.
+	require.NoError(t, idemixMsp.Validate(signingID))
 }
 
 func TestPrincipalIdentity(t *testing.T) {

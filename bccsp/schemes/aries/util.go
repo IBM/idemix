@@ -13,7 +13,12 @@ import (
 )
 
 func attributesToSignatureMessage(attributes []types.IdemixAttribute, curve *math.Curve, skPos int) []*bbs.SignatureMessage {
-	attributes = append(append(append([]types.IdemixAttribute{}, attributes[:skPos]...), types.IdemixAttribute{Type: types.IdemixHiddenAttribute}), attributes[skPos:]...)
+	withSk := make([]types.IdemixAttribute, len(attributes)+1)
+	copy(withSk, attributes[:skPos])
+	withSk[skPos] = types.IdemixAttribute{Type: types.IdemixHiddenAttribute}
+	copy(withSk[skPos+1:], attributes[skPos:])
+	attributes = withSk
+
 	var msgsZr = make([]*bbs.SignatureMessage, 0, len(attributes))
 
 	for i, msg := range attributes {

@@ -157,10 +157,25 @@ func (v *Verifier) Verify(k types.Key, signature, digest []byte, opts types.Sign
 	if len(signature) == 0 {
 		return false, errors.New("invalid signature, it must not be empty")
 	}
+
+	// Nym
+	// The Nym must always be supplied by the caller and bound to the signature being verified.
+	// Without this check, an adversary can pair a valid association proof with an arbitrary,
+	// attacker-chosen Nym public key, since the proof itself does not authenticate which Nym
+	// the caller believes it corresponds to.
+	if signerOpts.Nym == nil {
+		return false, errors.New("invalid options, missing nym key")
+	}
+	nymPk, ok := signerOpts.Nym.(*nymPublicKey)
+	if !ok {
+		return false, errors.New("invalid nym key, expected *nymPublicKey")
+	}
+
 	err := v.SignatureScheme.Verify(
 		issuerPublicKey.pk,
 		signature,
 		digest,
+		nymPk.pk,
 		signerOpts.Attributes,
 		signerOpts.RhIndex,
 		signerOpts.EidIndex,

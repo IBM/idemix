@@ -61,14 +61,20 @@ func (c *Cred) Sign(key types.IssuerSecretKey, credentialRequest []byte, attribu
 
 // Verify cryptographically verifies the credential by verifying the signature
 // on the attribute values and user's secret key
-func (c *Cred) Verify(sk *math.Zr, key types.IssuerPublicKey, credBytes []byte, attributes []types.IdemixAttribute) error {
+func (c *Cred) Verify(sk *math.Zr, key types.IssuerPublicKey, credBytes []byte, attributes []types.IdemixAttribute) (err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			err = fmt.Errorf("failure [%s]", r)
+		}
+	}()
+
 	ipk, ok := key.(*IssuerPublicKey)
 	if !ok {
 		return fmt.Errorf("invalid issuer public key, expected *IssuerPublicKey, got [%T]", ipk)
 	}
 
 	credential := &Credential{}
-	err := proto.Unmarshal(credBytes, credential)
+	err = proto.Unmarshal(credBytes, credential)
 	if err != nil {
 		return fmt.Errorf("proto.Unmarshal failed [%w]", err)
 	}
@@ -76,6 +82,10 @@ func (c *Cred) Verify(sk *math.Zr, key types.IssuerPublicKey, credBytes []byte, 
 	sigma, err := bbs.NewBBSLib(c.Curve).ParseSignature(credential.Cred)
 	if err != nil {
 		return fmt.Errorf("ParseSignature failed [%w]", err)
+	}
+
+	if credential.SkPos < 0 || int(credential.SkPos) >= len(ipk.PKwG.H) {
+		return fmt.Errorf("invalid credential: sk_pos [%d] out of range", credential.SkPos)
 	}
 
 	i := 0

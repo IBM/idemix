@@ -64,6 +64,10 @@ func GenerateSignerConfig(
 		return nil, errors.New("the enrollment id value is empty")
 	}
 
+	if revocationHandle == "" {
+		return nil, errors.New("the revocation handle value is empty")
+	}
+
 	attrs[imsp.AttributeIndexOU] = idmx.Curve.HashToZr([]byte(ouString))
 	attrs[imsp.AttributeIndexRole] = idmx.Curve.NewZrFromInt(int64(roleMask))
 	attrs[imsp.AttributeIndexEnrollmentId] = idmx.Curve.HashToZr([]byte(enrollmentId))

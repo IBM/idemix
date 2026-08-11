@@ -220,6 +220,7 @@ func testWithCurve(id math.CurveID, translator idemix1.Translator) {
 					signature,
 					digest,
 					&bccsp.IdemixSignerOpts{
+						Nym:                 NymPublicKey,
 						RevocationPublicKey: RevocationPublicKey,
 						Attributes: []bccsp.IdemixAttribute{
 							{Type: bccsp.IdemixHiddenAttribute},
@@ -244,6 +245,7 @@ func testWithCurve(id math.CurveID, translator idemix1.Translator) {
 					signature,
 					digest,
 					&bccsp.IdemixSignerOpts{
+						Nym:                 NymPublicKey,
 						RevocationPublicKey: RevocationPublicKey,
 						Attributes: []bccsp.IdemixAttribute{
 							{Type: bccsp.IdemixHiddenAttribute},
@@ -279,6 +281,7 @@ func testWithCurve(id math.CurveID, translator idemix1.Translator) {
 					sigBytes,
 					digest,
 					&bccsp.IdemixSignerOpts{
+						Nym:                 NymPublicKey,
 						RevocationPublicKey: RevocationPublicKey,
 						Attributes: []bccsp.IdemixAttribute{
 							{Type: bccsp.IdemixHiddenAttribute},
@@ -314,6 +317,7 @@ func testWithCurve(id math.CurveID, translator idemix1.Translator) {
 					sigBytes,
 					digest,
 					&bccsp.IdemixSignerOpts{
+						Nym:                 NymPublicKey,
 						RevocationPublicKey: RevocationPublicKey,
 						Attributes: []bccsp.IdemixAttribute{
 							{Type: bccsp.IdemixHiddenAttribute},
@@ -350,6 +354,7 @@ func testWithCurve(id math.CurveID, translator idemix1.Translator) {
 					sigBytes,
 					digest,
 					&bccsp.IdemixSignerOpts{
+						Nym:                 NymPublicKey,
 						RevocationPublicKey: RevocationPublicKey,
 						Attributes: []bccsp.IdemixAttribute{
 							{Type: bccsp.IdemixHiddenAttribute},
@@ -387,6 +392,7 @@ func testWithCurve(id math.CurveID, translator idemix1.Translator) {
 					sigBytes,
 					digest,
 					&bccsp.IdemixSignerOpts{
+						Nym:                 NymPublicKey,
 						RevocationPublicKey: RevocationPublicKey,
 						Attributes: []bccsp.IdemixAttribute{
 							{Type: bccsp.IdemixHiddenAttribute},
@@ -412,6 +418,7 @@ func testWithCurve(id math.CurveID, translator idemix1.Translator) {
 					signature,
 					digest,
 					&bccsp.IdemixSignerOpts{
+						Nym:                 NymPublicKey,
 						RevocationPublicKey: RevocationPublicKey,
 						Attributes: []bccsp.IdemixAttribute{
 							{Type: bccsp.IdemixHiddenAttribute},
@@ -436,6 +443,7 @@ func testWithCurve(id math.CurveID, translator idemix1.Translator) {
 					signature,
 					digest,
 					&bccsp.IdemixSignerOpts{
+						Nym:                 NymPublicKey,
 						RevocationPublicKey: RevocationPublicKey,
 						Attributes: []bccsp.IdemixAttribute{
 							{Type: bccsp.IdemixHiddenAttribute},
@@ -501,6 +509,7 @@ func testWithCurve(id math.CurveID, translator idemix1.Translator) {
 					signature,
 					digest,
 					&bccsp.IdemixSignerOpts{
+						Nym:                 NymPublicKey,
 						RevocationPublicKey: RevocationPublicKey,
 						Attributes: []bccsp.IdemixAttribute{
 							{Type: bccsp.IdemixHiddenAttribute},
@@ -526,6 +535,7 @@ func testWithCurve(id math.CurveID, translator idemix1.Translator) {
 					signature,
 					digest,
 					&bccsp.IdemixSignerOpts{
+						Nym:                 NymPublicKey,
 						RevocationPublicKey: RevocationPublicKey,
 						Attributes: []bccsp.IdemixAttribute{
 							{Type: bccsp.IdemixHiddenAttribute},
@@ -550,6 +560,7 @@ func testWithCurve(id math.CurveID, translator idemix1.Translator) {
 					signature,
 					digest,
 					&bccsp.IdemixSignerOpts{
+						Nym:                 NymPublicKey,
 						RevocationPublicKey: RevocationPublicKey,
 						Attributes: []bccsp.IdemixAttribute{
 							{Type: bccsp.IdemixHiddenAttribute},
@@ -574,6 +585,7 @@ func testWithCurve(id math.CurveID, translator idemix1.Translator) {
 					signature,
 					digest,
 					&bccsp.IdemixSignerOpts{
+						Nym:                 NymPublicKey,
 						RevocationPublicKey: RevocationPublicKey,
 						Attributes: []bccsp.IdemixAttribute{
 							{Type: bccsp.IdemixHiddenAttribute},
@@ -601,6 +613,7 @@ func testWithCurve(id math.CurveID, translator idemix1.Translator) {
 					signature,
 					digest,
 					&bccsp.IdemixSignerOpts{
+						Nym:                 NymPublicKey,
 						RevocationPublicKey: RevocationPublicKey,
 						Attributes: []bccsp.IdemixAttribute{
 							{Type: bccsp.IdemixHiddenAttribute},
@@ -629,6 +642,7 @@ func testWithCurve(id math.CurveID, translator idemix1.Translator) {
 					signature,
 					digest,
 					&bccsp.IdemixSignerOpts{
+						Nym:                 NymPublicKey,
 						RevocationPublicKey: RevocationPublicKey,
 						Attributes: []bccsp.IdemixAttribute{
 							{Type: bccsp.IdemixHiddenAttribute},
@@ -657,6 +671,7 @@ func testWithCurve(id math.CurveID, translator idemix1.Translator) {
 					signature,
 					digest,
 					&bccsp.IdemixSignerOpts{
+						Nym:                 NymPublicKey,
 						RevocationPublicKey: RevocationPublicKey,
 						Attributes: []bccsp.IdemixAttribute{
 							{Type: bccsp.IdemixHiddenAttribute},
@@ -684,6 +699,7 @@ func testWithCurve(id math.CurveID, translator idemix1.Translator) {
 					signature,
 					digest,
 					&bccsp.IdemixSignerOpts{
+						Nym:                 NymPublicKey,
 						RevocationPublicKey: RevocationPublicKey,
 						Attributes: []bccsp.IdemixAttribute{
 							{Type: bccsp.IdemixHiddenAttribute},
@@ -710,6 +726,7 @@ func testWithCurve(id math.CurveID, translator idemix1.Translator) {
 					signature,
 					digest,
 					&bccsp.IdemixSignerOpts{
+						Nym:                 NymPublicKey,
 						RevocationPublicKey: RevocationPublicKey,
 						Attributes: []bccsp.IdemixAttribute{
 							{Type: bccsp.IdemixHiddenAttribute},
@@ -825,6 +842,7 @@ func testWithCurve(id math.CurveID, translator idemix1.Translator) {
 					signature2,
 					digest,
 					&bccsp.IdemixSignerOpts{
+						Nym:                 NymPublicKey,
 						RevocationPublicKey: RevocationPublicKey,
 						Attributes: []bccsp.IdemixAttribute{
 							{Type: bccsp.IdemixHiddenAttribute},
@@ -848,6 +866,7 @@ func testWithCurve(id math.CurveID, translator idemix1.Translator) {
 					signature2,
 					digest,
 					&bccsp.IdemixSignerOpts{
+						Nym:                 NymPublicKey,
 						RevocationPublicKey: RevocationPublicKey,
 						Attributes: []bccsp.IdemixAttribute{
 							{Type: bccsp.IdemixHiddenAttribute},
@@ -913,6 +932,7 @@ func testWithCurve(id math.CurveID, translator idemix1.Translator) {
 					signature,
 					digest,
 					&bccsp.IdemixSignerOpts{
+						Nym:                 NymPublicKey,
 						RevocationPublicKey: RevocationPublicKey,
 						Attributes: []bccsp.IdemixAttribute{
 							{Type: bccsp.IdemixHiddenAttribute},
@@ -938,6 +958,7 @@ func testWithCurve(id math.CurveID, translator idemix1.Translator) {
 					signature,
 					digest,
 					&bccsp.IdemixSignerOpts{
+						Nym:                 NymPublicKey,
 						RevocationPublicKey: RevocationPublicKey,
 						Attributes: []bccsp.IdemixAttribute{
 							{Type: bccsp.IdemixHiddenAttribute},
@@ -962,6 +983,7 @@ func testWithCurve(id math.CurveID, translator idemix1.Translator) {
 					signature,
 					digest,
 					&bccsp.IdemixSignerOpts{
+						Nym:                 NymPublicKey,
 						RevocationPublicKey: RevocationPublicKey,
 						Attributes: []bccsp.IdemixAttribute{
 							{Type: bccsp.IdemixHiddenAttribute},
@@ -987,6 +1009,7 @@ func testWithCurve(id math.CurveID, translator idemix1.Translator) {
 					signature,
 					digest,
 					&bccsp.IdemixSignerOpts{
+						Nym:                 NymPublicKey,
 						RevocationPublicKey: RevocationPublicKey,
 						Attributes: []bccsp.IdemixAttribute{
 							{Type: bccsp.IdemixHiddenAttribute},
@@ -1012,6 +1035,7 @@ func testWithCurve(id math.CurveID, translator idemix1.Translator) {
 					signature,
 					digest,
 					&bccsp.IdemixSignerOpts{
+						Nym:                 NymPublicKey,
 						RevocationPublicKey: RevocationPublicKey,
 						Attributes: []bccsp.IdemixAttribute{
 							{Type: bccsp.IdemixHiddenAttribute},
@@ -1040,6 +1064,7 @@ func testWithCurve(id math.CurveID, translator idemix1.Translator) {
 					signature,
 					digest,
 					&bccsp.IdemixSignerOpts{
+						Nym:                 NymPublicKey,
 						RevocationPublicKey: RevocationPublicKey,
 						Attributes: []bccsp.IdemixAttribute{
 							{Type: bccsp.IdemixHiddenAttribute},
@@ -1069,6 +1094,7 @@ func testWithCurve(id math.CurveID, translator idemix1.Translator) {
 					signature,
 					digest,
 					&bccsp.IdemixSignerOpts{
+						Nym:                 NymPublicKey,
 						RevocationPublicKey: RevocationPublicKey,
 						Attributes: []bccsp.IdemixAttribute{
 							{Type: bccsp.IdemixHiddenAttribute},
@@ -1098,6 +1124,7 @@ func testWithCurve(id math.CurveID, translator idemix1.Translator) {
 					signature,
 					digest,
 					&bccsp.IdemixSignerOpts{
+						Nym:                 NymPublicKey,
 						RevocationPublicKey: RevocationPublicKey,
 						Attributes: []bccsp.IdemixAttribute{
 							{Type: bccsp.IdemixHiddenAttribute},
@@ -1129,6 +1156,7 @@ func testWithCurve(id math.CurveID, translator idemix1.Translator) {
 					signature,
 					digest,
 					&bccsp.IdemixSignerOpts{
+						Nym:                 NymPublicKey,
 						RevocationPublicKey: RevocationPublicKey,
 						Attributes: []bccsp.IdemixAttribute{
 							{Type: bccsp.IdemixHiddenAttribute},
@@ -1157,6 +1185,7 @@ func testWithCurve(id math.CurveID, translator idemix1.Translator) {
 					signature,
 					digest,
 					&bccsp.IdemixSignerOpts{
+						Nym:                 NymPublicKey,
 						RevocationPublicKey: RevocationPublicKey,
 						Attributes: []bccsp.IdemixAttribute{
 							{Type: bccsp.IdemixHiddenAttribute},
@@ -1183,6 +1212,7 @@ func testWithCurve(id math.CurveID, translator idemix1.Translator) {
 					signature,
 					digest,
 					&bccsp.IdemixSignerOpts{
+						Nym:                 NymPublicKey,
 						RevocationPublicKey: RevocationPublicKey,
 						Attributes: []bccsp.IdemixAttribute{
 							{Type: bccsp.IdemixHiddenAttribute},
@@ -1362,6 +1392,7 @@ func testWithCurve(id math.CurveID, translator idemix1.Translator) {
 					signature2,
 					digest,
 					&bccsp.IdemixSignerOpts{
+						Nym:                 NymPublicKey,
 						RevocationPublicKey: RevocationPublicKey,
 						Attributes: []bccsp.IdemixAttribute{
 							{Type: bccsp.IdemixHiddenAttribute},
@@ -1385,6 +1416,7 @@ func testWithCurve(id math.CurveID, translator idemix1.Translator) {
 					signature2,
 					digest,
 					&bccsp.IdemixSignerOpts{
+						Nym:                 NymPublicKey,
 						RevocationPublicKey: RevocationPublicKey,
 						Attributes: []bccsp.IdemixAttribute{
 							{Type: bccsp.IdemixHiddenAttribute},
@@ -1445,6 +1477,7 @@ func testWithCurve(id math.CurveID, translator idemix1.Translator) {
 					signature,
 					digest,
 					&bccsp.IdemixSignerOpts{
+						Nym:                 NymPublicKey,
 						RevocationPublicKey: RevocationPublicKey,
 						Attributes: []bccsp.IdemixAttribute{
 							{Type: bccsp.IdemixBytesAttribute, Value: []byte{0}},
@@ -1680,6 +1713,7 @@ func testWithCurve(id math.CurveID, translator idemix1.Translator) {
 							signature,
 							digest,
 							&bccsp.IdemixSignerOpts{
+								Nym:                 NymPublicKey,
 								RevocationPublicKey: RevocationPublicKey,
 								Attributes: []bccsp.IdemixAttribute{
 									{Type: bccsp.IdemixHiddenAttribute},
@@ -1738,6 +1772,7 @@ func testWithCurve(id math.CurveID, translator idemix1.Translator) {
 							signature,
 							digest,
 							&bccsp.IdemixSignerOpts{
+								Nym:                 NymPublicKey,
 								RevocationPublicKey: RevocationPublicKey,
 								Attributes: []bccsp.IdemixAttribute{
 									{Type: bccsp.IdemixBytesAttribute, Value: []byte{0}},

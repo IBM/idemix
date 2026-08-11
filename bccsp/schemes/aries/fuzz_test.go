@@ -197,7 +197,7 @@ func FuzzSignerVerify(f *testing.F) {
 
 	f.Fuzz(func(t *testing.T, data []byte) {
 		s := &aries.Signer{Curve: env.curve, Rng: rng}
-		_ = s.Verify(env.ipk, data, []byte("signer-msg"), sigAttrs, 3, 2, 0, nil, 0, types.BestEffort, nil)
+		_ = s.Verify(env.ipk, data, []byte("signer-msg"), nil, sigAttrs, 3, 2, 0, nil, 0, types.BestEffort, nil)
 	})
 }
 

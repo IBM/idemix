@@ -203,6 +203,9 @@ func Benchmark_SignVerify(b *testing.B) {
 	for _, setupFn := range setups {
 		CSP, IssuerPublicKey, UserKey, NymKey, credential := setupFn(b)
 
+		NymPublicKey, err := NymKey.PublicKey()
+		require.NoError(b, err)
+
 		b.ResetTimer()
 
 		b.Run("sign-"+stackNameFromSetupFnName(runtime.FuncForPC(reflect.ValueOf(setupFn).Pointer()).Name()), func(b *testing.B) {
@@ -291,6 +294,7 @@ func Benchmark_SignVerify(b *testing.B) {
 							Epoch:            0,
 							VerificationType: bccsp.ExpectEidNymRhNym,
 							Metadata:         signOpts.Metadata,
+							Nym:              NymPublicKey,
 						},
 					)
 					require.NoError(b, err)

@@ -9,10 +9,52 @@ package msp
 import (
 	"testing"
 
+	bccsp "github.com/IBM/idemix/bccsp/types"
 	"github.com/hyperledger/fabric-protos-go-apiv2/msp"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/proto"
 )
+
+// TestNymSwapAttackAries mirrors TestNymSwapAttack for the Aries/BBS+ backend:
+// an adversary takes a legitimately-obtained Idemixidentity - with its genuine
+// associationProof, OU and Role untouched - and swaps out only its NymPublicKey
+// for a different, unrelated (but well-formed) pseudonym derived from the same
+// credential secret key. The forged identity must be rejected.
+func TestNymSwapAttackAries(t *testing.T) {
+	mspI, err := setupWithTypeAndVersion("testdata/aries/MSP1OU1eid1/", "MSP1OU1", MSPv1_3, IDEMIX_ARIES)
+	require.NoError(t, err)
+
+	id, err := getDefaultSigner(mspI)
+	require.NoError(t, err)
+
+	signingID, ok := id.(*IdemixSigningIdentity)
+	require.True(t, ok)
+
+	idemixMsp, ok := mspI.(*Idemixmsp)
+	require.True(t, ok)
+
+	otherNymKey, err := idemixMsp.csp.KeyDeriv(
+		signingID.UserKey,
+		&bccsp.IdemixNymKeyDerivationOpts{Temporary: true, IssuerPK: idemixMsp.ipk},
+	)
+	require.NoError(t, err)
+	otherNymPublicKey, err := otherNymKey.PublicKey()
+	require.NoError(t, err)
+
+	originalNymBytes, err := signingID.NymPublicKey.Bytes()
+	require.NoError(t, err)
+	otherNymBytes, err := otherNymPublicKey.Bytes()
+	require.NoError(t, err)
+	require.NotEqual(t, originalNymBytes, otherNymBytes, "the two pseudonyms must be different for this attack to make sense")
+
+	forged := newIdemixIdentity(idemixMsp, otherNymPublicKey, signingID.Role, signingID.OU, signingID.associationProof)
+
+	err = idemixMsp.Validate(forged)
+	require.Error(t, err, "the forged identity must be rejected: its claimed nym does not match the nym bound to the association proof")
+	require.Contains(t, err.Error(), "invalid nym")
+
+	require.NoError(t, idemixMsp.Validate(signingID))
+}
 
 func TestSigningAries(t *testing.T) {
 	msp, err := setupWithTypeAndVersion("testdata/aries/MSP1OU1eid1/", "MSP1", MSPv1_3, IDEMIX_ARIES)

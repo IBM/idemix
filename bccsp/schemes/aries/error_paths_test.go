@@ -10,11 +10,13 @@ import (
 	"crypto/rand"
 	"testing"
 
+	"github.com/IBM/idemix/bbs"
 	"github.com/IBM/idemix/bccsp/schemes/aries"
 	"github.com/IBM/idemix/bccsp/types"
 	math "github.com/IBM/mathlib"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/proto"
 )
 
 // fakeIPK implements types.IssuerPublicKey but is NOT *aries.IssuerPublicKey.
@@ -197,7 +199,7 @@ func TestErrorPaths_Signer_Verify(t *testing.T) {
 
 	t.Run("wrong_key_type", func(t *testing.T) {
 		err := signer.Verify(
-			&fakeIPK{}, []byte("sig"), []byte("msg"),
+			&fakeIPK{}, []byte("sig"), []byte("msg"), nil,
 			attributes, 2, 1, 0, nil, 0,
 			types.ExpectStandard, nil,
 		)
@@ -207,7 +209,7 @@ func TestErrorPaths_Signer_Verify(t *testing.T) {
 
 	t.Run("garbage_signature_bytes", func(t *testing.T) {
 		err := signer.Verify(
-			ipk, []byte("garbage"), []byte("msg"),
+			ipk, []byte("garbage"), []byte("msg"), nil,
 			attributes, 2, 1, 0, nil, 0,
 			types.ExpectStandard, nil,
 		)
@@ -217,7 +219,7 @@ func TestErrorPaths_Signer_Verify(t *testing.T) {
 
 	t.Run("empty_signature_bytes", func(t *testing.T) {
 		err := signer.Verify(
-			ipk, []byte{}, []byte("msg"),
+			ipk, []byte{}, []byte("msg"), nil,
 			attributes, 2, 1, 0, nil, 0,
 			types.ExpectStandard, nil,
 		)
@@ -495,5 +497,305 @@ func TestErrorPaths_User_NewPublicNymFromBytes(t *testing.T) {
 	t.Run("garbage_bytes", func(t *testing.T) {
 		_, err := user.NewPublicNymFromBytes([]byte("garbage"))
 		require.Error(t, err)
+	})
+}
+
+// eidNymRhNymEnv holds a fully valid credential + EidNymRhNym signature, plus everything
+// needed to re-verify it. Used by the F1/F2 regression tests below, which tamper with the
+// unmarshalled *aries.Signature before re-marshalling and re-verifying.
+type eidNymRhNymEnv struct {
+	curve    *math.Curve
+	ipk      types.IssuerPublicKey
+	sigBytes []byte
+	nym      *math.G1
+	attrs    []types.IdemixAttribute
+	msg      []byte
+	rhIndex  int
+	eidIndex int
+	skIndex  int
+}
+
+// buildEidNymRhNymSignature signs a full EidNymRhNym signature end-to-end so that both
+// NymEidIdx and NymRhIdx are populated (packageProof only sets them when the corresponding
+// commitment is non-nil, which requires sigType EidNym/EidNymRhNym).
+func buildEidNymRhNymSignature(t *testing.T) *eidNymRhNymEnv {
+	t.Helper()
+
+	curve := math.Curves[math.BLS12_381_BBS]
+	issuer := &aries.Issuer{Curve: curve}
+
+	attrNames := []string{"attr1", "attr2", "eid", "rh"}
+	rhIndex, eidIndex, skIndex := 3, 2, 0
+
+	isk, err := issuer.NewKey(attrNames)
+	require.NoError(t, err)
+	ipk := isk.Public()
+
+	rng, err := curve.Rand()
+	require.NoError(t, err)
+
+	user := &aries.User{Curve: curve, Rng: rng}
+	sk, err := user.NewKey()
+	require.NoError(t, err)
+
+	cr := &aries.CredRequest{Curve: curve}
+	credReq, blinding, err := cr.Blind(sk, ipk, []byte("nonce"))
+	require.NoError(t, err)
+
+	err = cr.BlindVerify(credReq, ipk, []byte("nonce"))
+	require.NoError(t, err)
+
+	credAttrs := []types.IdemixAttribute{
+		{Type: types.IdemixBytesAttribute, Value: []byte("msg1")},
+		{Type: types.IdemixIntAttribute, Value: 34},
+		{Type: types.IdemixBytesAttribute, Value: []byte("nymeid")},
+		{Type: types.IdemixBytesAttribute, Value: []byte("nymrh")},
+	}
+
+	credProto := &aries.Cred{BBS: bbs.New(curve), Curve: curve}
+
+	cred, err := credProto.Sign(isk, credReq, credAttrs)
+	require.NoError(t, err)
+
+	cred, err = cr.Unblind(cred, blinding)
+	require.NoError(t, err)
+
+	err = credProto.Verify(sk, ipk, cred, credAttrs)
+	require.NoError(t, err)
+
+	Nym, RNym, err := user.MakeNym(sk, ipk)
+	require.NoError(t, err)
+
+	signer := &aries.Signer{Curve: curve, Rng: rng}
+
+	sigAttrs := []types.IdemixAttribute{
+		{Type: types.IdemixBytesAttribute, Value: []byte("msg1")},
+		{Type: types.IdemixIntAttribute, Value: 34},
+		{Type: types.IdemixHiddenAttribute},
+		{Type: types.IdemixHiddenAttribute},
+	}
+
+	msg := []byte("silliness")
+
+	sigBytes, _, err := signer.Sign(
+		cred, sk, Nym, RNym, ipk, sigAttrs, msg, rhIndex, eidIndex, nil, types.EidNymRhNym, nil,
+	)
+	require.NoError(t, err)
+
+	err = signer.Verify(ipk, sigBytes, msg, Nym, sigAttrs, rhIndex, eidIndex, skIndex, nil, 0, types.ExpectEidNymRhNym, nil)
+	require.NoError(t, err)
+
+	return &eidNymRhNymEnv{
+		curve:    curve,
+		ipk:      ipk,
+		sigBytes: sigBytes,
+		nym:      Nym,
+		attrs:    sigAttrs,
+		msg:      msg,
+		rhIndex:  rhIndex,
+		eidIndex: eidIndex,
+		skIndex:  skIndex,
+	}
+}
+
+// verify unmarshals env.sigBytes, applies mutate to the proto, re-marshals, and verifies.
+func (env *eidNymRhNymEnv) verifyMutated(t *testing.T, mutate func(sig *aries.Signature)) error {
+	t.Helper()
+
+	sig := &aries.Signature{}
+	err := proto.Unmarshal(env.sigBytes, sig)
+	require.NoError(t, err)
+
+	mutate(sig)
+
+	tamperedBytes, err := proto.Marshal(sig)
+	require.NoError(t, err)
+
+	signer := &aries.Signer{Curve: env.curve}
+
+	return signer.Verify(
+		env.ipk, tamperedBytes, env.msg, env.nym, env.attrs,
+		env.rhIndex, env.eidIndex, env.skIndex, nil, 0,
+		types.ExpectEidNymRhNym, nil,
+	)
+}
+
+// TestErrorPaths_Signer_Verify_NymEidIdxOutOfRange regression-tests F1: Signer.Verify used
+// sig.NymEidIdx to index directly into signatureProof.ProofVC2.Responses without checking it
+// against the slice bounds first, which could panic on an out-of-range index taken from an
+// attacker-controlled, unmarshalled proto field.
+func TestErrorPaths_Signer_Verify_NymEidIdxOutOfRange(t *testing.T) {
+	env := buildEidNymRhNymSignature(t)
+
+	t.Run("negative", func(t *testing.T) {
+		err := env.verifyMutated(t, func(sig *aries.Signature) { sig.NymEidIdx = -1 })
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "invalid signature: nym eid index out of range")
+	})
+
+	t.Run("too_large", func(t *testing.T) {
+		err := env.verifyMutated(t, func(sig *aries.Signature) { sig.NymEidIdx = 1 << 20 })
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "invalid signature: nym eid index out of range")
+	})
+}
+
+// TestErrorPaths_Signer_Verify_NymRhIdxOutOfRange regression-tests F1 for sig.NymRhIdx, the
+// analogous index used to look up signatureProof.ProofVC2.Responses for the RhNym equality check.
+func TestErrorPaths_Signer_Verify_NymRhIdxOutOfRange(t *testing.T) {
+	env := buildEidNymRhNymSignature(t)
+
+	t.Run("negative", func(t *testing.T) {
+		err := env.verifyMutated(t, func(sig *aries.Signature) { sig.NymRhIdx = -1 })
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "invalid signature: nym rh index out of range")
+	})
+
+	t.Run("too_large", func(t *testing.T) {
+		err := env.verifyMutated(t, func(sig *aries.Signature) { sig.NymRhIdx = 1 << 20 })
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "invalid signature: nym rh index out of range")
+	})
+}
+
+// truncateProofG1Responses re-parses a ProofG1-encoded byte slice and re-serializes it with
+// its Responses truncated to n entries, keeping the same Commitment.
+func truncateProofG1Responses(t *testing.T, curve *math.Curve, proofBytes []byte, n int) []byte {
+	t.Helper()
+
+	proof, err := bbs.NewBBSLib(curve).ParseProofG1(proofBytes)
+	require.NoError(t, err)
+
+	truncated := bbs.NewProofG1(proof.Commitment, proof.Responses[:n])
+
+	return truncated.ToBytes()
+}
+
+// TestErrorPaths_Signer_Verify_NymProofNotEnoughResponses regression-tests F2: Signer.Verify
+// indexed nymProof.Responses[AttributeIndexInNym] without first checking that the attacker-
+// controlled, unmarshalled ProofG1 actually had enough responses, which could panic.
+func TestErrorPaths_Signer_Verify_NymProofNotEnoughResponses(t *testing.T) {
+	env := buildEidNymRhNymSignature(t)
+
+	err := env.verifyMutated(t, func(sig *aries.Signature) {
+		sig.NymProof = truncateProofG1Responses(t, env.curve, sig.NymProof, 1)
+	})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "invalid nym proof: not enough responses")
+}
+
+// TestErrorPaths_Signer_Verify_NymEidProofNotEnoughResponses regression-tests F2 for
+// sig.NymEidProof, the analogous ProofG1 used in the EidNym equality check.
+func TestErrorPaths_Signer_Verify_NymEidProofNotEnoughResponses(t *testing.T) {
+	env := buildEidNymRhNymSignature(t)
+
+	err := env.verifyMutated(t, func(sig *aries.Signature) {
+		sig.NymEidProof = truncateProofG1Responses(t, env.curve, sig.NymEidProof, 1)
+	})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "invalid nym eid proof: not enough responses")
+}
+
+// TestErrorPaths_Signer_Verify_NymRhProofNotEnoughResponses regression-tests F2 for
+// sig.NymRhProof, the analogous ProofG1 used in the RhNym equality check.
+func TestErrorPaths_Signer_Verify_NymRhProofNotEnoughResponses(t *testing.T) {
+	env := buildEidNymRhNymSignature(t)
+
+	err := env.verifyMutated(t, func(sig *aries.Signature) {
+		sig.NymRhProof = truncateProofG1Responses(t, env.curve, sig.NymRhProof, 1)
+	})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "invalid rh nym proof: not enough responses")
+}
+
+// TestErrorPaths_Signer_Verify_SkIndexOutOfRange regression-tests F2's sibling bounds check:
+// Signer.Verify computed skRespIdx := IndexOffsetVC2Attributes + skIndex and indexed
+// signatureProof.ProofVC2.Responses with it without checking it against the slice length,
+// which could panic when the caller-supplied skIndex is out of range.
+//
+// skIndex must stay within [0, len(attributes)] to avoid panicking earlier, inside
+// attributesToSignatureMessage's own slicing on the attributes list — the case exercised here
+// is a skIndex that is in range for that slice but still out of range for skRespIdx against
+// signatureProof.ProofVC2.Responses.
+func TestErrorPaths_Signer_Verify_SkIndexOutOfRange(t *testing.T) {
+	env := buildEidNymRhNymSignature(t)
+
+	signer := &aries.Signer{Curve: env.curve}
+
+	err := signer.Verify(
+		env.ipk, env.sigBytes, env.msg, env.nym, env.attrs,
+		env.rhIndex, env.eidIndex, len(env.attrs), nil, 0,
+		types.ExpectEidNymRhNym, nil,
+	)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "invalid signature: sk index out of range")
+}
+
+// TestErrorPaths_Cred_Verify_SkPosOutOfRange regression-tests F3: Cred.Verify used
+// credential.SkPos, an attacker-controlled unmarshalled proto field, to index ipk.PKwG.H and
+// to select which credential.Attrs[i] to skip, without validating it against len(ipk.PKwG.H)
+// first, which could panic on an out-of-range or negative value.
+func TestErrorPaths_Cred_Verify_SkPosOutOfRange(t *testing.T) {
+	curve := math.Curves[math.BLS12_381_BBS]
+	issuer := &aries.Issuer{Curve: curve}
+
+	attrNames := []string{"attr1", "attr2", "attr3", "attr4"}
+
+	isk, err := issuer.NewKey(attrNames)
+	require.NoError(t, err)
+	ipk := isk.Public()
+
+	rng, err := curve.Rand()
+	require.NoError(t, err)
+
+	user := &aries.User{Curve: curve, Rng: rng}
+	sk, err := user.NewKey()
+	require.NoError(t, err)
+
+	cr := &aries.CredRequest{Curve: curve}
+	credReq, blinding, err := cr.Blind(sk, ipk, []byte("nonce"))
+	require.NoError(t, err)
+
+	credAttrs := []types.IdemixAttribute{
+		{Type: types.IdemixBytesAttribute, Value: []byte("msg1")},
+		{Type: types.IdemixIntAttribute, Value: 34},
+		{Type: types.IdemixBytesAttribute, Value: []byte("msg3")},
+		{Type: types.IdemixBytesAttribute, Value: []byte("msg4")},
+	}
+
+	credProto := &aries.Cred{BBS: bbs.New(curve), Curve: curve}
+
+	credBytes, err := credProto.Sign(isk, credReq, credAttrs)
+	require.NoError(t, err)
+
+	credBytes, err = cr.Unblind(credBytes, blinding)
+	require.NoError(t, err)
+
+	err = credProto.Verify(sk, ipk, credBytes, credAttrs)
+	require.NoError(t, err)
+
+	verifyWithSkPos := func(skPos int32) error {
+		cred := &aries.Credential{}
+		uerr := proto.Unmarshal(credBytes, cred)
+		require.NoError(t, uerr)
+
+		cred.SkPos = skPos
+
+		tamperedBytes, merr := proto.Marshal(cred)
+		require.NoError(t, merr)
+
+		return credProto.Verify(sk, ipk, tamperedBytes, credAttrs)
+	}
+
+	t.Run("negative", func(t *testing.T) {
+		err := verifyWithSkPos(-1)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "invalid credential: sk_pos [-1] out of range")
+	})
+
+	t.Run("too_large", func(t *testing.T) {
+		err := verifyWithSkPos(1 << 20)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "invalid credential: sk_pos [1048576] out of range")
 	})
 }

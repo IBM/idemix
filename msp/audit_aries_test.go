@@ -44,6 +44,9 @@ func TestAuditAries(t *testing.T) {
 
 	msg := []byte("Lost forever, now and ever\nTo this magical sound that I hear")
 
+	nymPublicKey, err := idemixSigner.NymKey.PublicKey()
+	require.NoError(t, err)
+
 	// STEP 1: Sign and Verify normally
 
 	signature, err := csp.Sign(
@@ -83,6 +86,7 @@ func TestAuditAries(t *testing.T) {
 			EidIndex:         AttributeIndexEnrollmentId,
 			Epoch:            0,
 			VerificationType: bccsp.BestEffort,
+			Nym:              nymPublicKey,
 		},
 	)
 	require.NoError(t, err)
@@ -130,6 +134,7 @@ func TestAuditAries(t *testing.T) {
 			EidIndex:         AttributeIndexEnrollmentId,
 			Epoch:            0,
 			VerificationType: bccsp.ExpectEidNym,
+			Nym:              nymPublicKey,
 		},
 	)
 	require.NoError(t, err)
@@ -191,6 +196,7 @@ func TestAuditAries(t *testing.T) {
 			EidIndex:         AttributeIndexEnrollmentId,
 			Epoch:            0,
 			VerificationType: bccsp.ExpectEidNymRhNym,
+			Nym:              nymPublicKey,
 		},
 	)
 	require.NoError(t, err)

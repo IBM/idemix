@@ -130,7 +130,7 @@ func TestSmartcardSigner(t *testing.T) {
 	sig, _, err := signer.Sign(credBytes, nil, B, r, isk.Public(), idemixAttrs, []byte("silliness"), 0, 0, nil, types.SmartcardNoNyms, nil)
 	require.NoError(t, err)
 
-	err = signer.Verify(isk.Public(), sig, []byte("silliness"), idemixAttrs, 0, 0, 0, nil, 0, types.ExpectSmartcardNoNyms, nil)
+	err = signer.Verify(isk.Public(), sig, []byte("silliness"), B, idemixAttrs, 0, 0, 0, nil, 0, types.ExpectSmartcardNoNyms, nil)
 	require.NoError(t, err)
 
 	rhIndex, eidIndex := 3, 2
@@ -155,7 +155,7 @@ func TestSmartcardSigner(t *testing.T) {
 	sig, _, err = signer.Sign(credBytes, nil, B, r, isk.Public(), idemixAttrs, []byte("silliness"), rhIndex, eidIndex, nil, types.Smartcard, nil)
 	require.NoError(t, err)
 
-	err = signer.Verify(isk.Public(), sig, []byte("silliness"), idemixAttrs, rhIndex, eidIndex, 0, nil, 0, types.ExpectSmartcard, nil)
+	err = signer.Verify(isk.Public(), sig, []byte("silliness"), B, idemixAttrs, rhIndex, eidIndex, 0, nil, 0, types.ExpectSmartcard, nil)
 	require.NoError(t, err)
 
 	idemixAttrs = []types.IdemixAttribute{
@@ -177,7 +177,7 @@ func TestSmartcardSigner(t *testing.T) {
 	sig, _, err = signer.Sign(credBytes, nil, B, r, isk.Public(), idemixAttrs, []byte("silliness"), rhIndex, eidIndex, nil, types.Smartcard, nil)
 	require.NoError(t, err)
 
-	err = signer.Verify(isk.Public(), sig, []byte("silliness"), idemixAttrs, rhIndex, eidIndex, 0, nil, 0, types.ExpectSmartcard, nil)
+	err = signer.Verify(isk.Public(), sig, []byte("silliness"), B, idemixAttrs, rhIndex, eidIndex, 0, nil, 0, types.ExpectSmartcard, nil)
 	require.NoError(t, err)
 
 	idemixAttrs = []types.IdemixAttribute{
@@ -199,7 +199,7 @@ func TestSmartcardSigner(t *testing.T) {
 	sig, _, err = signer.Sign(credBytes, nil, B, r, isk.Public(), idemixAttrs, []byte("silliness"), rhIndex, eidIndex, nil, types.Smartcard, nil)
 	require.NoError(t, err)
 
-	err = signer.Verify(isk.Public(), sig, []byte("silliness"), idemixAttrs, rhIndex, eidIndex, 0, nil, 0, types.ExpectSmartcard, nil)
+	err = signer.Verify(isk.Public(), sig, []byte("silliness"), B, idemixAttrs, rhIndex, eidIndex, 0, nil, 0, types.ExpectSmartcard, nil)
 	require.NoError(t, err)
 
 	idemixAttrs = []types.IdemixAttribute{
@@ -220,7 +220,7 @@ func TestSmartcardSigner(t *testing.T) {
 	sig, _, err = signer.Sign(credBytes, nil, B, r, isk.Public(), idemixAttrs, []byte("silliness"), rhIndex, eidIndex, nil, types.Smartcard, nil)
 	require.NoError(t, err)
 
-	err = signer.Verify(isk.Public(), sig, []byte("silliness"), idemixAttrs, rhIndex, eidIndex, 0, nil, 0, types.ExpectSmartcard, nil)
+	err = signer.Verify(isk.Public(), sig, []byte("silliness"), B, idemixAttrs, rhIndex, eidIndex, 0, nil, 0, types.ExpectSmartcard, nil)
 	require.NoError(t, err)
 
 	/**************************************************/
@@ -242,7 +242,7 @@ func TestSmartcardSigner(t *testing.T) {
 	sig, _, err = signer.Sign(credBytes, nil, B, r, isk.Public(), idemixAttrs, []byte("silliness"), rhIndex, eidIndex, nil, types.Smartcard, meta)
 	require.NoError(t, err)
 
-	err = signer.Verify(isk.Public(), sig, []byte("silliness"), idemixAttrs, rhIndex, eidIndex, 0, nil, 0, types.ExpectSmartcard, meta)
+	err = signer.Verify(isk.Public(), sig, []byte("silliness"), B, idemixAttrs, rhIndex, eidIndex, 0, nil, 0, types.ExpectSmartcard, meta)
 	require.NoError(t, err)
 }
 
@@ -321,7 +321,7 @@ func TestSmartcardSigner1(t *testing.T) {
 	require.NoError(t, err)
 
 	// verify idemix signature
-	err = verifier.Verify(ipk, sig, nil, []types.IdemixAttribute{
+	err = verifier.Verify(ipk, sig, nil, nil, []types.IdemixAttribute{
 		{
 			Type:  types.IdemixBytesAttribute,
 			Value: []byte(ou),
@@ -550,7 +550,7 @@ func TestW3CCred(t *testing.T) {
 	sig, _, err := signer.Sign(credBytes, sk, Nym, RNmy, ipk, idemixAttrs, []byte("silliness"), rhIndex, eidIndex, nil, types.Standard, nil)
 	require.NoError(t, err)
 
-	err = signer.Verify(ipk, sig, []byte("silliness"), idemixAttrs, rhIndex, eidIndex, 0, nil, 0, types.Basic, nil)
+	err = signer.Verify(ipk, sig, []byte("silliness"), Nym, idemixAttrs, rhIndex, eidIndex, 0, nil, 0, types.Basic, nil)
 	require.NoError(t, err)
 
 	// ////////////////////
@@ -565,7 +565,7 @@ func TestW3CCred(t *testing.T) {
 	cb.Add(ipk.(*aries.IssuerPublicKey).PKwG.H[eidIndex+1], bbs.FrFromOKM([]byte(`_:c14n0 <cbdccard:4_eid> "alice.remote" .`), curve))
 	assert.True(t, cb.Build().Equals(m.EidNymAuditData.Nym))
 
-	err = signer.Verify(ipk, sig, []byte("silliness"), idemixAttrs, rhIndex, eidIndex, 0, nil, 0, types.ExpectEidNym, nil)
+	err = signer.Verify(ipk, sig, []byte("silliness"), Nym, idemixAttrs, rhIndex, eidIndex, 0, nil, 0, types.ExpectEidNym, nil)
 	require.NoError(t, err)
 }
 
@@ -761,7 +761,7 @@ func TestW3CCredSkElsewhere(t *testing.T) {
 			sig, _, err := signer.Sign(credBytes, sk, Nym, RNmy, ipk, idemixAttrs, []byte("silliness"), rhIndex, eidIndex, nil, types.Standard, nil)
 			require.NoError(t, err)
 
-			err = signer.Verify(ipk, sig, []byte("silliness"), idemixAttrs, rhIndex, eidIndex, skIndex, nil, 0, types.Basic, nil)
+			err = signer.Verify(ipk, sig, []byte("silliness"), Nym, idemixAttrs, rhIndex, eidIndex, skIndex, nil, 0, types.Basic, nil)
 			require.NoError(t, err)
 
 			// ////////////////////
@@ -776,7 +776,7 @@ func TestW3CCredSkElsewhere(t *testing.T) {
 			cb.Add(ipk.(*aries.IssuerPublicKey).PKwG.H[eidIndexInBases], bbs.FrFromOKM(eidAttr, curve))
 			assert.True(t, cb.Build().Equals(m.EidNymAuditData.Nym))
 
-			err = signer.Verify(ipk, sig, []byte("silliness"), idemixAttrs, rhIndex, eidIndex, skIndex, nil, 0, types.ExpectEidNym, nil)
+			err = signer.Verify(ipk, sig, []byte("silliness"), Nym, idemixAttrs, rhIndex, eidIndex, skIndex, nil, 0, types.ExpectEidNym, nil)
 			require.NoError(t, err)
 
 			// ////////////////////
@@ -802,11 +802,11 @@ func TestW3CCredSkElsewhere(t *testing.T) {
 			sig, _, err = signer.Sign(credBytes, sk, Nym, RNmy, ipk, idemixAttrs, []byte("silliness"), rhIndex, eidIndex, nil, types.EidNym, meta)
 			require.NoError(t, err)
 
-			err = signer.Verify(ipk, sig, []byte("silliness"), idemixAttrs, rhIndex, eidIndex, skIndex, nil, 0, types.ExpectEidNym, nil)
+			err = signer.Verify(ipk, sig, []byte("silliness"), Nym, idemixAttrs, rhIndex, eidIndex, skIndex, nil, 0, types.ExpectEidNym, nil)
 			require.NoError(t, err)
 
 			// supply correct metadata for verification
-			err = signer.Verify(ipk, sig, []byte("silliness"), idemixAttrs,
+			err = signer.Verify(ipk, sig, []byte("silliness"), Nym, idemixAttrs,
 				rhIndex, eidIndex, skIndex, nil, 0, types.ExpectEidNym, meta)
 			require.NoError(t, err)
 
@@ -831,7 +831,7 @@ func TestW3CCredSkElsewhere(t *testing.T) {
 			cb.Add(ipk.(*aries.IssuerPublicKey).PKwG.H[rhIndexInBases], m.RhNymAuditData.Attr)
 			assert.True(t, cb.Build().Equals(m.RhNymAuditData.Nym))
 
-			err = signer.Verify(ipk, sig, []byte("tome"), idemixAttrs, rhIndex, eidIndex, skIndex, nil, 0, types.ExpectEidNymRhNym, nil)
+			err = signer.Verify(ipk, sig, []byte("tome"), Nym, idemixAttrs, rhIndex, eidIndex, skIndex, nil, 0, types.ExpectEidNymRhNym, nil)
 			require.NoError(t, err)
 
 			// ///////////////////
@@ -857,11 +857,11 @@ func TestW3CCredSkElsewhere(t *testing.T) {
 			sig, _, err = signer.Sign(credBytes, sk, Nym, RNmy, ipk, idemixAttrs, []byte("silliness"), rhIndex, eidIndex, nil, types.EidNymRhNym, meta)
 			require.NoError(t, err)
 
-			err = signer.Verify(ipk, sig, []byte("silliness"), idemixAttrs, rhIndex, eidIndex, skIndex, nil, 0, types.ExpectEidNymRhNym, nil)
+			err = signer.Verify(ipk, sig, []byte("silliness"), Nym, idemixAttrs, rhIndex, eidIndex, skIndex, nil, 0, types.ExpectEidNymRhNym, nil)
 			require.NoError(t, err)
 
 			// supply correct metadata for verification
-			err = signer.Verify(ipk, sig, []byte("silliness"), idemixAttrs, rhIndex, eidIndex, skIndex, nil, 0, types.ExpectEidNymRhNym, meta)
+			err = signer.Verify(ipk, sig, []byte("silliness"), Nym, idemixAttrs, rhIndex, eidIndex, skIndex, nil, 0, types.ExpectEidNymRhNym, meta)
 			require.NoError(t, err)
 
 			// audit with AuditNymEid - it should succeed with the right nym and randomness
@@ -987,7 +987,7 @@ func TestSigner(t *testing.T) {
 	sig, _, err := signer.Sign(cred, sk, Nym, RNmy, ipk, idemixAttrs, []byte("silliness"), rhIndex, eidIndex, nil, types.Standard, nil)
 	require.NoError(t, err)
 
-	err = signer.Verify(ipk, sig, []byte("silliness"), idemixAttrs, rhIndex, eidIndex, 0, nil, 0, types.Basic, nil)
+	err = signer.Verify(ipk, sig, []byte("silliness"), Nym, idemixAttrs, rhIndex, eidIndex, 0, nil, 0, types.Basic, nil)
 	require.NoError(t, err)
 
 	// ////////////////////
@@ -1002,7 +1002,7 @@ func TestSigner(t *testing.T) {
 	cb.Add(ipk.(*aries.IssuerPublicKey).PKwG.H[eidIndex+1], m.EidNymAuditData.Attr)
 	assert.True(t, cb.Build().Equals(m.EidNymAuditData.Nym))
 
-	err = signer.Verify(ipk, sig, []byte("silliness"), idemixAttrs, rhIndex, eidIndex, 0, nil, 0, types.ExpectEidNym, nil)
+	err = signer.Verify(ipk, sig, []byte("silliness"), Nym, idemixAttrs, rhIndex, eidIndex, 0, nil, 0, types.ExpectEidNym, nil)
 	require.NoError(t, err)
 
 	// ////////////////////
@@ -1028,11 +1028,11 @@ func TestSigner(t *testing.T) {
 	sig, _, err = signer.Sign(cred, sk, Nym, RNmy, ipk, idemixAttrs, []byte("silliness"), rhIndex, eidIndex, nil, types.EidNym, meta)
 	require.NoError(t, err)
 
-	err = signer.Verify(ipk, sig, []byte("silliness"), idemixAttrs, rhIndex, eidIndex, 0, nil, 0, types.ExpectEidNym, nil)
+	err = signer.Verify(ipk, sig, []byte("silliness"), Nym, idemixAttrs, rhIndex, eidIndex, 0, nil, 0, types.ExpectEidNym, nil)
 	require.NoError(t, err)
 
 	// supply correct metadata for verification
-	err = signer.Verify(ipk, sig, []byte("silliness"), idemixAttrs,
+	err = signer.Verify(ipk, sig, []byte("silliness"), Nym, idemixAttrs,
 		rhIndex, eidIndex, 0, nil, 0, types.ExpectEidNym, meta)
 	require.NoError(t, err)
 
@@ -1046,7 +1046,7 @@ func TestSigner(t *testing.T) {
 	}
 
 	// supply wrong metadata for verification
-	err = signer.Verify(ipk, sig, []byte("silliness"), idemixAttrs,
+	err = signer.Verify(ipk, sig, []byte("silliness"), Nym, idemixAttrs,
 		rhIndex, eidIndex, 0, nil, 0, types.ExpectEidNym, meta)
 	require.EqualError(t, err, "signature invalid: nym eid validation failed, does not match regenerated nym eid")
 
@@ -1055,7 +1055,7 @@ func TestSigner(t *testing.T) {
 	}
 
 	// supply wrong metadata for verification
-	err = signer.Verify(ipk, sig, []byte("silliness"), idemixAttrs,
+	err = signer.Verify(ipk, sig, []byte("silliness"), Nym, idemixAttrs,
 		rhIndex, eidIndex, 0, nil, 0, types.ExpectEidNym, meta)
 	require.EqualError(t, err, "signature invalid: nym eid validation failed, signature nym eid does not match metadata")
 
@@ -1064,7 +1064,7 @@ func TestSigner(t *testing.T) {
 	}
 
 	// supply wrong metadata for verification
-	err = signer.Verify(ipk, sig, []byte("silliness"), idemixAttrs,
+	err = signer.Verify(ipk, sig, []byte("silliness"), Nym, idemixAttrs,
 		rhIndex, eidIndex, 0, nil, 0, types.ExpectEidNym, meta)
 	require.EqualError(t, err, "signature invalid: nym eid validation failed, failed to unmarshal meta nym eid")
 
@@ -1078,7 +1078,7 @@ func TestSigner(t *testing.T) {
 	}
 
 	// supply wrong metadata for verification
-	err = signer.Verify(ipk, sig, []byte("silliness"), idemixAttrs,
+	err = signer.Verify(ipk, sig, []byte("silliness"), Nym, idemixAttrs,
 		rhIndex, eidIndex, 0, nil, 0, types.ExpectEidNym, meta)
 	require.EqualError(t, err, "signature invalid: nym eid validation failed, does not match metadata")
 
@@ -1158,7 +1158,7 @@ func TestSigner(t *testing.T) {
 	cb.Add(ipk.(*aries.IssuerPublicKey).PKwG.H[rhIndex+1], m.RhNymAuditData.Attr)
 	assert.True(t, cb.Build().Equals(m.RhNymAuditData.Nym))
 
-	err = signer.Verify(ipk, sig, []byte("tome"), idemixAttrs, rhIndex, eidIndex, 0, nil, 0, types.ExpectEidNymRhNym, nil)
+	err = signer.Verify(ipk, sig, []byte("tome"), Nym, idemixAttrs, rhIndex, eidIndex, 0, nil, 0, types.ExpectEidNymRhNym, nil)
 	require.NoError(t, err)
 
 	// ///////////////////
@@ -1184,11 +1184,11 @@ func TestSigner(t *testing.T) {
 	sig, _, err = signer.Sign(cred, sk, Nym, RNmy, ipk, idemixAttrs, []byte("silliness"), rhIndex, eidIndex, nil, types.EidNymRhNym, meta)
 	require.NoError(t, err)
 
-	err = signer.Verify(ipk, sig, []byte("silliness"), idemixAttrs, rhIndex, eidIndex, 0, nil, 0, types.ExpectEidNymRhNym, nil)
+	err = signer.Verify(ipk, sig, []byte("silliness"), Nym, idemixAttrs, rhIndex, eidIndex, 0, nil, 0, types.ExpectEidNymRhNym, nil)
 	require.NoError(t, err)
 
 	// supply correct metadata for verification
-	err = signer.Verify(ipk, sig, []byte("silliness"), idemixAttrs, rhIndex, eidIndex, 0, nil, 0, types.ExpectEidNymRhNym, meta)
+	err = signer.Verify(ipk, sig, []byte("silliness"), Nym, idemixAttrs, rhIndex, eidIndex, 0, nil, 0, types.ExpectEidNymRhNym, meta)
 	require.NoError(t, err)
 
 	meta = &types.IdemixSignerMetadata{
@@ -1201,7 +1201,7 @@ func TestSigner(t *testing.T) {
 	}
 
 	// supply wrong metadata for verification
-	err = signer.Verify(ipk, sig, []byte("silliness"), idemixAttrs, rhIndex, eidIndex, 0, nil, 0, types.ExpectEidNymRhNym, meta)
+	err = signer.Verify(ipk, sig, []byte("silliness"), Nym, idemixAttrs, rhIndex, eidIndex, 0, nil, 0, types.ExpectEidNymRhNym, meta)
 	require.EqualError(t, err, "signature invalid: nym rh validation failed, does not match regenerated nym rh")
 
 	meta = &types.IdemixSignerMetadata{
@@ -1209,7 +1209,7 @@ func TestSigner(t *testing.T) {
 	}
 
 	// supply wrong metadata for verification
-	err = signer.Verify(ipk, sig, []byte("silliness"), idemixAttrs, rhIndex, eidIndex, 0, nil, 0, types.ExpectEidNymRhNym, meta)
+	err = signer.Verify(ipk, sig, []byte("silliness"), Nym, idemixAttrs, rhIndex, eidIndex, 0, nil, 0, types.ExpectEidNymRhNym, meta)
 	require.EqualError(t, err, "signature invalid: rh nym validation failed, signature rh nym does not match metadata")
 
 	meta = &types.IdemixSignerMetadata{
@@ -1217,7 +1217,7 @@ func TestSigner(t *testing.T) {
 	}
 
 	// supply wrong metadata for verification
-	err = signer.Verify(ipk, sig, []byte("silliness"), idemixAttrs, rhIndex, eidIndex, 0, nil, 0, types.ExpectEidNymRhNym, meta)
+	err = signer.Verify(ipk, sig, []byte("silliness"), Nym, idemixAttrs, rhIndex, eidIndex, 0, nil, 0, types.ExpectEidNymRhNym, meta)
 	require.EqualError(t, err, "signature invalid: rh nym validation failed, failed to unmarshal meta rh nym")
 
 	meta = &types.IdemixSignerMetadata{
@@ -1230,7 +1230,7 @@ func TestSigner(t *testing.T) {
 	}
 
 	// supply wrong metadata for verification
-	err = signer.Verify(ipk, sig, []byte("silliness"), idemixAttrs, rhIndex, eidIndex, 0, nil, 0, types.ExpectEidNymRhNym, meta)
+	err = signer.Verify(ipk, sig, []byte("silliness"), Nym, idemixAttrs, rhIndex, eidIndex, 0, nil, 0, types.ExpectEidNymRhNym, meta)
 	require.EqualError(t, err, "signature invalid: nym rh validation failed, does not match metadata")
 
 	// audit with AuditNymEid - it should succeed with the right nym and randomness
@@ -1291,7 +1291,7 @@ func TestSigner(t *testing.T) {
 	sig, _, err = signer.Sign(cred, sk, Nym, RNmy, ipk, idemixAttrs, []byte("silliness"), rhIndex, eidIndex, nil, types.Standard, nil)
 	require.NoError(t, err)
 
-	err = signer.Verify(ipk, sig, []byte("silliness"), idemixAttrs, rhIndex, eidIndex, 0, nil, 0, types.ExpectEidNym, nil)
+	err = signer.Verify(ipk, sig, []byte("silliness"), Nym, idemixAttrs, rhIndex, eidIndex, 0, nil, 0, types.ExpectEidNym, nil)
 	require.EqualError(t, err, "no EidNym provided but ExpectEidNym required")
 
 	// ///////////////////
@@ -1301,7 +1301,7 @@ func TestSigner(t *testing.T) {
 	sig, _, err = signer.Sign(cred, sk, Nym, RNmy, ipk, idemixAttrs, []byte("silliness"), rhIndex, eidIndex, nil, types.EidNym, nil)
 	require.NoError(t, err)
 
-	err = signer.Verify(ipk, sig, []byte("silliness"), idemixAttrs, rhIndex, eidIndex, 0, nil, 0, types.ExpectEidNymRhNym, nil)
+	err = signer.Verify(ipk, sig, []byte("silliness"), Nym, idemixAttrs, rhIndex, eidIndex, 0, nil, 0, types.ExpectEidNymRhNym, nil)
 	require.EqualError(t, err, "no RhNym provided but ExpectEidNymRhNym required")
 
 	// ////////////////////

@@ -551,6 +551,7 @@ func (id *Idemixidentity) verifyProof() error {
 			RhIndex:  rhIndex,
 			EidIndex: eidIndex,
 			Epoch:    id.msp.epoch,
+			Nym:      id.NymPublicKey,
 		},
 	)
 	if err == nil && !valid {
