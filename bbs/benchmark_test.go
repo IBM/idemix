@@ -538,3 +538,50 @@ func BenchmarkHashToG1(b *testing.B) {
 		_ = benchCurve.HashToG1WithDomain(data, dst)
 	}
 }
+
+// BenchmarkNewRandomZr measures random scalar generation, which is called once per hidden
+// attribute (blinding factors) and once or twice per signing operation (e, s). A mathlib
+// change to honor the caller's io.Reader (v0.3.0 -> v0.3.1) made this several times more
+// expensive on the gnark-backed curves (big.Int rejection sampling + SetBigInt instead of
+// fr.Element.SetRandom), so this benchmark exists to catch a repeat of that regression.
+func BenchmarkNewRandomZr(b *testing.B) {
+	b.ReportAllocs()
+	b.ResetTimer()
+	for range b.N {
+		_ = benchCurve.NewRandomZr(rand.Reader)
+	}
+}
+
+// BenchmarkSumOfG1ProductsCrossover sweeps the number of (base, scalar) pairs to find where
+// curve.MultiScalarMul starts to beat a pairwise Mul2+Add loop. The result backs the
+// msmThreshold constant in sumOfG1Products (bbs12381g2pub.go) — most hot-path call sites in
+// this package sum well under a dozen bases, where MultiScalarMul's large fixed cost (gnark's
+// bucket-method MultiExp goroutine fan-out) loses to the simple loop.
+func BenchmarkSumOfG1ProductsCrossover(b *testing.B) {
+	sizes := []int{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 12, 16, 20, 32}
+	impls := map[string]func([]*ml.G1, []*ml.Zr) *ml.G1{
+		"pairwise": bbs.SumOfG1ProductsPairwiseForBench,
+		"msm": func(bases []*ml.G1, scalars []*ml.Zr) *ml.G1 {
+			return ml.Curves[bases[0].CurveID()].MultiScalarMul(bases, scalars)
+		},
+	}
+
+	for _, n := range sizes {
+		bases := make([]*ml.G1, n)
+		scalars := make([]*ml.Zr, n)
+		for i := range bases {
+			bases[i] = benchCurve.GenG1.Mul(benchCurve.NewRandomZr(rand.Reader))
+			scalars[i] = benchCurve.NewRandomZr(rand.Reader)
+		}
+
+		for name, fn := range impls {
+			b.Run(fmt.Sprintf("n=%d/%s", n, name), func(b *testing.B) {
+				b.ReportAllocs()
+				b.ResetTimer()
+				for range b.N {
+					_ = fn(bases, scalars)
+				}
+			})
+		}
+	}
+}

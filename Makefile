@@ -15,6 +15,14 @@ unit-tests:
 unit-tests-race:
 	@export GORACE=history_size=7; go test -timeout 960s -race -cover $(shell go list ./...)
 
+# bench runs the crypto benchmarks (bbs/, bccsp/schemes/aries/, bccsp/) with a fixed,
+# noise-resistant sample size. Not part of `make all` — benchmarks are much slower than
+# unit tests and absolute timings are too machine-dependent for a pass/fail gate; use
+# benchstat to compare two runs (e.g. before/after a change) instead.
+.PHONY: bench
+bench:
+	@go test ./bbs/... ./bccsp/schemes/aries/... ./bccsp/... -run '^$$' -bench . -benchtime 200x -count 6 -cpu 1
+
 .PHONY: check-deps
 check-deps:
 	@go install github.com/google/addlicense@latest
