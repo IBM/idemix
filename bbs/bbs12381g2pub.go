@@ -355,40 +355,18 @@ func (cb *commitmentBuilder) Build() *ml.G1 {
 	return sumOfG1Products(cb.bases, cb.scalars)
 }
 
-// msmThreshold is the minimum number of (base, scalar) pairs at which curve.MultiScalarMul
-// is faster than a pairwise Mul2+Add loop. gnark's bucket-method MultiExp (the backend for
-// the gnark-based curves) has a large fixed cost — window/chunk setup and goroutine fan-out —
-// that is tuned for inputs orders of magnitude larger than the 2-20 bases seen on this
-// package's hot paths (per-attribute nym/signature proofs), so calling it unconditionally
-// regressed those paths by roughly 4x for a single base.
+// sumOfG1Products computes the sum via pairwise Mul2 (joint scalar multiplication), which is
+// not faster in wall-clock time than two independent Mul calls on the gnark-backed curves (it
+// forgoes the GLV endomorphism speedup — see mathlib's Mul2 doc comment), but it allocates far
+// less, so it is preferred over a naive Mul+Add loop for the same wall-clock cost.
 //
-// Benchmarked on Apple M1 Max, BLS12_381_BBS_GURVY, go test -bench BenchmarkZZCrossover
-// -cpu 1 (see bbs/benchmark_test.go BenchmarkSumOfG1ProductsCrossover): the pairwise loop
-// wins up to n=6 bases (e.g. n=6: ~550us loop vs ~530-2300us noisy MultiScalarMul), and
-// MultiScalarMul wins from n=7 on (n=7: ~650-970us loop vs ~660-970us MultiScalarMul, trending
-// in MultiScalarMul's favor as n grows; n=20: ~1.6ms loop vs ~0.85ms MultiScalarMul).
-const msmThreshold = 7
-
+// It deliberately does not dispatch to curve.MultiScalarMul for larger inputs. This package's
+// hot paths (per-attribute nym/signature proofs) sum only a handful of bases, and gnark's
+// bucket-method MultiExp buys its wall-clock win there by fanning out over runtime.NumCPU()
+// goroutines and allocating buckets — cheap for one caller in isolation, but a net loss once
+// the whole process is already saturated with concurrent verifications. Callers that sum many
+// bases and want MultiExp can call curve.MultiScalarMul themselves.
 func sumOfG1Products(bases []*ml.G1, scalars []*ml.Zr) *ml.G1 {
-	switch {
-	case len(bases) == 0:
-		return nil
-	case len(bases) == 1:
-		return bases[0].Mul(scalars[0])
-	case len(bases) < msmThreshold:
-		return sumOfG1ProductsPairwise(bases, scalars)
-	default:
-		curve := ml.Curves[bases[0].CurveID()]
-
-		return curve.MultiScalarMul(bases, scalars)
-	}
-}
-
-// sumOfG1ProductsPairwise computes the sum via pairwise Mul2 (joint scalar multiplication),
-// which is not faster in wall-clock time than two independent Mul calls on the gnark-backed
-// curves (it forgoes the GLV endomorphism speedup — see mathlib's Mul2 doc comment), but it
-// allocates far less, so it is preferred over a naive Mul+Add loop for the same wall-clock cost.
-func sumOfG1ProductsPairwise(bases []*ml.G1, scalars []*ml.Zr) *ml.G1 {
 	var res *ml.G1
 
 	i := 0

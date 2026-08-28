@@ -553,10 +553,11 @@ func BenchmarkNewRandomZr(b *testing.B) {
 }
 
 // BenchmarkSumOfG1ProductsCrossover sweeps the number of (base, scalar) pairs to find where
-// curve.MultiScalarMul starts to beat a pairwise Mul2+Add loop. The result backs the
-// msmThreshold constant in sumOfG1Products (bbs12381g2pub.go) — most hot-path call sites in
+// curve.MultiScalarMul starts to beat a pairwise Mul2+Add loop. The result backs the decision
+// in sumOfG1Products (bbs12381g2pub.go) to always use the loop — most hot-path call sites in
 // this package sum well under a dozen bases, where MultiScalarMul's large fixed cost (gnark's
-// bucket-method MultiExp goroutine fan-out) loses to the simple loop.
+// bucket-method MultiExp goroutine fan-out) loses to the simple loop, and above that its
+// wall-clock win comes from a fan-out that does not pay off under concurrent load.
 func BenchmarkSumOfG1ProductsCrossover(b *testing.B) {
 	sizes := []int{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 12, 16, 20, 32}
 	impls := map[string]func([]*ml.G1, []*ml.Zr) *ml.G1{
