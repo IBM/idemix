@@ -133,6 +133,7 @@ type MSP struct {
 	logger       Logger
 	exportable   bool
 	conf         *im.IdemixMSPConfig
+	keyStore     bccsp.KeyStore
 }
 
 // NewIdemixMsp creates a new instance of msp. Setup auto-detects the underlying
@@ -149,11 +150,23 @@ func NewIdemixMsp(version MSPVersion) (*MSP, error) {
 // NewIdemixMsp for the scheme auto-detection and curve-selection behavior of Setup.
 // If logger is nil, the default logger is used.
 func NewIdemixMspWithLogger(version MSPVersion, logger Logger) (*MSP, error) {
+	return NewIdemixMspWithKeyStore(version, logger, nil)
+}
+
+// NewIdemixMspWithKeyStore creates a new instance of idemixmsp with a custom logger and a
+// custom bccsp.KeyStore used by the underlying BCCSP to persist imported/derived keys. See
+// NewIdemixMsp for the scheme auto-detection and curve-selection behavior of Setup.
+// If logger is nil, the default logger is used. If keyStore is nil, a non-persistent
+// keystore.Dummy is used.
+func NewIdemixMspWithKeyStore(version MSPVersion, logger Logger, keyStore bccsp.KeyStore) (*MSP, error) {
 	if logger == nil {
 		logger = newDefaultLogger("idemix")
 	}
+	if keyStore == nil {
+		keyStore = &keystore.Dummy{}
+	}
 	logger.Debugf("Creating Idemix-based MSP instance")
-	msp := MSP{logger: logger, version: version, exportable: true}
+	msp := MSP{logger: logger, version: version, exportable: true, keyStore: keyStore}
 
 	return &msp, nil
 }
@@ -234,7 +247,7 @@ func (msp *MSP) setupWithScheme(newCSP cspConstructor, defaultCurveID string, co
 		return fmt.Errorf("%w", err)
 	}
 
-	csp, err := newCSP(&keystore.Dummy{}, curve, tr, msp.exportable)
+	csp, err := newCSP(msp.keyStore, curve, tr, msp.exportable)
 	if err != nil {
 		return fmt.Errorf("failed to create BCCSP: %w", err)
 	}
@@ -602,6 +615,10 @@ func (msp *MSP) Pseudonym() (SigningIdentity, []byte, error) {
 
 func (msp *MSP) EnrollmentID() string {
 	return msp.conf.Signer.EnrollmentId
+}
+
+func (msp *MSP) IssuerPublicKey() []byte {
+	return msp.conf.Ipk
 }
 
 type identity struct {
