@@ -195,19 +195,17 @@ type ProviderType int
 
 // The ProviderType of a member relative to the member API
 const (
-	FABRIC       ProviderType = iota // MSP is of FABRIC type
-	IDEMIX                           // MSP is of IDEMIX type
-	IDEMIX_ARIES                     // MSP is of IDEMIX_ARIES type
-	OTHER                            // MSP is of OTHER TYPE
+	FABRIC ProviderType = iota // MSP is of FABRIC type
+	IDEMIX                     // MSP is of IDEMIX type
+	OTHER                      // MSP is of OTHER TYPE
 
 	// NOTE: as new types are added to this set,
 	// the mspTypes map below must be extended
 )
 
 var mspTypeStrings = map[ProviderType]string{
-	FABRIC:       "bccsp",
-	IDEMIX:       "idemix",
-	IDEMIX_ARIES: "idemix-aries",
+	FABRIC: "bccsp",
+	IDEMIX: "idemix",
 }
 
 // ProviderTypeToString returns a string that represents the ProviderType integer

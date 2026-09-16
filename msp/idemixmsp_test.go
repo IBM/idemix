@@ -29,16 +29,7 @@ func setupWithVersion(configPath string, ID string, version MSPVersion) (MSP, er
 }
 
 func setupWithTypeAndVersion(configPath string, ID string, version MSPVersion, mspType ProviderType) (MSP, error) {
-	var msp MSP
-	var err error
-	switch mspType {
-	case IDEMIX:
-		msp, err = NewIdemixMsp(version)
-	case IDEMIX_ARIES:
-		msp, err = NewIdemixMspAries(version)
-	default:
-		panic("programming error")
-	}
+	msp, err := NewIdemixMsp(version)
 	if err != nil {
 		return nil, err
 	}
