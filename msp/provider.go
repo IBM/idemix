@@ -24,75 +24,6 @@ type IdentityDeserializer interface {
 	IsWellFormed(identity *m.SerializedIdentity) error
 }
 
-// Membership service provider APIs for Hyperledger Fabric:
-//
-// By "membership service provider" we refer to an abstract component of the
-// system that would provide (anonymous) credentials to clients, and peers for
-// them to participate in Hyperledger/fabric network. Clients use these
-// credentials to authenticate their transactions, and peers use these credentials
-// to authenticate transaction processing results (endorsements). While
-// strongly connected to the transaction processing components of the systems,
-// this interface aims to have membership services components defined, in such
-// a way such that alternate implementations of this can be smoothly plugged in
-// without modifying the core of transaction processing components of the system.
-//
-// This file includes Membership service provider interface that covers the
-// needs of a peer membership service provider interface.
-
-// MSPManager is an interface defining a manager of one or more MSPs. This
-// essentially acts as a mediator to MSP calls and routes MSP related calls
-// to the appropriate MSP.
-// This object is immutable, it is initialized once and never changed.
-type MSPManager interface {
-
-	// IdentityDeserializer interface needs to be implemented by MSPManager
-	IdentityDeserializer
-
-	// Setup the MSP manager instance according to configuration information
-	Setup(msps []MSP) error
-
-	// GetMSPs Provides a list of Membership Service providers
-	GetMSPs() (map[string]MSP, error)
-}
-
-// MSP is the minimal Membership Service Provider Interface to be implemented
-// to accommodate peer functionality
-type MSP interface {
-
-	// IdentityDeserializer interface needs to be implemented by MSP
-	IdentityDeserializer
-
-	// Setup the MSP instance according to configuration information
-	Setup(config *m.MSPConfig) error
-
-	// GetVersion returns the version of this MSP
-	GetVersion() MSPVersion
-
-	// GetType returns the provider type
-	GetType() ProviderType
-
-	// GetIdentifier returns the provider identifier
-	GetIdentifier() (string, error)
-
-	// GetDefaultSigningIdentity returns the default signing identity
-	GetDefaultSigningIdentity() (SigningIdentity, error)
-
-	// GetTLSRootCerts returns the TLS root certificates for this MSP
-	GetTLSRootCerts() [][]byte
-
-	// GetTLSIntermediateCerts returns the TLS intermediate root certificates for this MSP
-	GetTLSIntermediateCerts() [][]byte
-
-	// Validate checks whether the supplied identity is valid
-	Validate(id Identity) error
-
-	// SatisfiesPrincipal checks whether the identity matches
-	// the description supplied in MSPPrincipal. The check may
-	// involve a byte-by-byte comparison (if the principal is
-	// a serialized identity) or may require MSP validation
-	SatisfiesPrincipal(id Identity, principal *m.MSPPrincipal) error
-}
-
 // OUIdentifier represents an organizational unit and
 // its related chain of trust identifier.
 type OUIdentifier struct {
@@ -168,7 +99,6 @@ type Identity interface {
 // to sign transactions, or fabric endorser who wishes to sign proposal
 // processing outcomes.
 type SigningIdentity interface {
-
 	// Extends Identity
 	Identity
 

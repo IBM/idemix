@@ -122,7 +122,7 @@ func curveAndTranslator(curveID string) (*math.Curve, idemixcrypto.Translator, e
 // cspConstructor matches the shared signature of idemix.New and idemix.NewAries.
 type cspConstructor func(keyStore bccsp.KeyStore, curve *math.Curve, translator idemixcrypto.Translator, exportable bool) (bccsp.BCCSP, error)
 
-type msp struct {
+type MSP struct {
 	csp          bccsp.BCCSP
 	version      MSPVersion
 	ipk          bccsp.Key
@@ -141,24 +141,24 @@ type msp struct {
 // Aries/BBS+ scheme. Any curve supported by curveAndTranslator is accepted by either scheme;
 // the curve is determined at Setup time from IdemixMSPConfig.CurveId (default: FP256BN_AMCL
 // for dlog, BLS12_381_BBS for Aries).
-func NewIdemixMsp(version MSPVersion) (MSP, error) {
+func NewIdemixMsp(version MSPVersion) (*MSP, error) {
 	return NewIdemixMspWithLogger(version, newDefaultLogger("idemix"))
 }
 
 // NewIdemixMspWithLogger creates a new instance of idemixmsp with a custom logger. See
 // NewIdemixMsp for the scheme auto-detection and curve-selection behavior of Setup.
 // If logger is nil, the default logger is used.
-func NewIdemixMspWithLogger(version MSPVersion, logger Logger) (MSP, error) {
+func NewIdemixMspWithLogger(version MSPVersion, logger Logger) (*MSP, error) {
 	if logger == nil {
 		logger = newDefaultLogger("idemix")
 	}
 	logger.Debugf("Creating Idemix-based MSP instance")
-	msp := msp{logger: logger, version: version, exportable: true}
+	msp := MSP{logger: logger, version: version, exportable: true}
 
 	return &msp, nil
 }
 
-func (msp *msp) Setup(conf1 *m.MSPConfig) error {
+func (msp *MSP) Setup(conf1 *m.MSPConfig) error {
 	msp.logger.Debugf("Setting up Idemix-based MSP instance")
 
 	if conf1 == nil {
@@ -213,17 +213,17 @@ func (msp *msp) Setup(conf1 *m.MSPConfig) error {
 
 // resetCryptoMaterial clears the fields written by setupWithScheme, so a failed attempt does
 // not leave partial state visible to a subsequent attempt or to callers.
-func (msp *msp) resetCryptoMaterial() {
+func (msp *MSP) resetCryptoMaterial() {
 	msp.csp = nil
 	msp.ipk = nil
 	msp.revocationPK = nil
 	msp.signer = nil
 }
 
-// setupWithScheme builds msp's BCCSP using newCSP and the curve named by conf.CurveId
+// setupWithScheme builds MSP's BCCSP using newCSP and the curve named by conf.CurveId
 // (defaultCurveID when unset), then imports the issuer public key, revocation public key,
 // and - if present - the default signer's credential material.
-func (msp *msp) setupWithScheme(newCSP cspConstructor, defaultCurveID string, conf *im.IdemixMSPConfig) error {
+func (msp *MSP) setupWithScheme(newCSP cspConstructor, defaultCurveID string, conf *im.IdemixMSPConfig) error {
 	curveID := conf.CurveId
 	if curveID == "" {
 		curveID = defaultCurveID
@@ -387,19 +387,19 @@ func (msp *msp) setupWithScheme(newCSP cspConstructor, defaultCurveID string, co
 }
 
 // GetVersion returns the version of this MSP
-func (msp *msp) GetVersion() MSPVersion {
+func (msp *MSP) GetVersion() MSPVersion {
 	return msp.version
 }
 
-func (msp *msp) GetType() ProviderType {
+func (msp *MSP) GetType() ProviderType {
 	return IDEMIX
 }
 
-func (msp *msp) GetIdentifier() (string, error) {
+func (msp *MSP) GetIdentifier() (string, error) {
 	return msp.name, nil
 }
 
-func (msp *msp) GetDefaultSigningIdentity() (SigningIdentity, error) {
+func (msp *MSP) GetDefaultSigningIdentity() (SigningIdentity, error) {
 	msp.logger.Debugf("Obtaining default idemix signing identity")
 
 	if msp.signer == nil {
@@ -409,7 +409,7 @@ func (msp *msp) GetDefaultSigningIdentity() (SigningIdentity, error) {
 	return msp.signer, nil
 }
 
-func (msp *msp) DeserializeIdentity(serializedID []byte) (Identity, error) {
+func (msp *MSP) DeserializeIdentity(serializedID []byte) (Identity, error) {
 	sID := &m.SerializedIdentity{}
 	err := proto.Unmarshal(serializedID, sID)
 	if err != nil {
@@ -423,7 +423,7 @@ func (msp *msp) DeserializeIdentity(serializedID []byte) (Identity, error) {
 	return msp.DeserializeIdentityInternal(sID.GetIdBytes())
 }
 
-func (msp *msp) DeserializeIdentityInternal(serializedID []byte) (Identity, error) {
+func (msp *MSP) DeserializeIdentityInternal(serializedID []byte) (Identity, error) {
 	msp.logger.Debug("idemixmsp: deserializing identity")
 	serialized := new(im.SerializedIdemixIdentity)
 	err := proto.Unmarshal(serializedID, serialized)
@@ -463,7 +463,7 @@ func (msp *msp) DeserializeIdentityInternal(serializedID []byte) (Identity, erro
 	return NewIdemixIdentity(msp, NymPublicKey, role, ou, serialized.Proof), nil
 }
 
-func (msp *msp) Validate(id Identity) error {
+func (msp *MSP) Validate(id Identity) error {
 	temp, err := asIdentity(id)
 	if err != nil {
 		return err
@@ -477,7 +477,7 @@ func (msp *msp) Validate(id Identity) error {
 	return temp.Validate()
 }
 
-func (msp *msp) SatisfiesPrincipal(id Identity, principal *m.MSPPrincipal) error {
+func (msp *MSP) SatisfiesPrincipal(id Identity, principal *m.MSPPrincipal) error {
 	if err := msp.Validate(id); err != nil {
 		return fmt.Errorf("identity is not valid with respect to this MSP: %w", err)
 	}
@@ -493,7 +493,7 @@ func (msp *msp) SatisfiesPrincipal(id Identity, principal *m.MSPPrincipal) error
 // IsWellFormed checks if the given identity can be deserialized into its provider-specific .
 // In this MSP implementation, an identity is considered well formed if it contains a
 // marshaled SerializedIdemixIdentity protobuf message.
-func (msp *msp) IsWellFormed(identity *m.SerializedIdentity) error {
+func (msp *MSP) IsWellFormed(identity *m.SerializedIdentity) error {
 	sId := new(im.SerializedIdemixIdentity)
 	err := proto.Unmarshal(identity.IdBytes, sId)
 	if err != nil {
@@ -503,17 +503,17 @@ func (msp *msp) IsWellFormed(identity *m.SerializedIdentity) error {
 	return nil
 }
 
-func (msp *msp) GetTLSRootCerts() [][]byte {
+func (msp *MSP) GetTLSRootCerts() [][]byte {
 	// TODO
 	return nil
 }
 
-func (msp *msp) GetTLSIntermediateCerts() [][]byte {
+func (msp *MSP) GetTLSIntermediateCerts() [][]byte {
 	// TODO
 	return nil
 }
 
-func (msp *msp) Pseudonym() (SigningIdentity, []byte, error) {
+func (msp *MSP) Pseudonym() (SigningIdentity, []byte, error) {
 	// Derive NymPublicKey
 	nymKey, err := msp.csp.KeyDeriv(
 		msp.signer.UserKey,
@@ -577,7 +577,7 @@ func (msp *msp) Pseudonym() (SigningIdentity, []byte, error) {
 	return NewSigningIdentity(id, msp.signer.Cred, msp.signer.UserKey, nymKey, enrollmentID), nil, nil
 }
 
-func (msp *msp) EnrollmentID() string {
+func (msp *MSP) EnrollmentID() string {
 	return msp.conf.Signer.EnrollmentId
 }
 
@@ -591,7 +591,7 @@ type identity struct {
 	// the pseudonym is constructed from a secret key on which the CA issued
 	// a credential.
 	associationProof []byte
-	msp              *msp
+	msp              *MSP
 }
 
 // asIdentity extracts the underlying *identity from an Identity, whether it wraps a
@@ -608,7 +608,7 @@ func asIdentity(id Identity) (*identity, error) {
 }
 
 func NewIdemixIdentity(
-	msp *msp,
+	msp *MSP,
 	NymPublicKey bccsp.Key,
 	role *m.MSPRole,
 	ou *m.OrganizationUnit,

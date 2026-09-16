@@ -40,8 +40,7 @@ func testAudit(t *testing.T, sc schemeCurve) {
 	err = proto.Unmarshal(conf.Config, config)
 	require.NoError(t, err)
 
-	idemixMsp := mspI.(*msp)
-	csp := idemixMsp.csp
+	csp := mspI.csp
 
 	msg := []byte("Lost forever, now and ever\nTo this magical sound that I hear")
 
@@ -56,7 +55,7 @@ func testAudit(t *testing.T, sc schemeCurve) {
 		&bccsp.IdemixSignerOpts{
 			Credential: idemixSigner.Cred,
 			Nym:        idemixSigner.NymKey,
-			IssuerPK:   idemixMsp.ipk,
+			IssuerPK:   mspI.ipk,
 			Attributes: []bccsp.IdemixAttribute{
 				{Type: bccsp.IdemixHiddenAttribute},
 				{Type: bccsp.IdemixHiddenAttribute},
@@ -72,11 +71,11 @@ func testAudit(t *testing.T, sc schemeCurve) {
 	require.NoError(t, err)
 
 	valid, err := csp.Verify(
-		idemixMsp.ipk,
+		mspI.ipk,
 		signature,
 		msg,
 		&bccsp.IdemixSignerOpts{
-			RevocationPublicKey: idemixMsp.revocationPK,
+			RevocationPublicKey: mspI.revocationPK,
 			Attributes: []bccsp.IdemixAttribute{
 				{Type: bccsp.IdemixHiddenAttribute},
 				{Type: bccsp.IdemixHiddenAttribute},
@@ -99,7 +98,7 @@ func testAudit(t *testing.T, sc schemeCurve) {
 		SigType:    bccsp.EidNym,
 		Credential: idemixSigner.Cred,
 		Nym:        idemixSigner.NymKey,
-		IssuerPK:   idemixMsp.ipk,
+		IssuerPK:   mspI.ipk,
 		Attributes: []bccsp.IdemixAttribute{
 			{Type: bccsp.IdemixHiddenAttribute},
 			{Type: bccsp.IdemixHiddenAttribute},
@@ -120,11 +119,11 @@ func testAudit(t *testing.T, sc schemeCurve) {
 	require.NoError(t, err)
 
 	valid, err = csp.Verify(
-		idemixMsp.ipk,
+		mspI.ipk,
 		signature,
 		msg,
 		&bccsp.IdemixSignerOpts{
-			RevocationPublicKey: idemixMsp.revocationPK,
+			RevocationPublicKey: mspI.revocationPK,
 			Attributes: []bccsp.IdemixAttribute{
 				{Type: bccsp.IdemixHiddenAttribute},
 				{Type: bccsp.IdemixHiddenAttribute},
@@ -143,7 +142,7 @@ func testAudit(t *testing.T, sc schemeCurve) {
 
 	// STEP 3: audit of the nym eid
 	valid, err = csp.Verify(
-		idemixMsp.ipk,
+		mspI.ipk,
 		signature,
 		msg,
 		&bccsp.EidNymAuditOpts{
@@ -161,7 +160,7 @@ func testAudit(t *testing.T, sc schemeCurve) {
 		SigType:    bccsp.EidNymRhNym,
 		Credential: idemixSigner.Cred,
 		Nym:        idemixSigner.NymKey,
-		IssuerPK:   idemixMsp.ipk,
+		IssuerPK:   mspI.ipk,
 		Attributes: []bccsp.IdemixAttribute{
 			{Type: bccsp.IdemixHiddenAttribute},
 			{Type: bccsp.IdemixHiddenAttribute},
@@ -182,11 +181,11 @@ func testAudit(t *testing.T, sc schemeCurve) {
 	require.NoError(t, err)
 
 	valid, err = csp.Verify(
-		idemixMsp.ipk,
+		mspI.ipk,
 		signature,
 		msg,
 		&bccsp.IdemixSignerOpts{
-			RevocationPublicKey: idemixMsp.revocationPK,
+			RevocationPublicKey: mspI.revocationPK,
 			Attributes: []bccsp.IdemixAttribute{
 				{Type: bccsp.IdemixHiddenAttribute},
 				{Type: bccsp.IdemixHiddenAttribute},
@@ -205,7 +204,7 @@ func testAudit(t *testing.T, sc schemeCurve) {
 
 	// STEP 5: audit of the nym eid
 	valid, err = csp.Verify(
-		idemixMsp.ipk,
+		mspI.ipk,
 		signature,
 		msg,
 		&bccsp.EidNymAuditOpts{
@@ -219,7 +218,7 @@ func testAudit(t *testing.T, sc schemeCurve) {
 
 	// STEP 6: audit of the rh
 	valid, err = csp.Verify(
-		idemixMsp.ipk,
+		mspI.ipk,
 		signature,
 		msg,
 		&bccsp.RhNymAuditOpts{
