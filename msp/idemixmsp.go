@@ -141,7 +141,6 @@ type Idemixmsp struct {
 	revocationPK bccsp.Key
 	epoch        int
 	logger       Logger
-	aries        bool
 	exportable   bool
 }
 
@@ -197,42 +196,25 @@ func (l *stdLogger) IsEnabledFor(level zapcore.Level) bool {
 	return true // Standard logger always logs
 }
 
-// NewIdemixMsp creates a new instance of idemixmsp using the dlog scheme.
-// The curve is determined at Setup time from IdemixMSPConfig.CurveId (default: FP256BN_AMCL).
+// NewIdemixMsp creates a new instance of idemixmsp. Setup auto-detects the underlying
+// cryptographic scheme (dlog or Aries/BBS+) from the key material in the config: it first
+// attempts to load the config using the dlog scheme and, if that fails, retries using the
+// Aries/BBS+ scheme. Any curve supported by curveAndTranslator is accepted by either scheme;
+// the curve is determined at Setup time from IdemixMSPConfig.CurveId (default: FP256BN_AMCL
+// for dlog, BLS12_381_BBS for Aries).
 func NewIdemixMsp(version MSPVersion) (MSP, error) {
 	return NewIdemixMspWithLogger(version, newDefaultLogger("idemix"))
 }
 
-// NewIdemixMspWithLogger creates a new instance of idemixmsp using the dlog scheme with a custom logger.
-// The curve is determined at Setup time from IdemixMSPConfig.CurveId (default: FP256BN_AMCL).
+// NewIdemixMspWithLogger creates a new instance of idemixmsp with a custom logger. See
+// NewIdemixMsp for the scheme auto-detection and curve-selection behavior of Setup.
 // If logger is nil, the default logger is used.
 func NewIdemixMspWithLogger(version MSPVersion, logger Logger) (MSP, error) {
 	if logger == nil {
 		logger = newDefaultLogger("idemix")
 	}
 	logger.Debugf("Creating Idemix-based MSP instance")
-	msp := Idemixmsp{logger: logger, version: version, aries: false, exportable: true}
-
-	return &msp, nil
-}
-
-// NewIdemixMspAries creates a new instance of idemixmsp using the Aries/BBS+ scheme.
-// The curve is determined at Setup time from IdemixMSPConfig.CurveId; only BLS12_381_BBS
-// and BLS12_381_BBS_GURVY are accepted (default: BLS12_381_BBS).
-func NewIdemixMspAries(version MSPVersion) (MSP, error) {
-	return NewIdemixMspAriesWithLogger(version, newDefaultLogger("idemix"))
-}
-
-// NewIdemixMspAriesWithLogger creates a new instance of idemixmsp using the Aries/BBS+ scheme with a custom logger.
-// The curve is determined at Setup time from IdemixMSPConfig.CurveId; only BLS12_381_BBS
-// and BLS12_381_BBS_GURVY are accepted (default: BLS12_381_BBS).
-// If logger is nil, the default logger is used.
-func NewIdemixMspAriesWithLogger(version MSPVersion, logger Logger) (MSP, error) {
-	if logger == nil {
-		logger = newDefaultLogger("idemix")
-	}
-	logger.Debugf("Creating Idemix-based MSP instance")
-	msp := Idemixmsp{logger: logger, version: version, aries: true, exportable: true}
+	msp := Idemixmsp{logger: logger, version: version, exportable: true}
 
 	return &msp, nil
 }
@@ -253,48 +235,73 @@ func (msp *Idemixmsp) Setup(conf1 *m.MSPConfig) error {
 	msp.name = conf.Name
 	msp.logger.Debugf("Setting up Idemix MSP instance %s", msp.name)
 
-	// Enforce that the config type matches the constructor used.
-	if msp.aries {
-		if conf1.Type != int32(IDEMIX_ARIES) {
-			return fmt.Errorf("setup error: aries MSP requires config of type IDEMIX_ARIES, got %d", conf1.Type)
-		}
-	} else {
-		if conf1.Type != int32(IDEMIX) {
-			return fmt.Errorf("setup error: dlog MSP requires config of type IDEMIX, got %d", conf1.Type)
-		}
+	if conf1.Type != int32(IDEMIX) {
+		return fmt.Errorf("setup error: unsupported config type %d, expected IDEMIX", conf1.Type)
 	}
 
-	// Determine the curve from config.CurveId.
+	// Auto-detect the underlying cryptographic scheme (dlog or Aries/BBS+) from the key
+	// material: attempt the dlog scheme first and, if that fails, retry with Aries/BBS+.
+	// Any curve supported by curveAndTranslator is accepted by either scheme.
+	newDlogCSP := func(keyStore bccsp.KeyStore, curve *math.Curve, translator idemixcrypto.Translator, exportable bool) (bccsp.BCCSP, error) {
+		return idemix.New(keyStore, curve, translator, exportable)
+	}
+	newAriesCSP := func(keyStore bccsp.KeyStore, curve *math.Curve, translator idemixcrypto.Translator, exportable bool) (bccsp.BCCSP, error) {
+		return idemix.NewAries(keyStore, curve, translator, exportable)
+	}
+
+	dlogErr := msp.setupWithScheme(newDlogCSP, curveIDFP256BN_AMCL, &conf)
+	if dlogErr == nil {
+		msp.logger.Debugf("Idemix MSP instance %s set up using the dlog scheme", msp.name)
+
+		return nil
+	}
+
+	msp.logger.Debugf("dlog scheme setup failed for Idemix MSP instance %s, retrying with Aries/BBS+: %v", msp.name, dlogErr)
+	msp.resetCryptoMaterial()
+
+	ariesErr := msp.setupWithScheme(newAriesCSP, curveIDBLS12_381_BBS, &conf)
+	if ariesErr == nil {
+		msp.logger.Debugf("Idemix MSP instance %s set up using the Aries/BBS+ scheme", msp.name)
+
+		return nil
+	}
+
+	msp.resetCryptoMaterial()
+
+	return fmt.Errorf("setup error: %w", errors.Join(dlogErr, ariesErr))
+}
+
+// resetCryptoMaterial clears the fields written by setupWithScheme, so a failed attempt does
+// not leave partial state visible to a subsequent attempt or to callers.
+func (msp *Idemixmsp) resetCryptoMaterial() {
+	msp.csp = nil
+	msp.ipk = nil
+	msp.revocationPK = nil
+	msp.signer = nil
+}
+
+// cspConstructor matches the shared signature of idemix.New and idemix.NewAries.
+type cspConstructor func(keyStore bccsp.KeyStore, curve *math.Curve, translator idemixcrypto.Translator, exportable bool) (bccsp.BCCSP, error)
+
+// setupWithScheme builds msp's BCCSP using newCSP and the curve named by conf.CurveId
+// (defaultCurveID when unset), then imports the issuer public key, revocation public key,
+// and - if present - the default signer's credential material.
+func (msp *Idemixmsp) setupWithScheme(newCSP cspConstructor, defaultCurveID string, conf *im.IdemixMSPConfig) error {
 	curveID := conf.CurveId
-	if msp.aries {
-		switch curveID {
-		case "", curveIDBLS12_381_BBS:
-			curveID = curveIDBLS12_381_BBS
-		case curveIDBLS12_381_BBS_GURVY:
-			// accepted
-		default:
-			return fmt.Errorf("setup error: aries MSP requires a BBS curve, got %q", curveID)
-		}
-	} else {
-		if curveID == "" {
-			curveID = curveIDFP256BN_AMCL
-		}
+	if curveID == "" {
+		curveID = defaultCurveID
 	}
 
 	curve, tr, err := curveAndTranslator(curveID)
 	if err != nil {
-		return fmt.Errorf("setup error: %w", err)
+		return fmt.Errorf("%w", err)
 	}
 
-	// Build the BCCSP using the curve selected from config.
-	if msp.aries {
-		msp.csp, err = idemix.NewAries(&keystore.Dummy{}, curve, tr, msp.exportable)
-	} else {
-		msp.csp, err = idemix.New(&keystore.Dummy{}, curve, tr, msp.exportable)
-	}
+	csp, err := newCSP(&keystore.Dummy{}, curve, tr, msp.exportable)
 	if err != nil {
-		return fmt.Errorf("setup error: failed to create BCCSP: %w", err)
+		return fmt.Errorf("failed to create BCCSP: %w", err)
 	}
+	msp.csp = csp
 
 	// Import Issuer Public Key
 	IssuerPublicKey, err := msp.csp.KeyImport(
@@ -312,7 +319,10 @@ func (msp *Idemixmsp) Setup(conf1 *m.MSPConfig) error {
 		var importErr *bccsp.IdemixIssuerPublicKeyImporterError
 		ok := errors.As(err, &importErr)
 		if !ok {
-			panic("unexpected condition, BCCSP did not return the expected *bccsp.IdemixIssuerPublicKeyImporterError")
+			// Not every scheme wraps its errors in *bccsp.IdemixIssuerPublicKeyImporterError
+			// (e.g. the Aries importer does not) - treat this as an unmarshalling failure
+			// rather than panicking on attacker-controlled config bytes.
+			return fmt.Errorf("failed to unmarshal ipk from idemix msp config: %w", err)
 		}
 		switch importErr.Type {
 		case bccsp.IdemixIssuerPublicKeyImporterUnmarshallingError:
@@ -326,7 +336,7 @@ func (msp *Idemixmsp) Setup(conf1 *m.MSPConfig) error {
 		case bccsp.IdemixIssuerPublicKeyImporterAttributeNameError:
 			return errors.New("issuer public key must have attributes OU, Role, EnrollmentId, and RevocationHandle")
 		default:
-			panic(fmt.Sprintf("unexpected condtion, issuer public key import error not valid, got [%d]", importErr.Type))
+			return fmt.Errorf("unexpected condition, issuer public key import error not valid, got [%d]", importErr.Type)
 		}
 	}
 	msp.ipk = IssuerPublicKey

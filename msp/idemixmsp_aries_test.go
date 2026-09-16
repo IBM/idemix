@@ -21,7 +21,7 @@ import (
 // for a different, unrelated (but well-formed) pseudonym derived from the same
 // credential secret key. The forged identity must be rejected.
 func TestNymSwapAttackAries(t *testing.T) {
-	mspI, err := setupWithTypeAndVersion("testdata/aries/MSP1OU1eid1/", "MSP1OU1", MSPv1_3, IDEMIX_ARIES)
+	mspI, err := setupWithTypeAndVersion("testdata/aries/MSP1OU1eid1/", "MSP1OU1", MSPv1_3, IDEMIX)
 	require.NoError(t, err)
 
 	id, err := getDefaultSigner(mspI)
@@ -57,7 +57,7 @@ func TestNymSwapAttackAries(t *testing.T) {
 }
 
 func TestSigningAries(t *testing.T) {
-	msp, err := setupWithTypeAndVersion("testdata/aries/MSP1OU1eid1/", "MSP1", MSPv1_3, IDEMIX_ARIES)
+	msp, err := setupWithTypeAndVersion("testdata/aries/MSP1OU1eid1/", "MSP1", MSPv1_3, IDEMIX)
 	require.NoError(t, err)
 
 	id, err := getDefaultSigner(msp)
@@ -74,7 +74,7 @@ func TestSigningAries(t *testing.T) {
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "contribution is not zero")
 
-	verMsp, err := setupWithTypeAndVersion("testdata/aries/MSP1Verifier", "MSP1", MSPv1_3, IDEMIX_ARIES)
+	verMsp, err := setupWithTypeAndVersion("testdata/aries/MSP1Verifier", "MSP1", MSPv1_3, IDEMIX)
 	require.NoError(t, err)
 	err = verMsp.Validate(id)
 	require.NoError(t, err)
@@ -84,7 +84,7 @@ func TestSigningAries(t *testing.T) {
 }
 
 func TestSigningBadAries(t *testing.T) {
-	msp, err := setupWithTypeAndVersion("testdata/aries/MSP1OU1eid1/", "MSP1", MSPv1_3, IDEMIX_ARIES)
+	msp, err := setupWithTypeAndVersion("testdata/aries/MSP1OU1eid1/", "MSP1", MSPv1_3, IDEMIX)
 	require.NoError(t, err)
 
 	id, err := getDefaultSigner(msp)
@@ -99,7 +99,7 @@ func TestSigningBadAries(t *testing.T) {
 }
 
 func TestIdentitySerializationAries(t *testing.T) {
-	msp, err := setupWithTypeAndVersion("testdata/aries/MSP1OU1eid1/", "MSP1", MSPv1_3, IDEMIX_ARIES)
+	msp, err := setupWithTypeAndVersion("testdata/aries/MSP1OU1eid1/", "MSP1", MSPv1_3, IDEMIX)
 	require.NoError(t, err)
 
 	id, err := getDefaultSigner(msp)
@@ -120,7 +120,7 @@ func TestIdentitySerializationAries(t *testing.T) {
 }
 
 func TestIdentitySerializationBadAries(t *testing.T) {
-	msp, err := setupWithTypeAndVersion("testdata/aries/MSP1OU1eid1/", "MSP1", MSPv1_3, IDEMIX_ARIES)
+	msp, err := setupWithTypeAndVersion("testdata/aries/MSP1OU1eid1/", "MSP1", MSPv1_3, IDEMIX)
 	require.NoError(t, err)
 
 	_, err = msp.DeserializeIdentity([]byte("barf"))
@@ -129,9 +129,9 @@ func TestIdentitySerializationBadAries(t *testing.T) {
 }
 
 func TestIdentitySerializationWrongMSPAries(t *testing.T) {
-	msp1, err := setupWithTypeAndVersion("testdata/aries/MSP1OU1eid1/", "MSP1OU1", MSPv1_3, IDEMIX_ARIES)
+	msp1, err := setupWithTypeAndVersion("testdata/aries/MSP1OU1eid1/", "MSP1OU1", MSPv1_3, IDEMIX)
 	require.NoError(t, err)
-	msp2, err := setupWithTypeAndVersion("testdata/aries/MSP2OU1eid1/", "MSP2OU1", MSPv1_3, IDEMIX_ARIES)
+	msp2, err := setupWithTypeAndVersion("testdata/aries/MSP2OU1eid1/", "MSP2OU1", MSPv1_3, IDEMIX)
 	require.NoError(t, err)
 	id2, err := getDefaultSigner(msp2)
 	require.NoError(t, err)
@@ -145,7 +145,7 @@ func TestIdentitySerializationWrongMSPAries(t *testing.T) {
 }
 
 func TestPrincipalIdentityAries(t *testing.T) {
-	msp1, err := setupWithTypeAndVersion("testdata/aries/MSP1OU1eid1/", "MSP1", MSPv1_3, IDEMIX_ARIES)
+	msp1, err := setupWithTypeAndVersion("testdata/aries/MSP1OU1eid1/", "MSP1", MSPv1_3, IDEMIX)
 	require.NoError(t, err)
 
 	id1, err := getDefaultSigner(msp1)
@@ -163,13 +163,13 @@ func TestPrincipalIdentityAries(t *testing.T) {
 }
 
 func TestPrincipalIdentityWrongIdentityAries(t *testing.T) {
-	msp1, err := setupWithTypeAndVersion("testdata/aries/MSP1OU1eid1/", "MSP1OU1", MSPv1_3, IDEMIX_ARIES)
+	msp1, err := setupWithTypeAndVersion("testdata/aries/MSP1OU1eid1/", "MSP1OU1", MSPv1_3, IDEMIX)
 	require.NoError(t, err)
 
 	id1, err := getDefaultSigner(msp1)
 	require.NoError(t, err)
 
-	msp2, err := setupWithTypeAndVersion("testdata/aries/MSP2OU1eid1/", "MSP2OU1", MSPv1_3, IDEMIX_ARIES)
+	msp2, err := setupWithTypeAndVersion("testdata/aries/MSP2OU1eid1/", "MSP2OU1", MSPv1_3, IDEMIX)
 	require.NoError(t, err)
 
 	id2, err := getDefaultSigner(msp2)
@@ -188,7 +188,7 @@ func TestPrincipalIdentityWrongIdentityAries(t *testing.T) {
 }
 
 func TestPrincipalIdentityBadIdentityAries(t *testing.T) {
-	msp1, err := setupWithTypeAndVersion("testdata/aries/MSP1OU1eid1/", "MSP1OU1", MSPv1_3, IDEMIX_ARIES)
+	msp1, err := setupWithTypeAndVersion("testdata/aries/MSP1OU1eid1/", "MSP1OU1", MSPv1_3, IDEMIX)
 	require.NoError(t, err)
 
 	id1, err := getDefaultSigner(msp1)
@@ -206,7 +206,7 @@ func TestPrincipalIdentityBadIdentityAries(t *testing.T) {
 }
 
 func TestAnonymityPrincipalAries(t *testing.T) {
-	msp1, err := setupWithTypeAndVersion("testdata/aries/MSP1OU1eid1/", "MSP1", MSPv1_3, IDEMIX_ARIES)
+	msp1, err := setupWithTypeAndVersion("testdata/aries/MSP1OU1eid1/", "MSP1", MSPv1_3, IDEMIX)
 	require.NoError(t, err)
 
 	id1, err := getDefaultSigner(msp1)
@@ -224,7 +224,7 @@ func TestAnonymityPrincipalAries(t *testing.T) {
 }
 
 func TestAnonymityPrincipalBadAries(t *testing.T) {
-	msp1, err := setupWithTypeAndVersion("testdata/aries/MSP1OU1eid1/", "MSP1", MSPv1_3, IDEMIX_ARIES)
+	msp1, err := setupWithTypeAndVersion("testdata/aries/MSP1OU1eid1/", "MSP1", MSPv1_3, IDEMIX)
 	require.NoError(t, err)
 
 	id1, err := getDefaultSigner(msp1)
@@ -243,7 +243,7 @@ func TestAnonymityPrincipalBadAries(t *testing.T) {
 }
 
 func TestAnonymityPrincipalV11Aries(t *testing.T) {
-	msp1, err := setupWithTypeAndVersion("testdata/aries/MSP1OU1eid1/", "MSP1", MSPv1_1, IDEMIX_ARIES)
+	msp1, err := setupWithTypeAndVersion("testdata/aries/MSP1OU1eid1/", "MSP1", MSPv1_1, IDEMIX)
 	require.NoError(t, err)
 
 	id1, err := getDefaultSigner(msp1)
@@ -262,7 +262,7 @@ func TestAnonymityPrincipalV11Aries(t *testing.T) {
 }
 
 func TestIdemixIsWellFormedAries(t *testing.T) {
-	idemixMSP, err := setupWithTypeAndVersion("testdata/aries/MSP1OU1eid1/", "MSP1", MSPv1_3, IDEMIX_ARIES)
+	idemixMSP, err := setupWithTypeAndVersion("testdata/aries/MSP1OU1eid1/", "MSP1", MSPv1_3, IDEMIX)
 	require.NoError(t, err)
 
 	id, err := getDefaultSigner(idemixMSP)
@@ -282,7 +282,7 @@ func TestIdemixIsWellFormedAries(t *testing.T) {
 }
 
 func TestPrincipalOUAries(t *testing.T) {
-	msp1, err := setupWithTypeAndVersion("testdata/aries/MSP1OU1eid1/", "MSP1", MSPv1_3, IDEMIX_ARIES)
+	msp1, err := setupWithTypeAndVersion("testdata/aries/MSP1OU1eid1/", "MSP1", MSPv1_3, IDEMIX)
 	require.NoError(t, err)
 
 	id1, err := getDefaultSigner(msp1)
@@ -305,7 +305,7 @@ func TestPrincipalOUAries(t *testing.T) {
 }
 
 func TestPrincipalOUWrongOUAries(t *testing.T) {
-	msp1, err := setupWithTypeAndVersion("testdata/aries/MSP1OU1eid1/", "MSP1", MSPv1_3, IDEMIX_ARIES)
+	msp1, err := setupWithTypeAndVersion("testdata/aries/MSP1OU1eid1/", "MSP1", MSPv1_3, IDEMIX)
 	require.NoError(t, err)
 
 	id1, err := getDefaultSigner(msp1)
@@ -329,7 +329,7 @@ func TestPrincipalOUWrongOUAries(t *testing.T) {
 }
 
 func TestPrincipalOUWrongMSPAries(t *testing.T) {
-	msp1, err := setupWithTypeAndVersion("testdata/aries/MSP1OU1eid1/", "MSP1", MSPv1_3, IDEMIX_ARIES)
+	msp1, err := setupWithTypeAndVersion("testdata/aries/MSP1OU1eid1/", "MSP1", MSPv1_3, IDEMIX)
 	require.NoError(t, err)
 
 	id1, err := getDefaultSigner(msp1)
@@ -353,7 +353,7 @@ func TestPrincipalOUWrongMSPAries(t *testing.T) {
 }
 
 func TestPrincipalOUBadAries(t *testing.T) {
-	msp1, err := setupWithTypeAndVersion("testdata/aries/MSP1OU1eid1/", "MSP1", MSPv1_3, IDEMIX_ARIES)
+	msp1, err := setupWithTypeAndVersion("testdata/aries/MSP1OU1eid1/", "MSP1", MSPv1_3, IDEMIX)
 	require.NoError(t, err)
 
 	id1, err := getDefaultSigner(msp1)
@@ -372,7 +372,7 @@ func TestPrincipalOUBadAries(t *testing.T) {
 }
 
 func TestPrincipalRoleMemberAries(t *testing.T) {
-	msp1, err := setupWithTypeAndVersion("testdata/aries/MSP1OU1eid1/", "MSP1", MSPv1_3, IDEMIX_ARIES)
+	msp1, err := setupWithTypeAndVersion("testdata/aries/MSP1OU1eid1/", "MSP1", MSPv1_3, IDEMIX)
 	require.NoError(t, err)
 
 	id1, err := getDefaultSigner(msp1)
@@ -401,7 +401,7 @@ func TestPrincipalRoleMemberAries(t *testing.T) {
 }
 
 func TestPrincipalRoleAdminAries(t *testing.T) {
-	msp1, err := setupWithTypeAndVersion("testdata/aries/MSP1OU1eid1Admin/", "MSP1", MSPv1_3, IDEMIX_ARIES)
+	msp1, err := setupWithTypeAndVersion("testdata/aries/MSP1OU1eid1Admin/", "MSP1", MSPv1_3, IDEMIX)
 	require.NoError(t, err)
 
 	id1, err := getDefaultSigner(msp1)
@@ -430,7 +430,7 @@ func TestPrincipalRoleAdminAries(t *testing.T) {
 }
 
 func TestPrincipalRoleNotPeerAries(t *testing.T) {
-	msp1, err := setupWithTypeAndVersion("testdata/aries/MSP1OU1eid1Admin/", "MSP1", MSPv1_3, IDEMIX_ARIES)
+	msp1, err := setupWithTypeAndVersion("testdata/aries/MSP1OU1eid1Admin/", "MSP1", MSPv1_3, IDEMIX)
 	require.NoError(t, err)
 
 	id1, err := getDefaultSigner(msp1)
@@ -449,7 +449,7 @@ func TestPrincipalRoleNotPeerAries(t *testing.T) {
 }
 
 func TestPrincipalRoleNotAdminAries(t *testing.T) {
-	msp1, err := setupWithTypeAndVersion("testdata/aries/MSP1OU1eid1/", "MSP1", MSPv1_3, IDEMIX_ARIES)
+	msp1, err := setupWithTypeAndVersion("testdata/aries/MSP1OU1eid1/", "MSP1", MSPv1_3, IDEMIX)
 	require.NoError(t, err)
 
 	id1, err := getDefaultSigner(msp1)
@@ -468,7 +468,7 @@ func TestPrincipalRoleNotAdminAries(t *testing.T) {
 }
 
 func TestPrincipalRoleWrongMSPAries(t *testing.T) {
-	msp1, err := setupWithTypeAndVersion("testdata/aries/MSP1OU1eid1/", "MSP1", MSPv1_3, IDEMIX_ARIES)
+	msp1, err := setupWithTypeAndVersion("testdata/aries/MSP1OU1eid1/", "MSP1", MSPv1_3, IDEMIX)
 	require.NoError(t, err)
 
 	id1, err := getDefaultSigner(msp1)
@@ -487,7 +487,7 @@ func TestPrincipalRoleWrongMSPAries(t *testing.T) {
 }
 
 func TestPrincipalRoleBadRoleAries(t *testing.T) {
-	msp1, err := setupWithTypeAndVersion("testdata/aries/MSP1OU1eid1/", "MSP1", MSPv1_3, IDEMIX_ARIES)
+	msp1, err := setupWithTypeAndVersion("testdata/aries/MSP1OU1eid1/", "MSP1", MSPv1_3, IDEMIX)
 	require.NoError(t, err)
 
 	id1, err := getDefaultSigner(msp1)
@@ -507,7 +507,7 @@ func TestPrincipalRoleBadRoleAries(t *testing.T) {
 }
 
 func TestPrincipalBadAries(t *testing.T) {
-	msp1, err := setupWithTypeAndVersion("testdata/aries/MSP1OU1eid1/", "MSP1", MSPv1_3, IDEMIX_ARIES)
+	msp1, err := setupWithTypeAndVersion("testdata/aries/MSP1OU1eid1/", "MSP1", MSPv1_3, IDEMIX)
 	require.NoError(t, err)
 
 	id1, err := getDefaultSigner(msp1)
@@ -523,7 +523,7 @@ func TestPrincipalBadAries(t *testing.T) {
 }
 
 func TestPrincipalCombinedAries(t *testing.T) {
-	msp1, err := setupWithTypeAndVersion("testdata/aries/MSP1OU1eid1/", "MSP1", MSPv1_3, IDEMIX_ARIES)
+	msp1, err := setupWithTypeAndVersion("testdata/aries/MSP1OU1eid1/", "MSP1", MSPv1_3, IDEMIX)
 	require.NoError(t, err)
 
 	id1, err := getDefaultSigner(msp1)
@@ -562,7 +562,7 @@ func TestPrincipalCombinedAries(t *testing.T) {
 }
 
 func TestPrincipalCombinedBadAries(t *testing.T) {
-	msp1, err := setupWithTypeAndVersion("testdata/aries/MSP1OU1eid1/", "MSP1", MSPv1_3, IDEMIX_ARIES)
+	msp1, err := setupWithTypeAndVersion("testdata/aries/MSP1OU1eid1/", "MSP1", MSPv1_3, IDEMIX)
 	require.NoError(t, err)
 
 	id1, err := getDefaultSigner(msp1)
@@ -603,7 +603,7 @@ func TestPrincipalCombinedBadAries(t *testing.T) {
 }
 
 func TestPrincipalCombinedV11Aries(t *testing.T) {
-	msp1, err := setupWithTypeAndVersion("testdata/aries/MSP1OU1eid1/", "MSP1", MSPv1_1, IDEMIX_ARIES)
+	msp1, err := setupWithTypeAndVersion("testdata/aries/MSP1OU1eid1/", "MSP1", MSPv1_1, IDEMIX)
 	require.NoError(t, err)
 
 	id1, err := getDefaultSigner(msp1)
@@ -643,7 +643,7 @@ func TestPrincipalCombinedV11Aries(t *testing.T) {
 }
 
 func TestRoleClientV11Aries(t *testing.T) {
-	msp1, err := setupWithTypeAndVersion("testdata/aries/MSP1OU1eid1/", "MSP1", MSPv1_1, IDEMIX_ARIES)
+	msp1, err := setupWithTypeAndVersion("testdata/aries/MSP1OU1eid1/", "MSP1", MSPv1_1, IDEMIX)
 	require.NoError(t, err)
 	id1, err := getDefaultSigner(msp1)
 	require.NoError(t, err)
@@ -659,7 +659,7 @@ func TestRoleClientV11Aries(t *testing.T) {
 }
 
 func TestRolePeerV11Aries(t *testing.T) {
-	msp1, err := setupWithTypeAndVersion("testdata/aries/MSP1OU1eid1/", "MSP1", MSPv1_1, IDEMIX_ARIES)
+	msp1, err := setupWithTypeAndVersion("testdata/aries/MSP1OU1eid1/", "MSP1", MSPv1_1, IDEMIX)
 	require.NoError(t, err)
 	id1, err := getDefaultSigner(msp1)
 	require.NoError(t, err)
