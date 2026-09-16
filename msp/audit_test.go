@@ -1,0 +1,233 @@
+/*
+Copyright IBM Corp. All Rights Reserved.
+
+SPDX-License-Identifier: Apache-2.0
+*/
+
+package msp
+
+import (
+	"testing"
+
+	bccsp "github.com/IBM/idemix/bccsp/types"
+	im "github.com/IBM/idemix/msp/config"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/proto"
+)
+
+func TestAudit(t *testing.T) {
+	forEachSchemeCurve(t, func(t *testing.T, sc schemeCurve) {
+		testAudit(t, sc)
+	})
+}
+
+func testAudit(t *testing.T, sc schemeCurve) {
+	mspI, err := NewIdemixMsp(MSPv1_3)
+	require.NoError(t, err)
+
+	conf := loadCurveConfig(t, sc, "EidRH", IDEMIX)
+
+	err = mspI.Setup(conf)
+	require.NoError(t, err)
+
+	id, err := mspI.GetDefaultSigningIdentity()
+	require.NoError(t, err)
+
+	idemixSigner := id.(*signingIdentity)
+
+	config := &im.IdemixMSPConfig{}
+	err = proto.Unmarshal(conf.Config, config)
+	require.NoError(t, err)
+
+	idemixMsp := mspI.(*msp)
+	csp := idemixMsp.csp
+
+	msg := []byte("Lost forever, now and ever\nTo this magical sound that I hear")
+
+	nymPublicKey, err := idemixSigner.NymKey.PublicKey()
+	require.NoError(t, err)
+
+	// STEP 1: Sign and Verify normally
+
+	signature, err := csp.Sign(
+		idemixSigner.UserKey,
+		msg,
+		&bccsp.IdemixSignerOpts{
+			Credential: idemixSigner.Cred,
+			Nym:        idemixSigner.NymKey,
+			IssuerPK:   idemixMsp.ipk,
+			Attributes: []bccsp.IdemixAttribute{
+				{Type: bccsp.IdemixHiddenAttribute},
+				{Type: bccsp.IdemixHiddenAttribute},
+				{Type: bccsp.IdemixHiddenAttribute},
+				{Type: bccsp.IdemixHiddenAttribute},
+			},
+			RhIndex:  AttributeIndexRevocationHandle,
+			EidIndex: AttributeIndexEnrollmentId,
+			Epoch:    0,
+			CRI:      config.Signer.CredentialRevocationInformation,
+		},
+	)
+	require.NoError(t, err)
+
+	valid, err := csp.Verify(
+		idemixMsp.ipk,
+		signature,
+		msg,
+		&bccsp.IdemixSignerOpts{
+			RevocationPublicKey: idemixMsp.revocationPK,
+			Attributes: []bccsp.IdemixAttribute{
+				{Type: bccsp.IdemixHiddenAttribute},
+				{Type: bccsp.IdemixHiddenAttribute},
+				{Type: bccsp.IdemixHiddenAttribute},
+				{Type: bccsp.IdemixHiddenAttribute},
+			},
+			RhIndex:          AttributeIndexRevocationHandle,
+			EidIndex:         AttributeIndexEnrollmentId,
+			Epoch:            0,
+			VerificationType: bccsp.BestEffort,
+			Nym:              nymPublicKey,
+		},
+	)
+	require.NoError(t, err)
+	assert.True(t, valid)
+
+	// STEP 2: Sign by also generating a commitment to the EID (and Verify)
+
+	sOpts := &bccsp.IdemixSignerOpts{
+		SigType:    bccsp.EidNym,
+		Credential: idemixSigner.Cred,
+		Nym:        idemixSigner.NymKey,
+		IssuerPK:   idemixMsp.ipk,
+		Attributes: []bccsp.IdemixAttribute{
+			{Type: bccsp.IdemixHiddenAttribute},
+			{Type: bccsp.IdemixHiddenAttribute},
+			{Type: bccsp.IdemixHiddenAttribute},
+			{Type: bccsp.IdemixHiddenAttribute},
+		},
+		RhIndex:  AttributeIndexRevocationHandle,
+		EidIndex: AttributeIndexEnrollmentId,
+		Epoch:    0,
+		CRI:      config.Signer.CredentialRevocationInformation,
+	}
+
+	signature, err = csp.Sign(
+		idemixSigner.UserKey,
+		msg,
+		sOpts,
+	)
+	require.NoError(t, err)
+
+	valid, err = csp.Verify(
+		idemixMsp.ipk,
+		signature,
+		msg,
+		&bccsp.IdemixSignerOpts{
+			RevocationPublicKey: idemixMsp.revocationPK,
+			Attributes: []bccsp.IdemixAttribute{
+				{Type: bccsp.IdemixHiddenAttribute},
+				{Type: bccsp.IdemixHiddenAttribute},
+				{Type: bccsp.IdemixHiddenAttribute},
+				{Type: bccsp.IdemixHiddenAttribute},
+			},
+			RhIndex:          AttributeIndexRevocationHandle,
+			EidIndex:         AttributeIndexEnrollmentId,
+			Epoch:            0,
+			VerificationType: bccsp.ExpectEidNym,
+			Nym:              nymPublicKey,
+		},
+	)
+	require.NoError(t, err)
+	assert.True(t, valid)
+
+	// STEP 3: audit of the nym eid
+	valid, err = csp.Verify(
+		idemixMsp.ipk,
+		signature,
+		msg,
+		&bccsp.EidNymAuditOpts{
+			EidIndex:     AttributeIndexEnrollmentId,
+			EnrollmentID: config.Signer.EnrollmentId,
+			RNymEid:      sOpts.Metadata.EidNymAuditData.Rand,
+		},
+	)
+	require.NoError(t, err)
+	assert.True(t, valid)
+
+	// STEP 4: Sign by also generating a commitment to the EID and to the RH (and Verify)
+
+	sOpts = &bccsp.IdemixSignerOpts{
+		SigType:    bccsp.EidNymRhNym,
+		Credential: idemixSigner.Cred,
+		Nym:        idemixSigner.NymKey,
+		IssuerPK:   idemixMsp.ipk,
+		Attributes: []bccsp.IdemixAttribute{
+			{Type: bccsp.IdemixHiddenAttribute},
+			{Type: bccsp.IdemixHiddenAttribute},
+			{Type: bccsp.IdemixHiddenAttribute},
+			{Type: bccsp.IdemixHiddenAttribute},
+		},
+		RhIndex:  AttributeIndexRevocationHandle,
+		EidIndex: AttributeIndexEnrollmentId,
+		Epoch:    0,
+		CRI:      config.Signer.CredentialRevocationInformation,
+	}
+
+	signature, err = csp.Sign(
+		idemixSigner.UserKey,
+		msg,
+		sOpts,
+	)
+	require.NoError(t, err)
+
+	valid, err = csp.Verify(
+		idemixMsp.ipk,
+		signature,
+		msg,
+		&bccsp.IdemixSignerOpts{
+			RevocationPublicKey: idemixMsp.revocationPK,
+			Attributes: []bccsp.IdemixAttribute{
+				{Type: bccsp.IdemixHiddenAttribute},
+				{Type: bccsp.IdemixHiddenAttribute},
+				{Type: bccsp.IdemixHiddenAttribute},
+				{Type: bccsp.IdemixHiddenAttribute},
+			},
+			RhIndex:          AttributeIndexRevocationHandle,
+			EidIndex:         AttributeIndexEnrollmentId,
+			Epoch:            0,
+			VerificationType: bccsp.ExpectEidNymRhNym,
+			Nym:              nymPublicKey,
+		},
+	)
+	require.NoError(t, err)
+	assert.True(t, valid)
+
+	// STEP 5: audit of the nym eid
+	valid, err = csp.Verify(
+		idemixMsp.ipk,
+		signature,
+		msg,
+		&bccsp.EidNymAuditOpts{
+			EidIndex:     AttributeIndexEnrollmentId,
+			EnrollmentID: config.Signer.EnrollmentId,
+			RNymEid:      sOpts.Metadata.EidNymAuditData.Rand,
+		},
+	)
+	require.NoError(t, err)
+	assert.True(t, valid)
+
+	// STEP 6: audit of the rh
+	valid, err = csp.Verify(
+		idemixMsp.ipk,
+		signature,
+		msg,
+		&bccsp.RhNymAuditOpts{
+			RhIndex:          AttributeIndexRevocationHandle,
+			RevocationHandle: config.Signer.RevocationHandle,
+			RNymRh:           sOpts.Metadata.RhNymAuditData.Rand,
+		},
+	)
+	require.NoError(t, err)
+	assert.True(t, valid)
+}

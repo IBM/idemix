@@ -15,37 +15,10 @@ import (
 	bccsp "github.com/IBM/idemix/bccsp/types"
 	im "github.com/IBM/idemix/msp/config"
 	math "github.com/IBM/mathlib"
-	"github.com/hyperledger/fabric-protos-go-apiv2/msp"
+	m "github.com/hyperledger/fabric-protos-go-apiv2/msp"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/proto"
 )
-
-func setup(configPath string, ID string) (MSP, error) {
-	return setupWithTypeAndVersion(configPath, ID, MSPv1_3, IDEMIX)
-}
-
-func setupWithVersion(configPath string, ID string, version MSPVersion) (MSP, error) {
-	return setupWithTypeAndVersion(configPath, ID, version, IDEMIX)
-}
-
-func setupWithTypeAndVersion(configPath string, ID string, version MSPVersion, mspType ProviderType) (MSP, error) {
-	msp, err := NewIdemixMsp(version)
-	if err != nil {
-		return nil, err
-	}
-
-	conf, err := GetIdemixMspConfigWithType(configPath, ID, mspType)
-	if err != nil {
-		return nil, fmt.Errorf("Getting MSP config failed: %w", err)
-	}
-
-	err = msp.Setup(conf)
-	if err != nil {
-		return nil, fmt.Errorf("Setting up MSP failed: %w", err)
-	}
-
-	return msp, nil
-}
 
 func getDefaultSigner(msp MSP) (SigningIdentity, error) {
 	id, err := msp.GetDefaultSigningIdentity()
@@ -67,10 +40,12 @@ func getDefaultSigner(msp MSP) (SigningIdentity, error) {
 }
 
 func TestSetup(t *testing.T) {
-	msp, err := setup("testdata/idemix/MSP1OU1", "MSP1OU1")
-	require.NoError(t, err)
+	forEachSchemeCurve(t, func(t *testing.T, sc schemeCurve) {
+		msp, err := setupCurve(t, sc, "MSP1OU1")
+		require.NoError(t, err)
 
-	require.Equal(t, IDEMIX, msp.GetType())
+		require.Equal(t, IDEMIX, msp.GetType())
+	})
 }
 
 func TestSetupBad(t *testing.T) {
@@ -78,10 +53,14 @@ func TestSetupBad(t *testing.T) {
 	tr := &amclt.Fp256bn{
 		C: curve,
 	}
+	sc := schemeCurve{scheme: "dlog", curveID: curveIDFP256BN_AMCL}
 
-	_, err := setup("testdata/idemix/badpath", "MSPID")
+	_, err := NewIdemixMsp(MSPv1_3)
+	require.NoError(t, err)
+
+	_, err = GetIdemixMspConfigWithType("testdata/idemix-does-not-exist", "MSPID", IDEMIX)
 	require.Error(t, err)
-	require.Contains(t, err.Error(), "Getting MSP config failed")
+	require.Contains(t, err.Error(), "failed to read issuer public key file")
 
 	msp1, err := NewIdemixMsp(MSPv1_3)
 	require.NoError(t, err)
@@ -92,19 +71,18 @@ func TestSetupBad(t *testing.T) {
 	require.Contains(t, err.Error(), "setup error: nil conf reference")
 
 	// Setup with incorrect MSP type
-	conf := &msp.MSPConfig{Type: 1234, Config: nil}
+	conf := &m.MSPConfig{Type: 1234, Config: nil}
 	err = msp1.Setup(conf)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "setup error:")
 
 	// Setup with bad idemix config bytes
-	conf = &msp.MSPConfig{Type: int32(IDEMIX), Config: []byte("barf")}
+	conf = &m.MSPConfig{Type: int32(IDEMIX), Config: []byte("barf")}
 	err = msp1.Setup(conf)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "failed unmarshalling idemix msp config")
 
-	conf, err = GetIdemixMspConfigWithType("testdata/idemix/MSP1OU1", "IdemixMSP1", IDEMIX)
-	require.NoError(t, err)
+	conf = loadCurveConfig(t, sc, "IdemixMSP1", IDEMIX)
 	idemixconfig := &im.IdemixMSPConfig{}
 	err = proto.Unmarshal(conf.Config, idemixconfig)
 	require.NoError(t, err)
@@ -143,95 +121,105 @@ func TestSetupBad(t *testing.T) {
 }
 
 func TestSigning(t *testing.T) {
-	msp, err := setup("testdata/idemix/MSP1OU1", "MSP1")
-	require.NoError(t, err)
+	forEachSchemeCurve(t, func(t *testing.T, sc schemeCurve) {
+		msp, err := setupCurve(t, sc, "MSP1")
+		require.NoError(t, err)
 
-	id, err := getDefaultSigner(msp)
-	require.NoError(t, err)
+		id, err := getDefaultSigner(msp)
+		require.NoError(t, err)
 
-	msg := []byte("TestMessage")
-	sig, err := id.Sign(msg)
-	require.NoError(t, err)
+		msg := []byte("TestMessage")
+		sig, err := id.Sign(msg)
+		require.NoError(t, err)
 
-	err = id.Verify(msg, sig)
-	require.NoError(t, err)
+		err = id.Verify(msg, sig)
+		require.NoError(t, err)
 
-	err = id.Verify([]byte("OtherMessage"), sig)
-	require.Error(t, err)
-	require.Contains(t, err.Error(), "pseudonym signature invalid: zero-knowledge proof is invalid")
+		err = id.Verify([]byte("OtherMessage"), sig)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), badSigVerifyError(sc))
 
-	verMsp, err := setup("testdata/idemix/MSP1Verifier", "MSP1")
-	require.NoError(t, err)
-	err = verMsp.Validate(id)
-	require.NoError(t, err)
-	_, err = verMsp.GetDefaultSigningIdentity()
-	require.Error(t, err)
-	require.Contains(t, err.Error(), "no default signer setup")
+		verMsp, err := setupCurveVerifier(t, sc, "MSP1")
+		require.NoError(t, err)
+		err = verMsp.Validate(id)
+		require.NoError(t, err)
+		_, err = verMsp.GetDefaultSigningIdentity()
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "no default signer setup")
+	})
 }
 
 func TestSigningBad(t *testing.T) {
-	msp, err := setup("testdata/idemix/MSP1OU1", "MSP1OU1")
-	require.NoError(t, err)
+	forEachSchemeCurve(t, func(t *testing.T, sc schemeCurve) {
+		msp, err := setupCurve(t, sc, "MSP1OU1")
+		require.NoError(t, err)
 
-	id, err := getDefaultSigner(msp)
-	require.NoError(t, err)
+		id, err := getDefaultSigner(msp)
+		require.NoError(t, err)
 
-	msg := []byte("TestMessage")
-	sig := []byte("barf")
+		msg := []byte("TestMessage")
+		sig := []byte("barf")
 
-	err = id.Verify(msg, sig)
-	require.Error(t, err)
-	require.Contains(t, err.Error(), "error unmarshalling signature")
+		err = id.Verify(msg, sig)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "error unmarshalling signature")
+	})
 }
 
 func TestIdentitySerialization(t *testing.T) {
-	msp, err := setup("testdata/idemix/MSP1OU1", "MSP1OU1")
-	require.NoError(t, err)
+	forEachSchemeCurve(t, func(t *testing.T, sc schemeCurve) {
+		msp, err := setupCurve(t, sc, "MSP1OU1")
+		require.NoError(t, err)
 
-	id, err := getDefaultSigner(msp)
-	require.NoError(t, err)
+		id, err := getDefaultSigner(msp)
+		require.NoError(t, err)
 
-	// Test serialization of identities
-	serializedID, err := id.Serialize()
-	require.NoError(t, err)
+		// Test serialization of identities
+		serializedID, err := id.Serialize()
+		require.NoError(t, err)
 
-	verID, err := msp.DeserializeIdentity(serializedID)
-	require.NoError(t, err)
+		verID, err := msp.DeserializeIdentity(serializedID)
+		require.NoError(t, err)
 
-	err = verID.Validate()
-	require.NoError(t, err)
+		err = verID.Validate()
+		require.NoError(t, err)
 
-	err = msp.Validate(verID)
-	require.NoError(t, err)
+		err = msp.Validate(verID)
+		require.NoError(t, err)
+	})
 }
 
 func TestIdentitySerializationBad(t *testing.T) {
-	msp, err := setup("testdata/idemix/MSP1OU1", "MSP1OU1")
-	require.NoError(t, err)
+	forEachSchemeCurve(t, func(t *testing.T, sc schemeCurve) {
+		msp, err := setupCurve(t, sc, "MSP1OU1")
+		require.NoError(t, err)
 
-	_, err = msp.DeserializeIdentity([]byte("barf"))
-	require.Error(t, err, "DeserializeIdentity should have failed for bad input")
-	require.Contains(t, err.Error(), "could not deserialize a SerializedIdentity")
+		_, err = msp.DeserializeIdentity([]byte("barf"))
+		require.Error(t, err, "DeserializeIdentity should have failed for bad input")
+		require.Contains(t, err.Error(), "could not deserialize a SerializedIdentity")
+	})
 }
 
 func TestIdentitySerializationWrongMSP(t *testing.T) {
-	msp1, err := setup("testdata/idemix/MSP1OU1", "MSP1OU1")
-	require.NoError(t, err)
-	msp2, err := setup("testdata/idemix/MSP2OU1", "MSP2OU1")
-	require.NoError(t, err)
-	id2, err := getDefaultSigner(msp2)
-	require.NoError(t, err)
+	forEachSchemeCurve(t, func(t *testing.T, sc schemeCurve) {
+		msp1, err := setupCurve(t, sc, "MSP1OU1")
+		require.NoError(t, err)
+		msp2, err := setupCurve(t, sc, "MSP2OU1")
+		require.NoError(t, err)
+		id2, err := getDefaultSigner(msp2)
+		require.NoError(t, err)
 
-	idBytes, err := id2.Serialize()
-	require.NoError(t, err)
+		idBytes, err := id2.Serialize()
+		require.NoError(t, err)
 
-	_, err = msp1.DeserializeIdentity(idBytes)
-	require.Error(t, err, "DeserializeIdentity should have failed for ID of other MSP")
-	require.Contains(t, err.Error(), "expected MSP ID MSP1OU1, received MSP2OU1")
+		_, err = msp1.DeserializeIdentity(idBytes)
+		require.Error(t, err, "DeserializeIdentity should have failed for ID of other MSP")
+		require.Contains(t, err.Error(), "expected MSP ID MSP1OU1, received MSP2OU1")
+	})
 }
 
 // TestNymSwapAttack demonstrates and confirms the fix for the following attack:
-// an adversary takes a legitimately-obtained Idemixidentity - with its genuine
+// an adversary takes a legitimately-obtained identity - with its genuine
 // associationProof, OU and Role untouched - and swaps out only its NymPublicKey
 // for a different, unrelated (but well-formed) pseudonym. Both pseudonyms are
 // properly derived from the *same* credential secret key, so this is not a case
@@ -245,573 +233,621 @@ func TestIdentitySerializationWrongMSP(t *testing.T) {
 // pseudonym. That let an adversary re-attribute a valid anonymous credential
 // proof to an arbitrary pseudonym of their choosing.
 func TestNymSwapAttack(t *testing.T) {
-	mspI, err := setup("testdata/idemix/MSP1OU1", "MSP1OU1")
-	require.NoError(t, err)
+	forEachSchemeCurve(t, func(t *testing.T, sc schemeCurve) {
+		mspI, err := setupCurve(t, sc, "MSP1OU1")
+		require.NoError(t, err)
 
-	id, err := getDefaultSigner(mspI)
-	require.NoError(t, err)
+		id, err := getDefaultSigner(mspI)
+		require.NoError(t, err)
 
-	signingID, ok := id.(*IdemixSigningIdentity)
-	require.True(t, ok)
+		signingID, ok := id.(*signingIdentity)
+		require.True(t, ok)
 
-	idemixMsp, ok := mspI.(*Idemixmsp)
-	require.True(t, ok)
+		idemixMsp, ok := mspI.(*msp)
+		require.True(t, ok)
 
-	// The adversary derives another, unlinkable pseudonym from the very same
-	// credential secret key. This nym is perfectly well-formed - it is just not
-	// the one bound into signingID.associationProof.
-	otherNymKey, err := idemixMsp.csp.KeyDeriv(
-		signingID.UserKey,
-		&bccsp.IdemixNymKeyDerivationOpts{Temporary: true, IssuerPK: idemixMsp.ipk},
-	)
-	require.NoError(t, err)
-	otherNymPublicKey, err := otherNymKey.PublicKey()
-	require.NoError(t, err)
+		// The adversary derives another, unlinkable pseudonym from the very same
+		// credential secret key. This nym is perfectly well-formed - it is just not
+		// the one bound into signingID.associationProof.
+		otherNymKey, err := idemixMsp.csp.KeyDeriv(
+			signingID.UserKey,
+			&bccsp.IdemixNymKeyDerivationOpts{Temporary: true, IssuerPK: idemixMsp.ipk},
+		)
+		require.NoError(t, err)
+		otherNymPublicKey, err := otherNymKey.PublicKey()
+		require.NoError(t, err)
 
-	originalNymBytes, err := signingID.NymPublicKey.Bytes()
-	require.NoError(t, err)
-	otherNymBytes, err := otherNymPublicKey.Bytes()
-	require.NoError(t, err)
-	require.NotEqual(t, originalNymBytes, otherNymBytes, "the two pseudonyms must be different for this attack to make sense")
+		originalNymBytes, err := signingID.NymPublicKey.Bytes()
+		require.NoError(t, err)
+		otherNymBytes, err := otherNymPublicKey.Bytes()
+		require.NoError(t, err)
+		require.NotEqual(t, originalNymBytes, otherNymBytes, "the two pseudonyms must be different for this attack to make sense")
 
-	// Forge an identity: same associationProof, OU and Role as the genuine
-	// identity, but with the swapped-in NymPublicKey.
-	forged := newIdemixIdentity(idemixMsp, otherNymPublicKey, signingID.Role, signingID.OU, signingID.associationProof)
+		// Forge an identity: same associationProof, OU and Role as the genuine
+		// identity, but with the swapped-in NymPublicKey.
+		forged := NewIdemixIdentity(idemixMsp, otherNymPublicKey, signingID.Role, signingID.OU, signingID.associationProof)
 
-	err = idemixMsp.Validate(forged)
-	require.Error(t, err, "the forged identity must be rejected: its claimed nym does not match the nym bound to the association proof")
-	require.Contains(t, err.Error(), "invalid nym")
+		err = idemixMsp.Validate(forged)
+		require.Error(t, err, "the forged identity must be rejected: its claimed nym does not match the nym bound to the association proof")
+		require.Contains(t, err.Error(), "invalid nym")
 
-	// The genuine identity, unmodified, must still validate correctly.
-	require.NoError(t, idemixMsp.Validate(signingID))
+		// The genuine identity, unmodified, must still validate correctly.
+		require.NoError(t, idemixMsp.Validate(signingID))
+	})
 }
 
 func TestPrincipalIdentity(t *testing.T) {
-	msp1, err := setup("testdata/idemix/MSP1OU1", "MSP1OU1")
-	require.NoError(t, err)
+	forEachSchemeCurve(t, func(t *testing.T, sc schemeCurve) {
+		msp1, err := setupCurve(t, sc, "MSP1OU1")
+		require.NoError(t, err)
 
-	id1, err := getDefaultSigner(msp1)
-	require.NoError(t, err)
+		id1, err := getDefaultSigner(msp1)
+		require.NoError(t, err)
 
-	idBytes, err := id1.Serialize()
-	require.NoError(t, err)
+		idBytes, err := id1.Serialize()
+		require.NoError(t, err)
 
-	principal := &msp.MSPPrincipal{
-		PrincipalClassification: msp.MSPPrincipal_IDENTITY,
-		Principal:               idBytes}
+		principal := &m.MSPPrincipal{
+			PrincipalClassification: m.MSPPrincipal_IDENTITY,
+			Principal:               idBytes}
 
-	err = id1.SatisfiesPrincipal(principal)
-	require.NoError(t, err)
+		err = id1.SatisfiesPrincipal(principal)
+		require.NoError(t, err)
+	})
 }
 
 func TestPrincipalIdentityWrongIdentity(t *testing.T) {
-	msp1, err := setup("testdata/idemix/MSP1OU1", "MSP1OU1")
-	require.NoError(t, err)
+	forEachSchemeCurve(t, func(t *testing.T, sc schemeCurve) {
+		msp1, err := setupCurve(t, sc, "MSP1OU1")
+		require.NoError(t, err)
 
-	id1, err := getDefaultSigner(msp1)
-	require.NoError(t, err)
+		id1, err := getDefaultSigner(msp1)
+		require.NoError(t, err)
 
-	msp2, err := setup("testdata/idemix/MSP1OU2", "MSP1OU2")
-	require.NoError(t, err)
+		msp2, err := setupCurve(t, sc, "MSP1OU2")
+		require.NoError(t, err)
 
-	id2, err := getDefaultSigner(msp2)
-	require.NoError(t, err)
+		id2, err := getDefaultSigner(msp2)
+		require.NoError(t, err)
 
-	idBytes, err := id1.Serialize()
-	require.NoError(t, err)
+		idBytes, err := id1.Serialize()
+		require.NoError(t, err)
 
-	principal := &msp.MSPPrincipal{
-		PrincipalClassification: msp.MSPPrincipal_IDENTITY,
-		Principal:               idBytes}
+		principal := &m.MSPPrincipal{
+			PrincipalClassification: m.MSPPrincipal_IDENTITY,
+			Principal:               idBytes}
 
-	err = id2.SatisfiesPrincipal(principal)
-	require.Error(t, err, "Identity MSP principal for different user should fail")
-	require.Contains(t, err.Error(), "the identities do not match")
+		err = id2.SatisfiesPrincipal(principal)
+		require.Error(t, err, "Identity MSP principal for different user should fail")
+		require.Contains(t, err.Error(), "the identities do not match")
+	})
 }
 
 func TestPrincipalIdentityBadIdentity(t *testing.T) {
-	msp1, err := setup("testdata/idemix/MSP1OU1", "MSP1OU1")
-	require.NoError(t, err)
+	forEachSchemeCurve(t, func(t *testing.T, sc schemeCurve) {
+		msp1, err := setupCurve(t, sc, "MSP1OU1")
+		require.NoError(t, err)
 
-	id1, err := getDefaultSigner(msp1)
-	require.NoError(t, err)
+		id1, err := getDefaultSigner(msp1)
+		require.NoError(t, err)
 
-	idBytes := []byte("barf")
+		idBytes := []byte("barf")
 
-	principal := &msp.MSPPrincipal{
-		PrincipalClassification: msp.MSPPrincipal_IDENTITY,
-		Principal:               idBytes}
+		principal := &m.MSPPrincipal{
+			PrincipalClassification: m.MSPPrincipal_IDENTITY,
+			Principal:               idBytes}
 
-	err = id1.SatisfiesPrincipal(principal)
-	require.Error(t, err, "Identity MSP principal for a bad principal should fail")
-	require.Contains(t, err.Error(), "the identities do not match")
+		err = id1.SatisfiesPrincipal(principal)
+		require.Error(t, err, "Identity MSP principal for a bad principal should fail")
+		require.Contains(t, err.Error(), "the identities do not match")
+	})
 }
 
 func TestAnonymityPrincipal(t *testing.T) {
-	msp1, err := setup("testdata/idemix/MSP1OU1", "MSP1OU1")
-	require.NoError(t, err)
+	forEachSchemeCurve(t, func(t *testing.T, sc schemeCurve) {
+		msp1, err := setupCurve(t, sc, "MSP1OU1")
+		require.NoError(t, err)
 
-	id1, err := getDefaultSigner(msp1)
-	require.NoError(t, err)
+		id1, err := getDefaultSigner(msp1)
+		require.NoError(t, err)
 
-	principalBytes, err := proto.Marshal(&msp.MSPIdentityAnonymity{AnonymityType: msp.MSPIdentityAnonymity_ANONYMOUS})
-	require.NoError(t, err)
+		principalBytes, err := proto.Marshal(&m.MSPIdentityAnonymity{AnonymityType: m.MSPIdentityAnonymity_ANONYMOUS})
+		require.NoError(t, err)
 
-	principal := &msp.MSPPrincipal{
-		PrincipalClassification: msp.MSPPrincipal_ANONYMITY,
-		Principal:               principalBytes}
+		principal := &m.MSPPrincipal{
+			PrincipalClassification: m.MSPPrincipal_ANONYMITY,
+			Principal:               principalBytes}
 
-	err = id1.SatisfiesPrincipal(principal)
-	require.NoError(t, err)
+		err = id1.SatisfiesPrincipal(principal)
+		require.NoError(t, err)
+	})
 }
 
 func TestAnonymityPrincipalBad(t *testing.T) {
-	msp1, err := setup("testdata/idemix/MSP1OU1", "MSP1OU1")
-	require.NoError(t, err)
+	forEachSchemeCurve(t, func(t *testing.T, sc schemeCurve) {
+		msp1, err := setupCurve(t, sc, "MSP1OU1")
+		require.NoError(t, err)
 
-	id1, err := getDefaultSigner(msp1)
-	require.NoError(t, err)
+		id1, err := getDefaultSigner(msp1)
+		require.NoError(t, err)
 
-	principalBytes, err := proto.Marshal(&msp.MSPIdentityAnonymity{AnonymityType: msp.MSPIdentityAnonymity_NOMINAL})
-	require.NoError(t, err)
+		principalBytes, err := proto.Marshal(&m.MSPIdentityAnonymity{AnonymityType: m.MSPIdentityAnonymity_NOMINAL})
+		require.NoError(t, err)
 
-	principal := &msp.MSPPrincipal{
-		PrincipalClassification: msp.MSPPrincipal_ANONYMITY,
-		Principal:               principalBytes}
+		principal := &m.MSPPrincipal{
+			PrincipalClassification: m.MSPPrincipal_ANONYMITY,
+			Principal:               principalBytes}
 
-	err = id1.SatisfiesPrincipal(principal)
-	require.Error(t, err, "Idemix identity is anonymous and should not pass NOMINAL anonymity principal")
-	require.Contains(t, err.Error(), "principal is nominal, but idemix MSP is anonymous")
+		err = id1.SatisfiesPrincipal(principal)
+		require.Error(t, err, "Idemix identity is anonymous and should not pass NOMINAL anonymity principal")
+		require.Contains(t, err.Error(), "principal is nominal, but idemix MSP is anonymous")
+	})
 }
 
 func TestAnonymityPrincipalV11(t *testing.T) {
-	msp1, err := setupWithVersion("testdata/idemix/MSP1OU1", "MSP1OU1", MSPv1_1)
-	require.NoError(t, err)
+	forEachSchemeCurve(t, func(t *testing.T, sc schemeCurve) {
+		msp1, err := setupCurveWithVersion(t, sc, "MSP1OU1", MSPv1_1)
+		require.NoError(t, err)
 
-	id1, err := getDefaultSigner(msp1)
-	require.NoError(t, err)
+		id1, err := getDefaultSigner(msp1)
+		require.NoError(t, err)
 
-	principalBytes, err := proto.Marshal(&msp.MSPIdentityAnonymity{AnonymityType: msp.MSPIdentityAnonymity_NOMINAL})
-	require.NoError(t, err)
+		principalBytes, err := proto.Marshal(&m.MSPIdentityAnonymity{AnonymityType: m.MSPIdentityAnonymity_NOMINAL})
+		require.NoError(t, err)
 
-	principal := &msp.MSPPrincipal{
-		PrincipalClassification: msp.MSPPrincipal_ANONYMITY,
-		Principal:               principalBytes}
+		principal := &m.MSPPrincipal{
+			PrincipalClassification: m.MSPPrincipal_ANONYMITY,
+			Principal:               principalBytes}
 
-	err = id1.SatisfiesPrincipal(principal)
-	require.Error(t, err)
-	require.Contains(t, err.Error(), "anonymity MSP Principals are unsupported in MSPv1_1")
+		err = id1.SatisfiesPrincipal(principal)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "anonymity MSP Principals are unsupported in MSPv1_1")
+	})
 }
 
 func TestIdemixIsWellFormed(t *testing.T) {
-	idemixMSP, err := setup("testdata/idemix/MSP1OU1", "TestName")
-	require.NoError(t, err)
+	forEachSchemeCurve(t, func(t *testing.T, sc schemeCurve) {
+		idemixMSP, err := setupCurve(t, sc, "TestName")
+		require.NoError(t, err)
 
-	id, err := getDefaultSigner(idemixMSP)
-	require.NoError(t, err)
-	rawId, err := id.Serialize()
-	require.NoError(t, err)
-	sId := &msp.SerializedIdentity{}
-	err = proto.Unmarshal(rawId, sId)
-	require.NoError(t, err)
-	err = idemixMSP.IsWellFormed(sId)
-	require.NoError(t, err)
-	// Corrupt the identity bytes
-	sId.IdBytes = append(sId.IdBytes, 1)
-	err = idemixMSP.IsWellFormed(sId)
-	require.Error(t, err)
-	require.Contains(t, err.Error(), "not an idemix identity")
+		id, err := getDefaultSigner(idemixMSP)
+		require.NoError(t, err)
+		rawId, err := id.Serialize()
+		require.NoError(t, err)
+		sId := &m.SerializedIdentity{}
+		err = proto.Unmarshal(rawId, sId)
+		require.NoError(t, err)
+		err = idemixMSP.IsWellFormed(sId)
+		require.NoError(t, err)
+		// Corrupt the identity bytes
+		sId.IdBytes = append(sId.IdBytes, 1)
+		err = idemixMSP.IsWellFormed(sId)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "not an idemix identity")
+	})
 }
 
 func TestPrincipalOU(t *testing.T) {
-	msp1, err := setup("testdata/idemix/MSP1OU1", "MSP1OU1")
-	require.NoError(t, err)
+	forEachSchemeCurve(t, func(t *testing.T, sc schemeCurve) {
+		msp1, err := setupCurve(t, sc, "MSP1OU1")
+		require.NoError(t, err)
 
-	id1, err := getDefaultSigner(msp1)
-	require.NoError(t, err)
+		id1, err := getDefaultSigner(msp1)
+		require.NoError(t, err)
 
-	ou := &msp.OrganizationUnit{
-		OrganizationalUnitIdentifier: id1.GetOrganizationalUnits()[0].OrganizationalUnitIdentifier,
-		MspIdentifier:                id1.GetMSPIdentifier(),
-		CertifiersIdentifier:         nil,
-	}
-	bytes, err := proto.Marshal(ou)
-	require.NoError(t, err)
+		ou := &m.OrganizationUnit{
+			OrganizationalUnitIdentifier: id1.GetOrganizationalUnits()[0].OrganizationalUnitIdentifier,
+			MspIdentifier:                id1.GetMSPIdentifier(),
+			CertifiersIdentifier:         nil,
+		}
+		bytes, err := proto.Marshal(ou)
+		require.NoError(t, err)
 
-	principal := &msp.MSPPrincipal{
-		PrincipalClassification: msp.MSPPrincipal_ORGANIZATION_UNIT,
-		Principal:               bytes}
+		principal := &m.MSPPrincipal{
+			PrincipalClassification: m.MSPPrincipal_ORGANIZATION_UNIT,
+			Principal:               bytes}
 
-	err = id1.SatisfiesPrincipal(principal)
-	require.NoError(t, err)
+		err = id1.SatisfiesPrincipal(principal)
+		require.NoError(t, err)
+	})
 }
 
 func TestPrincipalOUWrongOU(t *testing.T) {
-	msp1, err := setup("testdata/idemix/MSP1OU1", "MSP1OU1")
-	require.NoError(t, err)
+	forEachSchemeCurve(t, func(t *testing.T, sc schemeCurve) {
+		msp1, err := setupCurve(t, sc, "MSP1OU1")
+		require.NoError(t, err)
 
-	id1, err := getDefaultSigner(msp1)
-	require.NoError(t, err)
+		id1, err := getDefaultSigner(msp1)
+		require.NoError(t, err)
 
-	ou := &msp.OrganizationUnit{
-		OrganizationalUnitIdentifier: "DifferentOU",
-		MspIdentifier:                id1.GetMSPIdentifier(),
-		CertifiersIdentifier:         nil,
-	}
-	bytes, err := proto.Marshal(ou)
-	require.NoError(t, err)
+		ou := &m.OrganizationUnit{
+			OrganizationalUnitIdentifier: "DifferentOU",
+			MspIdentifier:                id1.GetMSPIdentifier(),
+			CertifiersIdentifier:         nil,
+		}
+		bytes, err := proto.Marshal(ou)
+		require.NoError(t, err)
 
-	principal := &msp.MSPPrincipal{
-		PrincipalClassification: msp.MSPPrincipal_ORGANIZATION_UNIT,
-		Principal:               bytes}
+		principal := &m.MSPPrincipal{
+			PrincipalClassification: m.MSPPrincipal_ORGANIZATION_UNIT,
+			Principal:               bytes}
 
-	err = id1.SatisfiesPrincipal(principal)
-	require.Error(t, err, "OU MSP principal should have failed for user of different OU")
-	require.Contains(t, err.Error(), "user is not part of the desired organizational unit")
+		err = id1.SatisfiesPrincipal(principal)
+		require.Error(t, err, "OU MSP principal should have failed for user of different OU")
+		require.Contains(t, err.Error(), "user is not part of the desired organizational unit")
+	})
 }
 
 func TestPrincipalOUWrongMSP(t *testing.T) {
-	msp1, err := setup("testdata/idemix/MSP1OU1", "MSP1OU1")
-	require.NoError(t, err)
+	forEachSchemeCurve(t, func(t *testing.T, sc schemeCurve) {
+		msp1, err := setupCurve(t, sc, "MSP1OU1")
+		require.NoError(t, err)
 
-	id1, err := getDefaultSigner(msp1)
-	require.NoError(t, err)
+		id1, err := getDefaultSigner(msp1)
+		require.NoError(t, err)
 
-	ou := &msp.OrganizationUnit{
-		OrganizationalUnitIdentifier: "OU1",
-		MspIdentifier:                "OtherMSP",
-		CertifiersIdentifier:         nil,
-	}
-	bytes, err := proto.Marshal(ou)
-	require.NoError(t, err)
+		ou := &m.OrganizationUnit{
+			OrganizationalUnitIdentifier: "OU1",
+			MspIdentifier:                "OtherMSP",
+			CertifiersIdentifier:         nil,
+		}
+		bytes, err := proto.Marshal(ou)
+		require.NoError(t, err)
 
-	principal := &msp.MSPPrincipal{
-		PrincipalClassification: msp.MSPPrincipal_ORGANIZATION_UNIT,
-		Principal:               bytes}
+		principal := &m.MSPPrincipal{
+			PrincipalClassification: m.MSPPrincipal_ORGANIZATION_UNIT,
+			Principal:               bytes}
 
-	err = id1.SatisfiesPrincipal(principal)
-	require.Error(t, err, "OU MSP principal should have failed for user of different MSP")
-	require.Contains(t, err.Error(), "the identity is a member of a different MSP")
+		err = id1.SatisfiesPrincipal(principal)
+		require.Error(t, err, "OU MSP principal should have failed for user of different MSP")
+		require.Contains(t, err.Error(), "the identity is a member of a different MSP")
+	})
 }
 
 func TestPrincipalOUBad(t *testing.T) {
-	msp1, err := setup("testdata/idemix/MSP1OU1", "MSP1OU1")
-	require.NoError(t, err)
+	forEachSchemeCurve(t, func(t *testing.T, sc schemeCurve) {
+		msp1, err := setupCurve(t, sc, "MSP1OU1")
+		require.NoError(t, err)
 
-	id1, err := getDefaultSigner(msp1)
-	require.NoError(t, err)
+		id1, err := getDefaultSigner(msp1)
+		require.NoError(t, err)
 
-	bytes := []byte("barf")
-	require.NoError(t, err)
+		bytes := []byte("barf")
+		require.NoError(t, err)
 
-	principal := &msp.MSPPrincipal{
-		PrincipalClassification: msp.MSPPrincipal_ORGANIZATION_UNIT,
-		Principal:               bytes}
+		principal := &m.MSPPrincipal{
+			PrincipalClassification: m.MSPPrincipal_ORGANIZATION_UNIT,
+			Principal:               bytes}
 
-	err = id1.SatisfiesPrincipal(principal)
-	require.Error(t, err, "OU MSP principal should have failed for a bad OU principal")
-	require.Contains(t, err.Error(), "could not unmarshal OU from principal")
+		err = id1.SatisfiesPrincipal(principal)
+		require.Error(t, err, "OU MSP principal should have failed for a bad OU principal")
+		require.Contains(t, err.Error(), "could not unmarshal OU from principal")
+	})
 }
 
 func TestPrincipalRoleMember(t *testing.T) {
-	msp1, err := setup("testdata/idemix/MSP1OU1", "MSP1OU1")
-	require.NoError(t, err)
+	forEachSchemeCurve(t, func(t *testing.T, sc schemeCurve) {
+		msp1, err := setupCurve(t, sc, "MSP1OU1")
+		require.NoError(t, err)
 
-	id1, err := getDefaultSigner(msp1)
-	require.NoError(t, err)
+		id1, err := getDefaultSigner(msp1)
+		require.NoError(t, err)
 
-	principalBytes, err := proto.Marshal(&msp.MSPRole{Role: msp.MSPRole_MEMBER, MspIdentifier: id1.GetMSPIdentifier()})
-	require.NoError(t, err)
+		principalBytes, err := proto.Marshal(&m.MSPRole{Role: m.MSPRole_MEMBER, MspIdentifier: id1.GetMSPIdentifier()})
+		require.NoError(t, err)
 
-	principal := &msp.MSPPrincipal{
-		PrincipalClassification: msp.MSPPrincipal_ROLE,
-		Principal:               principalBytes}
+		principal := &m.MSPPrincipal{
+			PrincipalClassification: m.MSPPrincipal_ROLE,
+			Principal:               principalBytes}
 
-	err = id1.SatisfiesPrincipal(principal)
-	require.NoError(t, err)
+		err = id1.SatisfiesPrincipal(principal)
+		require.NoError(t, err)
 
-	// Member should also satisfy client
-	principalBytes, err = proto.Marshal(&msp.MSPRole{Role: msp.MSPRole_CLIENT, MspIdentifier: id1.GetMSPIdentifier()})
-	require.NoError(t, err)
+		// Member should also satisfy client
+		principalBytes, err = proto.Marshal(&m.MSPRole{Role: m.MSPRole_CLIENT, MspIdentifier: id1.GetMSPIdentifier()})
+		require.NoError(t, err)
 
-	principal = &msp.MSPPrincipal{
-		PrincipalClassification: msp.MSPPrincipal_ROLE,
-		Principal:               principalBytes}
+		principal = &m.MSPPrincipal{
+			PrincipalClassification: m.MSPPrincipal_ROLE,
+			Principal:               principalBytes}
 
-	err = id1.SatisfiesPrincipal(principal)
-	require.NoError(t, err)
+		err = id1.SatisfiesPrincipal(principal)
+		require.NoError(t, err)
+	})
 }
 
 func TestPrincipalRoleAdmin(t *testing.T) {
-	msp1, err := setup("testdata/idemix/MSP1OU1Admin", "MSP1OU1Admin")
-	require.NoError(t, err)
+	forEachSchemeCurve(t, func(t *testing.T, sc schemeCurve) {
+		msp1, err := setupCurveAdmin(t, sc, "MSP1OU1Admin")
+		require.NoError(t, err)
 
-	id1, err := getDefaultSigner(msp1)
-	require.NoError(t, err)
+		id1, err := getDefaultSigner(msp1)
+		require.NoError(t, err)
 
-	principalBytes, err := proto.Marshal(&msp.MSPRole{Role: msp.MSPRole_MEMBER, MspIdentifier: id1.GetMSPIdentifier()})
-	require.NoError(t, err)
+		principalBytes, err := proto.Marshal(&m.MSPRole{Role: m.MSPRole_MEMBER, MspIdentifier: id1.GetMSPIdentifier()})
+		require.NoError(t, err)
 
-	principal := &msp.MSPPrincipal{
-		PrincipalClassification: msp.MSPPrincipal_ROLE,
-		Principal:               principalBytes}
+		principal := &m.MSPPrincipal{
+			PrincipalClassification: m.MSPPrincipal_ROLE,
+			Principal:               principalBytes}
 
-	// Admin should also satisfy member
-	err = id1.SatisfiesPrincipal(principal)
-	require.NoError(t, err)
+		// Admin should also satisfy member
+		err = id1.SatisfiesPrincipal(principal)
+		require.NoError(t, err)
 
-	principalBytes, err = proto.Marshal(&msp.MSPRole{Role: msp.MSPRole_ADMIN, MspIdentifier: id1.GetMSPIdentifier()})
-	require.NoError(t, err)
+		principalBytes, err = proto.Marshal(&m.MSPRole{Role: m.MSPRole_ADMIN, MspIdentifier: id1.GetMSPIdentifier()})
+		require.NoError(t, err)
 
-	principal = &msp.MSPPrincipal{
-		PrincipalClassification: msp.MSPPrincipal_ROLE,
-		Principal:               principalBytes}
+		principal = &m.MSPPrincipal{
+			PrincipalClassification: m.MSPPrincipal_ROLE,
+			Principal:               principalBytes}
 
-	err = id1.SatisfiesPrincipal(principal)
-	require.NoError(t, err)
+		err = id1.SatisfiesPrincipal(principal)
+		require.NoError(t, err)
+	})
 }
 
 func TestPrincipalRoleNotPeer(t *testing.T) {
-	msp1, err := setup("testdata/idemix/MSP1OU1Admin", "MSP1OU1")
-	require.NoError(t, err)
+	forEachSchemeCurve(t, func(t *testing.T, sc schemeCurve) {
+		msp1, err := setupCurveAdmin(t, sc, "MSP1OU1")
+		require.NoError(t, err)
 
-	id1, err := getDefaultSigner(msp1)
-	require.NoError(t, err)
+		id1, err := getDefaultSigner(msp1)
+		require.NoError(t, err)
 
-	principalBytes, err := proto.Marshal(&msp.MSPRole{Role: msp.MSPRole_PEER, MspIdentifier: id1.GetMSPIdentifier()})
-	require.NoError(t, err)
+		principalBytes, err := proto.Marshal(&m.MSPRole{Role: m.MSPRole_PEER, MspIdentifier: id1.GetMSPIdentifier()})
+		require.NoError(t, err)
 
-	principal := &msp.MSPPrincipal{
-		PrincipalClassification: msp.MSPPrincipal_ROLE,
-		Principal:               principalBytes}
+		principal := &m.MSPPrincipal{
+			PrincipalClassification: m.MSPPrincipal_ROLE,
+			Principal:               principalBytes}
 
-	err = id1.SatisfiesPrincipal(principal)
-	require.Error(t, err, "Admin should not satisfy PEER principal")
-	require.Contains(t, err.Error(), "idemixmsp only supports client use, so it cannot satisfy an MSPRole PEER principal")
+		err = id1.SatisfiesPrincipal(principal)
+		require.Error(t, err, "Admin should not satisfy PEER principal")
+		require.Contains(t, err.Error(), "idemixmsp only supports client use, so it cannot satisfy an MSPRole PEER principal")
+	})
 }
 
 func TestPrincipalRoleNotAdmin(t *testing.T) {
-	msp1, err := setup("testdata/idemix/MSP1OU1", "MSP1OU1")
-	require.NoError(t, err)
+	forEachSchemeCurve(t, func(t *testing.T, sc schemeCurve) {
+		msp1, err := setupCurve(t, sc, "MSP1OU1")
+		require.NoError(t, err)
 
-	id1, err := getDefaultSigner(msp1)
-	require.NoError(t, err)
+		id1, err := getDefaultSigner(msp1)
+		require.NoError(t, err)
 
-	principalBytes, err := proto.Marshal(&msp.MSPRole{Role: msp.MSPRole_ADMIN, MspIdentifier: id1.GetMSPIdentifier()})
-	require.NoError(t, err)
+		principalBytes, err := proto.Marshal(&m.MSPRole{Role: m.MSPRole_ADMIN, MspIdentifier: id1.GetMSPIdentifier()})
+		require.NoError(t, err)
 
-	principal := &msp.MSPPrincipal{
-		PrincipalClassification: msp.MSPPrincipal_ROLE,
-		Principal:               principalBytes}
+		principal := &m.MSPPrincipal{
+			PrincipalClassification: m.MSPPrincipal_ROLE,
+			Principal:               principalBytes}
 
-	err = id1.SatisfiesPrincipal(principal)
-	require.Error(t, err, "Member should not satisfy Admin principal")
-	require.Contains(t, err.Error(), "user is not an admin")
+		err = id1.SatisfiesPrincipal(principal)
+		require.Error(t, err, "Member should not satisfy Admin principal")
+		require.Contains(t, err.Error(), "user is not an admin")
+	})
 }
 
 func TestPrincipalRoleWrongMSP(t *testing.T) {
-	msp1, err := setup("testdata/idemix/MSP1OU1", "MSP1OU1")
-	require.NoError(t, err)
+	forEachSchemeCurve(t, func(t *testing.T, sc schemeCurve) {
+		msp1, err := setupCurve(t, sc, "MSP1OU1")
+		require.NoError(t, err)
 
-	id1, err := getDefaultSigner(msp1)
-	require.NoError(t, err)
+		id1, err := getDefaultSigner(msp1)
+		require.NoError(t, err)
 
-	principalBytes, err := proto.Marshal(&msp.MSPRole{Role: msp.MSPRole_MEMBER, MspIdentifier: "OtherMSP"})
-	require.NoError(t, err)
+		principalBytes, err := proto.Marshal(&m.MSPRole{Role: m.MSPRole_MEMBER, MspIdentifier: "OtherMSP"})
+		require.NoError(t, err)
 
-	principal := &msp.MSPPrincipal{
-		PrincipalClassification: msp.MSPPrincipal_ROLE,
-		Principal:               principalBytes}
+		principal := &m.MSPPrincipal{
+			PrincipalClassification: m.MSPPrincipal_ROLE,
+			Principal:               principalBytes}
 
-	err = id1.SatisfiesPrincipal(principal)
-	require.Error(t, err, "Role MSP principal should have failed for user of different MSP")
-	require.Contains(t, err.Error(), "the identity is a member of a different MSP")
+		err = id1.SatisfiesPrincipal(principal)
+		require.Error(t, err, "Role MSP principal should have failed for user of different MSP")
+		require.Contains(t, err.Error(), "the identity is a member of a different MSP")
+	})
 }
 
 func TestPrincipalRoleBadRole(t *testing.T) {
-	msp1, err := setup("testdata/idemix/MSP1OU1", "MSP1OU1")
-	require.NoError(t, err)
+	forEachSchemeCurve(t, func(t *testing.T, sc schemeCurve) {
+		msp1, err := setupCurve(t, sc, "MSP1OU1")
+		require.NoError(t, err)
 
-	id1, err := getDefaultSigner(msp1)
-	require.NoError(t, err)
+		id1, err := getDefaultSigner(msp1)
+		require.NoError(t, err)
 
-	// Make principal for nonexisting role 1234
-	principalBytes, err := proto.Marshal(&msp.MSPRole{Role: 1234, MspIdentifier: id1.GetMSPIdentifier()})
-	require.NoError(t, err)
+		// Make principal for nonexisting role 1234
+		principalBytes, err := proto.Marshal(&m.MSPRole{Role: 1234, MspIdentifier: id1.GetMSPIdentifier()})
+		require.NoError(t, err)
 
-	principal := &msp.MSPPrincipal{
-		PrincipalClassification: msp.MSPPrincipal_ROLE,
-		Principal:               principalBytes}
+		principal := &m.MSPPrincipal{
+			PrincipalClassification: m.MSPPrincipal_ROLE,
+			Principal:               principalBytes}
 
-	err = id1.SatisfiesPrincipal(principal)
-	require.Error(t, err, "Role MSP principal should have failed for a bad Role")
-	require.Contains(t, err.Error(), "invalid MSP role type")
+		err = id1.SatisfiesPrincipal(principal)
+		require.Error(t, err, "Role MSP principal should have failed for a bad Role")
+		require.Contains(t, err.Error(), "invalid MSP role type")
+	})
 }
 
 func TestPrincipalBad(t *testing.T) {
-	msp1, err := setup("testdata/idemix/MSP1OU1", "MSP1OU1")
-	require.NoError(t, err)
+	forEachSchemeCurve(t, func(t *testing.T, sc schemeCurve) {
+		msp1, err := setupCurve(t, sc, "MSP1OU1")
+		require.NoError(t, err)
 
-	id1, err := getDefaultSigner(msp1)
-	require.NoError(t, err)
+		id1, err := getDefaultSigner(msp1)
+		require.NoError(t, err)
 
-	principal := &msp.MSPPrincipal{
-		PrincipalClassification: 1234,
-		Principal:               nil}
+		principal := &m.MSPPrincipal{
+			PrincipalClassification: 1234,
+			Principal:               nil}
 
-	err = id1.SatisfiesPrincipal(principal)
-	require.Error(t, err, "Principal with bad Classification should fail")
-	require.Contains(t, err.Error(), "invalid principal type")
+		err = id1.SatisfiesPrincipal(principal)
+		require.Error(t, err, "Principal with bad Classification should fail")
+		require.Contains(t, err.Error(), "invalid principal type")
+	})
 }
 
 func TestPrincipalCombined(t *testing.T) {
-	msp1, err := setup("testdata/idemix/MSP1OU1", "MSP1OU1")
-	require.NoError(t, err)
+	forEachSchemeCurve(t, func(t *testing.T, sc schemeCurve) {
+		msp1, err := setupCurve(t, sc, "MSP1OU1")
+		require.NoError(t, err)
 
-	id1, err := getDefaultSigner(msp1)
-	require.NoError(t, err)
+		id1, err := getDefaultSigner(msp1)
+		require.NoError(t, err)
 
-	ou := &msp.OrganizationUnit{
-		OrganizationalUnitIdentifier: id1.GetOrganizationalUnits()[0].OrganizationalUnitIdentifier,
-		MspIdentifier:                id1.GetMSPIdentifier(),
-		CertifiersIdentifier:         nil,
-	}
-	principalBytes, err := proto.Marshal(ou)
-	require.NoError(t, err)
+		ou := &m.OrganizationUnit{
+			OrganizationalUnitIdentifier: id1.GetOrganizationalUnits()[0].OrganizationalUnitIdentifier,
+			MspIdentifier:                id1.GetMSPIdentifier(),
+			CertifiersIdentifier:         nil,
+		}
+		principalBytes, err := proto.Marshal(ou)
+		require.NoError(t, err)
 
-	principalOU := &msp.MSPPrincipal{
-		PrincipalClassification: msp.MSPPrincipal_ORGANIZATION_UNIT,
-		Principal:               principalBytes}
+		principalOU := &m.MSPPrincipal{
+			PrincipalClassification: m.MSPPrincipal_ORGANIZATION_UNIT,
+			Principal:               principalBytes}
 
-	principalBytes, err = proto.Marshal(&msp.MSPRole{Role: msp.MSPRole_MEMBER, MspIdentifier: id1.GetMSPIdentifier()})
-	require.NoError(t, err)
+		principalBytes, err = proto.Marshal(&m.MSPRole{Role: m.MSPRole_MEMBER, MspIdentifier: id1.GetMSPIdentifier()})
+		require.NoError(t, err)
 
-	principalRole := &msp.MSPPrincipal{
-		PrincipalClassification: msp.MSPPrincipal_ROLE,
-		Principal:               principalBytes}
+		principalRole := &m.MSPPrincipal{
+			PrincipalClassification: m.MSPPrincipal_ROLE,
+			Principal:               principalBytes}
 
-	principals := []*msp.MSPPrincipal{principalOU, principalRole}
+		principals := []*m.MSPPrincipal{principalOU, principalRole}
 
-	combinedPrincipal := &msp.CombinedPrincipal{Principals: principals}
-	combinedPrincipalBytes, err := proto.Marshal(combinedPrincipal)
+		combinedPrincipal := &m.CombinedPrincipal{Principals: principals}
+		combinedPrincipalBytes, err := proto.Marshal(combinedPrincipal)
 
-	require.NoError(t, err)
+		require.NoError(t, err)
 
-	principalsCombined := &msp.MSPPrincipal{PrincipalClassification: msp.MSPPrincipal_COMBINED, Principal: combinedPrincipalBytes}
+		principalsCombined := &m.MSPPrincipal{PrincipalClassification: m.MSPPrincipal_COMBINED, Principal: combinedPrincipalBytes}
 
-	err = id1.SatisfiesPrincipal(principalsCombined)
-	require.NoError(t, err)
+		err = id1.SatisfiesPrincipal(principalsCombined)
+		require.NoError(t, err)
+	})
 }
 
 func TestPrincipalCombinedBad(t *testing.T) {
-	msp1, err := setup("testdata/idemix/MSP1OU1", "MSP1OU1")
-	require.NoError(t, err)
+	forEachSchemeCurve(t, func(t *testing.T, sc schemeCurve) {
+		msp1, err := setupCurve(t, sc, "MSP1OU1")
+		require.NoError(t, err)
 
-	id1, err := getDefaultSigner(msp1)
-	require.NoError(t, err)
+		id1, err := getDefaultSigner(msp1)
+		require.NoError(t, err)
 
-	// create combined principal requiring membership of OU1 in MSP1 and requiring admin role
-	ou := &msp.OrganizationUnit{
-		OrganizationalUnitIdentifier: id1.GetOrganizationalUnits()[0].OrganizationalUnitIdentifier,
-		MspIdentifier:                id1.GetMSPIdentifier(),
-		CertifiersIdentifier:         nil,
-	}
-	principalBytes, err := proto.Marshal(ou)
-	require.NoError(t, err)
+		// create combined principal requiring membership of OU1 in MSP1 and requiring admin role
+		ou := &m.OrganizationUnit{
+			OrganizationalUnitIdentifier: id1.GetOrganizationalUnits()[0].OrganizationalUnitIdentifier,
+			MspIdentifier:                id1.GetMSPIdentifier(),
+			CertifiersIdentifier:         nil,
+		}
+		principalBytes, err := proto.Marshal(ou)
+		require.NoError(t, err)
 
-	principalOU := &msp.MSPPrincipal{
-		PrincipalClassification: msp.MSPPrincipal_ORGANIZATION_UNIT,
-		Principal:               principalBytes}
+		principalOU := &m.MSPPrincipal{
+			PrincipalClassification: m.MSPPrincipal_ORGANIZATION_UNIT,
+			Principal:               principalBytes}
 
-	principalBytes, err = proto.Marshal(&msp.MSPRole{Role: msp.MSPRole_ADMIN, MspIdentifier: id1.GetMSPIdentifier()})
-	require.NoError(t, err)
+		principalBytes, err = proto.Marshal(&m.MSPRole{Role: m.MSPRole_ADMIN, MspIdentifier: id1.GetMSPIdentifier()})
+		require.NoError(t, err)
 
-	principalRole := &msp.MSPPrincipal{
-		PrincipalClassification: msp.MSPPrincipal_ROLE,
-		Principal:               principalBytes}
+		principalRole := &m.MSPPrincipal{
+			PrincipalClassification: m.MSPPrincipal_ROLE,
+			Principal:               principalBytes}
 
-	principals := []*msp.MSPPrincipal{principalOU, principalRole}
+		principals := []*m.MSPPrincipal{principalOU, principalRole}
 
-	combinedPrincipal := &msp.CombinedPrincipal{Principals: principals}
-	combinedPrincipalBytes, err := proto.Marshal(combinedPrincipal)
+		combinedPrincipal := &m.CombinedPrincipal{Principals: principals}
+		combinedPrincipalBytes, err := proto.Marshal(combinedPrincipal)
 
-	require.NoError(t, err)
+		require.NoError(t, err)
 
-	principalsCombined := &msp.MSPPrincipal{PrincipalClassification: msp.MSPPrincipal_COMBINED, Principal: combinedPrincipalBytes}
+		principalsCombined := &m.MSPPrincipal{PrincipalClassification: m.MSPPrincipal_COMBINED, Principal: combinedPrincipalBytes}
 
-	err = id1.SatisfiesPrincipal(principalsCombined)
-	require.Error(t, err, "non-admin member of OU1 in MSP1 should not satisfy principal admin and OU1 in MSP1")
-	require.Contains(t, err.Error(), "user is not an admin")
+		err = id1.SatisfiesPrincipal(principalsCombined)
+		require.Error(t, err, "non-admin member of OU1 in MSP1 should not satisfy principal admin and OU1 in MSP1")
+		require.Contains(t, err.Error(), "user is not an admin")
+	})
 }
 
 func TestPrincipalCombinedV11(t *testing.T) {
-	msp1, err := setupWithVersion("testdata/idemix/MSP1OU1", "MSP1OU1", MSPv1_1)
-	require.NoError(t, err)
+	forEachSchemeCurve(t, func(t *testing.T, sc schemeCurve) {
+		msp1, err := setupCurveWithVersion(t, sc, "MSP1OU1", MSPv1_1)
+		require.NoError(t, err)
 
-	id1, err := getDefaultSigner(msp1)
-	require.NoError(t, err)
+		id1, err := getDefaultSigner(msp1)
+		require.NoError(t, err)
 
-	ou := &msp.OrganizationUnit{
-		OrganizationalUnitIdentifier: id1.GetOrganizationalUnits()[0].OrganizationalUnitIdentifier,
-		MspIdentifier:                id1.GetMSPIdentifier(),
-		CertifiersIdentifier:         nil,
-	}
-	principalBytes, err := proto.Marshal(ou)
-	require.NoError(t, err)
+		ou := &m.OrganizationUnit{
+			OrganizationalUnitIdentifier: id1.GetOrganizationalUnits()[0].OrganizationalUnitIdentifier,
+			MspIdentifier:                id1.GetMSPIdentifier(),
+			CertifiersIdentifier:         nil,
+		}
+		principalBytes, err := proto.Marshal(ou)
+		require.NoError(t, err)
 
-	principalOU := &msp.MSPPrincipal{
-		PrincipalClassification: msp.MSPPrincipal_ORGANIZATION_UNIT,
-		Principal:               principalBytes}
+		principalOU := &m.MSPPrincipal{
+			PrincipalClassification: m.MSPPrincipal_ORGANIZATION_UNIT,
+			Principal:               principalBytes}
 
-	principalBytes, err = proto.Marshal(&msp.MSPRole{Role: msp.MSPRole_MEMBER, MspIdentifier: id1.GetMSPIdentifier()})
-	require.NoError(t, err)
+		principalBytes, err = proto.Marshal(&m.MSPRole{Role: m.MSPRole_MEMBER, MspIdentifier: id1.GetMSPIdentifier()})
+		require.NoError(t, err)
 
-	principalRole := &msp.MSPPrincipal{
-		PrincipalClassification: msp.MSPPrincipal_ROLE,
-		Principal:               principalBytes}
+		principalRole := &m.MSPPrincipal{
+			PrincipalClassification: m.MSPPrincipal_ROLE,
+			Principal:               principalBytes}
 
-	principals := []*msp.MSPPrincipal{principalOU, principalRole}
+		principals := []*m.MSPPrincipal{principalOU, principalRole}
 
-	combinedPrincipal := &msp.CombinedPrincipal{Principals: principals}
-	combinedPrincipalBytes, err := proto.Marshal(combinedPrincipal)
+		combinedPrincipal := &m.CombinedPrincipal{Principals: principals}
+		combinedPrincipalBytes, err := proto.Marshal(combinedPrincipal)
 
-	require.NoError(t, err)
+		require.NoError(t, err)
 
-	principalsCombined := &msp.MSPPrincipal{PrincipalClassification: msp.MSPPrincipal_COMBINED, Principal: combinedPrincipalBytes}
+		principalsCombined := &m.MSPPrincipal{PrincipalClassification: m.MSPPrincipal_COMBINED, Principal: combinedPrincipalBytes}
 
-	err = id1.SatisfiesPrincipal(principalsCombined)
-	require.Error(t, err)
-	require.Contains(t, err.Error(), "combined MSP Principals are unsupported in MSPv1_1")
+		err = id1.SatisfiesPrincipal(principalsCombined)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "combined MSP Principals are unsupported in MSPv1_1")
+	})
 }
 
 func TestRoleClientV11(t *testing.T) {
-	msp1, err := setupWithVersion("testdata/idemix/MSP1OU1", "MSP1OU1", MSPv1_1)
-	require.NoError(t, err)
-	id1, err := getDefaultSigner(msp1)
-	require.NoError(t, err)
+	forEachSchemeCurve(t, func(t *testing.T, sc schemeCurve) {
+		msp1, err := setupCurveWithVersion(t, sc, "MSP1OU1", MSPv1_1)
+		require.NoError(t, err)
+		id1, err := getDefaultSigner(msp1)
+		require.NoError(t, err)
 
-	principalBytes, err := proto.Marshal(&msp.MSPRole{Role: msp.MSPRole_CLIENT, MspIdentifier: id1.GetMSPIdentifier()})
-	require.NoError(t, err)
-	principalRole := &msp.MSPPrincipal{
-		PrincipalClassification: msp.MSPPrincipal_ROLE,
-		Principal:               principalBytes}
-	err = id1.SatisfiesPrincipal(principalRole)
-	require.Error(t, err)
-	require.Contains(t, err.Error(), "invalid MSP role type")
+		principalBytes, err := proto.Marshal(&m.MSPRole{Role: m.MSPRole_CLIENT, MspIdentifier: id1.GetMSPIdentifier()})
+		require.NoError(t, err)
+		principalRole := &m.MSPPrincipal{
+			PrincipalClassification: m.MSPPrincipal_ROLE,
+			Principal:               principalBytes}
+		err = id1.SatisfiesPrincipal(principalRole)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "invalid MSP role type")
+	})
 }
 
 func TestRolePeerV11(t *testing.T) {
-	msp1, err := setupWithVersion("testdata/idemix/MSP1OU1", "MSP1OU1", MSPv1_1)
-	require.NoError(t, err)
-	id1, err := getDefaultSigner(msp1)
-	require.NoError(t, err)
+	forEachSchemeCurve(t, func(t *testing.T, sc schemeCurve) {
+		msp1, err := setupCurveWithVersion(t, sc, "MSP1OU1", MSPv1_1)
+		require.NoError(t, err)
+		id1, err := getDefaultSigner(msp1)
+		require.NoError(t, err)
 
-	principalBytes, err := proto.Marshal(&msp.MSPRole{Role: msp.MSPRole_PEER, MspIdentifier: id1.GetMSPIdentifier()})
-	require.NoError(t, err)
-	principalRole := &msp.MSPPrincipal{
-		PrincipalClassification: msp.MSPPrincipal_ROLE,
-		Principal:               principalBytes}
-	err = id1.SatisfiesPrincipal(principalRole)
-	require.Error(t, err)
-	require.Contains(t, err.Error(), "invalid MSP role type")
+		principalBytes, err := proto.Marshal(&m.MSPRole{Role: m.MSPRole_PEER, MspIdentifier: id1.GetMSPIdentifier()})
+		require.NoError(t, err)
+		principalRole := &m.MSPPrincipal{
+			PrincipalClassification: m.MSPPrincipal_ROLE,
+			Principal:               principalBytes}
+		err = id1.SatisfiesPrincipal(principalRole)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "invalid MSP role type")
+	})
 }

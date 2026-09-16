@@ -9,7 +9,7 @@ package msp
 import (
 	"time"
 
-	"github.com/hyperledger/fabric-protos-go-apiv2/msp"
+	m "github.com/hyperledger/fabric-protos-go-apiv2/msp"
 )
 
 // IdentityDeserializer is implemented by both MSPManger and MSP
@@ -21,7 +21,7 @@ type IdentityDeserializer interface {
 	DeserializeIdentity(serializedIdentity []byte) (Identity, error)
 
 	// IsWellFormed checks if the given identity can be deserialized into its provider-specific form
-	IsWellFormed(identity *msp.SerializedIdentity) error
+	IsWellFormed(identity *m.SerializedIdentity) error
 }
 
 // Membership service provider APIs for Hyperledger Fabric:
@@ -63,7 +63,7 @@ type MSP interface {
 	IdentityDeserializer
 
 	// Setup the MSP instance according to configuration information
-	Setup(config *msp.MSPConfig) error
+	Setup(config *m.MSPConfig) error
 
 	// GetVersion returns the version of this MSP
 	GetVersion() MSPVersion
@@ -90,7 +90,7 @@ type MSP interface {
 	// the description supplied in MSPPrincipal. The check may
 	// involve a byte-by-byte comparison (if the principal is
 	// a serialized identity) or may require MSP validation
-	SatisfiesPrincipal(id Identity, principal *msp.MSPPrincipal) error
+	SatisfiesPrincipal(id Identity, principal *m.MSPPrincipal) error
 }
 
 // OUIdentifier represents an organizational unit and
@@ -160,7 +160,7 @@ type Identity interface {
 	// the description supplied in MSPPrincipal. The check may
 	// involve a byte-by-byte comparison (if the principal is
 	// a serialized identity) or may require MSP validation
-	SatisfiesPrincipal(principal *msp.MSPPrincipal) error
+	SatisfiesPrincipal(principal *m.MSPPrincipal) error
 }
 
 // SigningIdentity is an extension of Identity to cover signing capabilities.
