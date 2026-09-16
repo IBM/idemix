@@ -48,7 +48,7 @@ func TestSetupSchemeAutoDetection(t *testing.T) {
 
 				require.NoError(t, err)
 
-				id2, err := getDefaultSigner(mspInst)
+				id2, err := getDefaultSigner(t, mspInst)
 				require.NoError(t, err)
 
 				msg := []byte("TestMessage")
@@ -78,7 +78,7 @@ func TestSetupCurveFromConfig(t *testing.T) {
 	err = mspInst.Setup(conf)
 	require.NoError(t, err)
 
-	id, err := getDefaultSigner(mspInst)
+	id, err := getDefaultSigner(t, mspInst)
 	require.NoError(t, err)
 
 	msg := []byte("TestMessage")
@@ -144,7 +144,7 @@ func TestSetupDefaultCurve(t *testing.T) {
 			err = mspInst.Setup(conf)
 			require.NoError(t, err)
 
-			id, err := getDefaultSigner(mspInst)
+			id, err := getDefaultSigner(t, mspInst)
 			require.NoError(t, err)
 
 			msg := []byte("TestMessage")

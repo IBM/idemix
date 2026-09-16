@@ -43,7 +43,7 @@ func TestMSPSatisfiesPrincipal(t *testing.T) {
 		msp1, err := setupCurve(t, sc, "MSP1OU1")
 		require.NoError(t, err)
 
-		id1, err := getDefaultSigner(msp1)
+		id1, err := getDefaultSigner(t, msp1)
 		require.NoError(t, err)
 
 		principalBytes, err := proto.Marshal(&m.MSPRole{Role: m.MSPRole_MEMBER, MspIdentifier: id1.GetMSPIdentifier()})
@@ -65,7 +65,7 @@ func TestMSPSatisfiesPrincipalInvalidIdentity(t *testing.T) {
 		msp2, err := setupCurve(t, sc, "MSP2OU1")
 		require.NoError(t, err)
 
-		id2, err := getDefaultSigner(msp2)
+		id2, err := getDefaultSigner(t, msp2)
 		require.NoError(t, err)
 
 		err = msp1.SatisfiesPrincipal(id2, &m.MSPPrincipal{})
@@ -79,8 +79,7 @@ func TestPseudonym(t *testing.T) {
 		msp1, err := setupCurve(t, sc, "MSP1OU1")
 		require.NoError(t, err)
 
-		idemixMsp, ok := msp1.(*msp)
-		require.True(t, ok)
+		idemixMsp := msp1
 
 		pseudo, revocationHandle, err := idemixMsp.Pseudonym()
 		require.NoError(t, err)
@@ -101,10 +100,7 @@ func TestEnrollmentID(t *testing.T) {
 		msp1, err := setupCurve(t, sc, "MSP1OU1")
 		require.NoError(t, err)
 
-		idemixMsp, ok := msp1.(*msp)
-		require.True(t, ok)
-
-		require.Equal(t, idemixMsp.conf.Signer.EnrollmentId, idemixMsp.EnrollmentID())
+		require.Equal(t, msp1.conf.Signer.EnrollmentId, msp1.EnrollmentID())
 	})
 }
 
@@ -113,7 +109,7 @@ func TestIdentityAnonymousAndExpiry(t *testing.T) {
 		msp1, err := setupCurve(t, sc, "MSP1OU1")
 		require.NoError(t, err)
 
-		id1, err := getDefaultSigner(msp1)
+		id1, err := getDefaultSigner(t, msp1)
 		require.NoError(t, err)
 
 		require.True(t, id1.Anonymous())
@@ -127,7 +123,7 @@ func TestSigningIdentityGetPublicVersion(t *testing.T) {
 		msp1, err := setupCurve(t, sc, "MSP1OU1")
 		require.NoError(t, err)
 
-		id1, err := getDefaultSigner(msp1)
+		id1, err := getDefaultSigner(t, msp1)
 		require.NoError(t, err)
 
 		signingID, ok := id1.(*signingIdentity)

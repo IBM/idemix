@@ -16,7 +16,7 @@ import (
 )
 
 // allCurveIDs mirrors the curve set idemixgen can produce (tools/idemixgen/main.go)
-// and that curveAndTranslator understands (msp/idemixmsp.go).
+// and that curveAndTranslator understands (MSP/idemixmsp.go).
 var allCurveIDs = []string{
 	curveIDFP256BN_AMCL,
 	curveIDBN254,
@@ -122,7 +122,7 @@ func loadCurveVerifierConfig(t *testing.T, sc schemeCurve, mspID string, mspType
 	return conf
 }
 
-func setupCurveWithTypeAndVersion(t *testing.T, sc schemeCurve, mspID string, version MSPVersion, mspType ProviderType) (MSP, error) {
+func setupCurveWithTypeAndVersion(t *testing.T, sc schemeCurve, mspID string, version MSPVersion, mspType ProviderType) (*MSP, error) {
 	t.Helper()
 
 	mspInst, err := NewIdemixMsp(version)
@@ -137,19 +137,19 @@ func setupCurveWithTypeAndVersion(t *testing.T, sc schemeCurve, mspID string, ve
 	return mspInst, nil
 }
 
-func setupCurve(t *testing.T, sc schemeCurve, mspID string) (MSP, error) {
+func setupCurve(t *testing.T, sc schemeCurve, mspID string) (*MSP, error) {
 	t.Helper()
 
 	return setupCurveWithTypeAndVersion(t, sc, mspID, MSPv1_3, IDEMIX)
 }
 
-func setupCurveWithVersion(t *testing.T, sc schemeCurve, mspID string, version MSPVersion) (MSP, error) {
+func setupCurveWithVersion(t *testing.T, sc schemeCurve, mspID string, version MSPVersion) (*MSP, error) {
 	t.Helper()
 
 	return setupCurveWithTypeAndVersion(t, sc, mspID, version, IDEMIX)
 }
 
-func setupCurveAdmin(t *testing.T, sc schemeCurve, mspID string) (MSP, error) {
+func setupCurveAdmin(t *testing.T, sc schemeCurve, mspID string) (*MSP, error) {
 	t.Helper()
 
 	mspInst, err := NewIdemixMsp(MSPv1_3)
@@ -164,7 +164,7 @@ func setupCurveAdmin(t *testing.T, sc schemeCurve, mspID string) (MSP, error) {
 	return mspInst, nil
 }
 
-func setupCurveVerifier(t *testing.T, sc schemeCurve, mspID string) (MSP, error) {
+func setupCurveVerifier(t *testing.T, sc schemeCurve, mspID string) (*MSP, error) {
 	t.Helper()
 
 	mspInst, err := NewIdemixMsp(MSPv1_3)

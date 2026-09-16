@@ -20,7 +20,8 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-func getDefaultSigner(msp MSP) (SigningIdentity, error) {
+func getDefaultSigner(t *testing.T, msp *MSP) (SigningIdentity, error) {
+	t.Helper()
 	id, err := msp.GetDefaultSigningIdentity()
 	if err != nil {
 		return nil, fmt.Errorf("Getting default signing identity failed: %w", err)
@@ -125,7 +126,7 @@ func TestSigning(t *testing.T) {
 		msp, err := setupCurve(t, sc, "MSP1")
 		require.NoError(t, err)
 
-		id, err := getDefaultSigner(msp)
+		id, err := getDefaultSigner(t, msp)
 		require.NoError(t, err)
 
 		msg := []byte("TestMessage")
@@ -154,7 +155,7 @@ func TestSigningBad(t *testing.T) {
 		msp, err := setupCurve(t, sc, "MSP1OU1")
 		require.NoError(t, err)
 
-		id, err := getDefaultSigner(msp)
+		id, err := getDefaultSigner(t, msp)
 		require.NoError(t, err)
 
 		msg := []byte("TestMessage")
@@ -171,7 +172,7 @@ func TestIdentitySerialization(t *testing.T) {
 		msp, err := setupCurve(t, sc, "MSP1OU1")
 		require.NoError(t, err)
 
-		id, err := getDefaultSigner(msp)
+		id, err := getDefaultSigner(t, msp)
 		require.NoError(t, err)
 
 		// Test serialization of identities
@@ -206,7 +207,7 @@ func TestIdentitySerializationWrongMSP(t *testing.T) {
 		require.NoError(t, err)
 		msp2, err := setupCurve(t, sc, "MSP2OU1")
 		require.NoError(t, err)
-		id2, err := getDefaultSigner(msp2)
+		id2, err := getDefaultSigner(t, msp2)
 		require.NoError(t, err)
 
 		idBytes, err := id2.Serialize()
@@ -237,14 +238,13 @@ func TestNymSwapAttack(t *testing.T) {
 		mspI, err := setupCurve(t, sc, "MSP1OU1")
 		require.NoError(t, err)
 
-		id, err := getDefaultSigner(mspI)
+		id, err := getDefaultSigner(t, mspI)
 		require.NoError(t, err)
 
 		signingID, ok := id.(*signingIdentity)
 		require.True(t, ok)
 
-		idemixMsp, ok := mspI.(*msp)
-		require.True(t, ok)
+		idemixMsp := mspI
 
 		// The adversary derives another, unlinkable pseudonym from the very same
 		// credential secret key. This nym is perfectly well-formed - it is just not
@@ -281,7 +281,7 @@ func TestPrincipalIdentity(t *testing.T) {
 		msp1, err := setupCurve(t, sc, "MSP1OU1")
 		require.NoError(t, err)
 
-		id1, err := getDefaultSigner(msp1)
+		id1, err := getDefaultSigner(t, msp1)
 		require.NoError(t, err)
 
 		idBytes, err := id1.Serialize()
@@ -301,13 +301,13 @@ func TestPrincipalIdentityWrongIdentity(t *testing.T) {
 		msp1, err := setupCurve(t, sc, "MSP1OU1")
 		require.NoError(t, err)
 
-		id1, err := getDefaultSigner(msp1)
+		id1, err := getDefaultSigner(t, msp1)
 		require.NoError(t, err)
 
 		msp2, err := setupCurve(t, sc, "MSP1OU2")
 		require.NoError(t, err)
 
-		id2, err := getDefaultSigner(msp2)
+		id2, err := getDefaultSigner(t, msp2)
 		require.NoError(t, err)
 
 		idBytes, err := id1.Serialize()
@@ -328,7 +328,7 @@ func TestPrincipalIdentityBadIdentity(t *testing.T) {
 		msp1, err := setupCurve(t, sc, "MSP1OU1")
 		require.NoError(t, err)
 
-		id1, err := getDefaultSigner(msp1)
+		id1, err := getDefaultSigner(t, msp1)
 		require.NoError(t, err)
 
 		idBytes := []byte("barf")
@@ -348,7 +348,7 @@ func TestAnonymityPrincipal(t *testing.T) {
 		msp1, err := setupCurve(t, sc, "MSP1OU1")
 		require.NoError(t, err)
 
-		id1, err := getDefaultSigner(msp1)
+		id1, err := getDefaultSigner(t, msp1)
 		require.NoError(t, err)
 
 		principalBytes, err := proto.Marshal(&m.MSPIdentityAnonymity{AnonymityType: m.MSPIdentityAnonymity_ANONYMOUS})
@@ -368,7 +368,7 @@ func TestAnonymityPrincipalBad(t *testing.T) {
 		msp1, err := setupCurve(t, sc, "MSP1OU1")
 		require.NoError(t, err)
 
-		id1, err := getDefaultSigner(msp1)
+		id1, err := getDefaultSigner(t, msp1)
 		require.NoError(t, err)
 
 		principalBytes, err := proto.Marshal(&m.MSPIdentityAnonymity{AnonymityType: m.MSPIdentityAnonymity_NOMINAL})
@@ -389,7 +389,7 @@ func TestAnonymityPrincipalV11(t *testing.T) {
 		msp1, err := setupCurveWithVersion(t, sc, "MSP1OU1", MSPv1_1)
 		require.NoError(t, err)
 
-		id1, err := getDefaultSigner(msp1)
+		id1, err := getDefaultSigner(t, msp1)
 		require.NoError(t, err)
 
 		principalBytes, err := proto.Marshal(&m.MSPIdentityAnonymity{AnonymityType: m.MSPIdentityAnonymity_NOMINAL})
@@ -410,7 +410,7 @@ func TestIdemixIsWellFormed(t *testing.T) {
 		idemixMSP, err := setupCurve(t, sc, "TestName")
 		require.NoError(t, err)
 
-		id, err := getDefaultSigner(idemixMSP)
+		id, err := getDefaultSigner(t, idemixMSP)
 		require.NoError(t, err)
 		rawId, err := id.Serialize()
 		require.NoError(t, err)
@@ -432,7 +432,7 @@ func TestPrincipalOU(t *testing.T) {
 		msp1, err := setupCurve(t, sc, "MSP1OU1")
 		require.NoError(t, err)
 
-		id1, err := getDefaultSigner(msp1)
+		id1, err := getDefaultSigner(t, msp1)
 		require.NoError(t, err)
 
 		ou := &m.OrganizationUnit{
@@ -457,7 +457,7 @@ func TestPrincipalOUWrongOU(t *testing.T) {
 		msp1, err := setupCurve(t, sc, "MSP1OU1")
 		require.NoError(t, err)
 
-		id1, err := getDefaultSigner(msp1)
+		id1, err := getDefaultSigner(t, msp1)
 		require.NoError(t, err)
 
 		ou := &m.OrganizationUnit{
@@ -483,7 +483,7 @@ func TestPrincipalOUWrongMSP(t *testing.T) {
 		msp1, err := setupCurve(t, sc, "MSP1OU1")
 		require.NoError(t, err)
 
-		id1, err := getDefaultSigner(msp1)
+		id1, err := getDefaultSigner(t, msp1)
 		require.NoError(t, err)
 
 		ou := &m.OrganizationUnit{
@@ -509,7 +509,7 @@ func TestPrincipalOUBad(t *testing.T) {
 		msp1, err := setupCurve(t, sc, "MSP1OU1")
 		require.NoError(t, err)
 
-		id1, err := getDefaultSigner(msp1)
+		id1, err := getDefaultSigner(t, msp1)
 		require.NoError(t, err)
 
 		bytes := []byte("barf")
@@ -530,7 +530,7 @@ func TestPrincipalRoleMember(t *testing.T) {
 		msp1, err := setupCurve(t, sc, "MSP1OU1")
 		require.NoError(t, err)
 
-		id1, err := getDefaultSigner(msp1)
+		id1, err := getDefaultSigner(t, msp1)
 		require.NoError(t, err)
 
 		principalBytes, err := proto.Marshal(&m.MSPRole{Role: m.MSPRole_MEMBER, MspIdentifier: id1.GetMSPIdentifier()})
@@ -561,7 +561,7 @@ func TestPrincipalRoleAdmin(t *testing.T) {
 		msp1, err := setupCurveAdmin(t, sc, "MSP1OU1Admin")
 		require.NoError(t, err)
 
-		id1, err := getDefaultSigner(msp1)
+		id1, err := getDefaultSigner(t, msp1)
 		require.NoError(t, err)
 
 		principalBytes, err := proto.Marshal(&m.MSPRole{Role: m.MSPRole_MEMBER, MspIdentifier: id1.GetMSPIdentifier()})
@@ -592,7 +592,7 @@ func TestPrincipalRoleNotPeer(t *testing.T) {
 		msp1, err := setupCurveAdmin(t, sc, "MSP1OU1")
 		require.NoError(t, err)
 
-		id1, err := getDefaultSigner(msp1)
+		id1, err := getDefaultSigner(t, msp1)
 		require.NoError(t, err)
 
 		principalBytes, err := proto.Marshal(&m.MSPRole{Role: m.MSPRole_PEER, MspIdentifier: id1.GetMSPIdentifier()})
@@ -613,7 +613,7 @@ func TestPrincipalRoleNotAdmin(t *testing.T) {
 		msp1, err := setupCurve(t, sc, "MSP1OU1")
 		require.NoError(t, err)
 
-		id1, err := getDefaultSigner(msp1)
+		id1, err := getDefaultSigner(t, msp1)
 		require.NoError(t, err)
 
 		principalBytes, err := proto.Marshal(&m.MSPRole{Role: m.MSPRole_ADMIN, MspIdentifier: id1.GetMSPIdentifier()})
@@ -634,7 +634,7 @@ func TestPrincipalRoleWrongMSP(t *testing.T) {
 		msp1, err := setupCurve(t, sc, "MSP1OU1")
 		require.NoError(t, err)
 
-		id1, err := getDefaultSigner(msp1)
+		id1, err := getDefaultSigner(t, msp1)
 		require.NoError(t, err)
 
 		principalBytes, err := proto.Marshal(&m.MSPRole{Role: m.MSPRole_MEMBER, MspIdentifier: "OtherMSP"})
@@ -655,7 +655,7 @@ func TestPrincipalRoleBadRole(t *testing.T) {
 		msp1, err := setupCurve(t, sc, "MSP1OU1")
 		require.NoError(t, err)
 
-		id1, err := getDefaultSigner(msp1)
+		id1, err := getDefaultSigner(t, msp1)
 		require.NoError(t, err)
 
 		// Make principal for nonexisting role 1234
@@ -677,7 +677,7 @@ func TestPrincipalBad(t *testing.T) {
 		msp1, err := setupCurve(t, sc, "MSP1OU1")
 		require.NoError(t, err)
 
-		id1, err := getDefaultSigner(msp1)
+		id1, err := getDefaultSigner(t, msp1)
 		require.NoError(t, err)
 
 		principal := &m.MSPPrincipal{
@@ -695,7 +695,7 @@ func TestPrincipalCombined(t *testing.T) {
 		msp1, err := setupCurve(t, sc, "MSP1OU1")
 		require.NoError(t, err)
 
-		id1, err := getDefaultSigner(msp1)
+		id1, err := getDefaultSigner(t, msp1)
 		require.NoError(t, err)
 
 		ou := &m.OrganizationUnit{
@@ -736,7 +736,7 @@ func TestPrincipalCombinedBad(t *testing.T) {
 		msp1, err := setupCurve(t, sc, "MSP1OU1")
 		require.NoError(t, err)
 
-		id1, err := getDefaultSigner(msp1)
+		id1, err := getDefaultSigner(t, msp1)
 		require.NoError(t, err)
 
 		// create combined principal requiring membership of OU1 in MSP1 and requiring admin role
@@ -779,7 +779,7 @@ func TestPrincipalCombinedV11(t *testing.T) {
 		msp1, err := setupCurveWithVersion(t, sc, "MSP1OU1", MSPv1_1)
 		require.NoError(t, err)
 
-		id1, err := getDefaultSigner(msp1)
+		id1, err := getDefaultSigner(t, msp1)
 		require.NoError(t, err)
 
 		ou := &m.OrganizationUnit{
@@ -820,7 +820,7 @@ func TestRoleClientV11(t *testing.T) {
 	forEachSchemeCurve(t, func(t *testing.T, sc schemeCurve) {
 		msp1, err := setupCurveWithVersion(t, sc, "MSP1OU1", MSPv1_1)
 		require.NoError(t, err)
-		id1, err := getDefaultSigner(msp1)
+		id1, err := getDefaultSigner(t, msp1)
 		require.NoError(t, err)
 
 		principalBytes, err := proto.Marshal(&m.MSPRole{Role: m.MSPRole_CLIENT, MspIdentifier: id1.GetMSPIdentifier()})
@@ -838,7 +838,7 @@ func TestRolePeerV11(t *testing.T) {
 	forEachSchemeCurve(t, func(t *testing.T, sc schemeCurve) {
 		msp1, err := setupCurveWithVersion(t, sc, "MSP1OU1", MSPv1_1)
 		require.NoError(t, err)
-		id1, err := getDefaultSigner(msp1)
+		id1, err := getDefaultSigner(t, msp1)
 		require.NoError(t, err)
 
 		principalBytes, err := proto.Marshal(&m.MSPRole{Role: m.MSPRole_PEER, MspIdentifier: id1.GetMSPIdentifier()})
