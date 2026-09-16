@@ -119,8 +119,22 @@ func curveAndTranslator(curveID string) (*math.Curve, idemixcrypto.Translator, e
 	}
 }
 
-// cspConstructor matches the shared signature of idemix.New and idemix.NewAries.
-type cspConstructor func(keyStore bccsp.KeyStore, curve *math.Curve, translator idemixcrypto.Translator, exportable bool) (bccsp.BCCSP, error)
+// cspConstructor matches the shared signature of idemix.New and idemix.NewAries, except that it
+// takes a keystore.KVS instead of a bccsp.KeyStore: the concrete bccsp.KeyStore depends on the
+// curve/translator chosen for the scheme being attempted, so it is resolved inside the
+// implementation from the KVS (or the dummy keystore, if the KVS is nil).
+type cspConstructor func(kvs keystore.KVS, curve *math.Curve, translator idemixcrypto.Translator, exportable bool) (bccsp.BCCSP, error)
+
+// resolveKeyStore returns the bccsp.KeyStore to use for the given KVS, curve and translator. If
+// kvs is nil, a non-persistent keystore.Dummy is used; otherwise a keystore.KVSStore backed by
+// kvs is used.
+func resolveKeyStore(kvs keystore.KVS, curve *math.Curve, translator idemixcrypto.Translator) bccsp.KeyStore {
+	if kvs == nil {
+		return &keystore.Dummy{}
+	}
+
+	return &keystore.KVSStore{KVS: kvs, Translator: translator, Curve: curve}
+}
 
 type MSP struct {
 	csp          bccsp.BCCSP
@@ -133,7 +147,7 @@ type MSP struct {
 	logger       Logger
 	exportable   bool
 	conf         *im.IdemixMSPConfig
-	keyStore     bccsp.KeyStore
+	kvs          keystore.KVS
 }
 
 // NewIdemixMsp creates a new instance of msp. Setup auto-detects the underlying
@@ -154,19 +168,15 @@ func NewIdemixMspWithLogger(version MSPVersion, logger Logger) (*MSP, error) {
 }
 
 // NewIdemixMspWithKeyStore creates a new instance of idemixmsp with a custom logger and a
-// custom bccsp.KeyStore used by the underlying BCCSP to persist imported/derived keys. See
-// NewIdemixMsp for the scheme auto-detection and curve-selection behavior of Setup.
-// If logger is nil, the default logger is used. If keyStore is nil, a non-persistent
-// keystore.Dummy is used.
-func NewIdemixMspWithKeyStore(version MSPVersion, logger Logger, keyStore bccsp.KeyStore) (*MSP, error) {
+// custom keystore.KVS used to persist imported/derived keys. See NewIdemixMsp for the scheme
+// auto-detection and curve-selection behavior of Setup. If logger is nil, the default logger is
+// used. If kvs is nil, a non-persistent keystore.Dummy is used.
+func NewIdemixMspWithKeyStore(version MSPVersion, logger Logger, kvs keystore.KVS) (*MSP, error) {
 	if logger == nil {
 		logger = newDefaultLogger("idemix")
 	}
-	if keyStore == nil {
-		keyStore = &keystore.Dummy{}
-	}
 	logger.Debugf("Creating Idemix-based MSP instance")
-	msp := MSP{logger: logger, version: version, exportable: true, keyStore: keyStore}
+	msp := MSP{logger: logger, version: version, exportable: true, kvs: kvs}
 
 	return &msp, nil
 }
@@ -195,11 +205,11 @@ func (msp *MSP) Setup(conf1 *m.MSPConfig) error {
 	// Auto-detect the underlying cryptographic scheme (dlog or Aries/BBS+) from the key
 	// material: attempt the dlog scheme first and, if that fails, retry with Aries/BBS+.
 	// Any curve supported by curveAndTranslator is accepted by either scheme.
-	newDlogCSP := func(keyStore bccsp.KeyStore, curve *math.Curve, translator idemixcrypto.Translator, exportable bool) (bccsp.BCCSP, error) {
-		return idemix.New(keyStore, curve, translator, exportable)
+	newDlogCSP := func(kvs keystore.KVS, curve *math.Curve, translator idemixcrypto.Translator, exportable bool) (bccsp.BCCSP, error) {
+		return idemix.New(resolveKeyStore(kvs, curve, translator), curve, translator, exportable)
 	}
-	newAriesCSP := func(keyStore bccsp.KeyStore, curve *math.Curve, translator idemixcrypto.Translator, exportable bool) (bccsp.BCCSP, error) {
-		return idemix.NewAries(keyStore, curve, translator, exportable)
+	newAriesCSP := func(kvs keystore.KVS, curve *math.Curve, translator idemixcrypto.Translator, exportable bool) (bccsp.BCCSP, error) {
+		return idemix.NewAries(resolveKeyStore(kvs, curve, translator), curve, translator, exportable)
 	}
 
 	dlogErr := msp.setupWithScheme(newDlogCSP, curveIDFP256BN_AMCL, &conf)
@@ -247,7 +257,7 @@ func (msp *MSP) setupWithScheme(newCSP cspConstructor, defaultCurveID string, co
 		return fmt.Errorf("%w", err)
 	}
 
-	csp, err := newCSP(msp.keyStore, curve, tr, msp.exportable)
+	csp, err := newCSP(msp.kvs, curve, tr, msp.exportable)
 	if err != nil {
 		return fmt.Errorf("failed to create BCCSP: %w", err)
 	}
