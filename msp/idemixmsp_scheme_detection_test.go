@@ -18,62 +18,53 @@ import (
 // material under the single IDEMIX config type, auto-detecting which scheme applies, and
 // still rejects a config that does not declare type IDEMIX.
 func TestSetupSchemeAutoDetection(t *testing.T) {
-	const (
-		dlogDir  = "testdata/idemix/MSP1OU1"
-		dlogID   = "MSP1OU1"
-		ariesDir = "testdata/aries/MSP1OU1eid1"
-		ariesID  = "MSP1OU1eid1"
-	)
+	forEachSchemeCurve(t, func(t *testing.T, sc schemeCurve) {
+		type testCase struct {
+			name         string
+			declaredType ProviderType
+			expectErr    string // empty means Setup must succeed and identity must sign/verify
+		}
 
-	type testCase struct {
-		name         string
-		dir, id      string
-		declaredType ProviderType
-		expectErr    string // empty means Setup must succeed and identity must sign/verify
-	}
+		cases := []testCase{
+			{"IDEMIX", IDEMIX, ""},
+			{"FABRIC", FABRIC, "unsupported config type"},
+		}
 
-	cases := []testCase{
-		{"dlog-material/IDEMIX", dlogDir, dlogID, IDEMIX, ""},
-		{"dlog-material/FABRIC", dlogDir, dlogID, FABRIC, "unsupported config type"},
-		{"aries-material/IDEMIX", ariesDir, ariesID, IDEMIX, ""},
-		{"aries-material/FABRIC", ariesDir, ariesID, FABRIC, "unsupported config type"},
-	}
+		for _, tc := range cases {
+			t.Run(tc.name, func(t *testing.T) {
+				mspInst, err := NewIdemixMsp(MSPv1_3)
+				require.NoError(t, err)
 
-	for _, tc := range cases {
-		t.Run(tc.name, func(t *testing.T) {
-			mspInst, err := NewIdemixMsp(MSPv1_3)
-			require.NoError(t, err)
+				conf := loadCurveConfig(t, sc, "MSP1OU1", tc.declaredType)
 
-			conf, err := GetIdemixMspConfigWithType(tc.dir, tc.id, tc.declaredType)
-			require.NoError(t, err)
+				err = mspInst.Setup(conf)
 
-			err = mspInst.Setup(conf)
+				if tc.expectErr != "" {
+					require.Error(t, err)
+					require.Contains(t, err.Error(), tc.expectErr)
 
-			if tc.expectErr != "" {
-				require.Error(t, err)
-				require.Contains(t, err.Error(), tc.expectErr)
+					return
+				}
 
-				return
-			}
+				require.NoError(t, err)
 
-			require.NoError(t, err)
+				id2, err := getDefaultSigner(mspInst)
+				require.NoError(t, err)
 
-			id2, err := getDefaultSigner(mspInst)
-			require.NoError(t, err)
-
-			msg := []byte("TestMessage")
-			sig, err := id2.Sign(msg)
-			require.NoError(t, err)
-			require.NoError(t, id2.Verify(msg, sig))
-		})
-	}
+				msg := []byte("TestMessage")
+				sig, err := id2.Sign(msg)
+				require.NoError(t, err)
+				require.NoError(t, id2.Verify(msg, sig))
+			})
+		}
+	})
 }
 
 func TestSetupCurveFromConfig(t *testing.T) {
 	mspInst, err := NewIdemixMsp(MSPv1_3)
 	require.NoError(t, err)
 
-	conf, err := GetIdemixMspConfigWithType("testdata/aries/MSP1OU1eid1", "MSP1OU1eid1", IDEMIX)
+	conf, err := GetIdemixMspConfigWithType("testdata/curves/aries/BLS12_381_BBS", "MSP1OU1eid1", IDEMIX)
 	require.NoError(t, err)
 
 	idemixConfig := &im.IdemixMSPConfig{}
@@ -105,7 +96,7 @@ func TestSetupCurveMismatch(t *testing.T) {
 	mspInst, err := NewIdemixMsp(MSPv1_3)
 	require.NoError(t, err)
 
-	conf, err := GetIdemixMspConfigWithType("testdata/aries/MSP1OU1eid1", "MSP1OU1eid1", IDEMIX)
+	conf, err := GetIdemixMspConfigWithType("testdata/curves/aries/BLS12_381_BBS", "MSP1OU1eid1", IDEMIX)
 	require.NoError(t, err)
 
 	idemixConfig := &im.IdemixMSPConfig{}
@@ -134,4 +125,32 @@ func TestSetupNilConf(t *testing.T) {
 	err = mspInst.Setup(nil)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "setup error: nil conf reference")
+}
+
+// TestSetupDefaultCurve checks that Setup resolves each scheme's default curve when the
+// config leaves CurveId empty.
+func TestSetupDefaultCurve(t *testing.T) {
+	for _, sc := range []schemeCurve{
+		{scheme: "dlog", curveID: curveIDFP256BN_AMCL},
+		{scheme: "aries", curveID: curveIDBLS12_381_BBS},
+	} {
+		t.Run(sc.name(), func(t *testing.T) {
+			mspInst, err := NewIdemixMsp(MSPv1_3)
+			require.NoError(t, err)
+
+			conf, err := GetIdemixMspConfigWithType(sc.dir(), "MSP1OU1", IDEMIX)
+			require.NoError(t, err)
+
+			err = mspInst.Setup(conf)
+			require.NoError(t, err)
+
+			id, err := getDefaultSigner(mspInst)
+			require.NoError(t, err)
+
+			msg := []byte("TestMessage")
+			sig, err := id.Sign(msg)
+			require.NoError(t, err)
+			require.NoError(t, id.Verify(msg, sig))
+		})
+	}
 }

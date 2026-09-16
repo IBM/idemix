@@ -37,6 +37,10 @@ for curve in "${CURVES[@]}"; do
     "$BINDIR/idemixgen" signerconfig --curve="$curve" "${ARIES_FLAG[@]}" --ca-input="$outdir" --output="$outdir" \
       --org-unit=OU1 --enrollmentId=eid1 --revocationHandle=rh1
 
+    # Admin-role signer, same CA/MSP, for tests that need a credentialed admin identity.
+    "$BINDIR/idemixgen" signerconfig --curve="$curve" "${ARIES_FLAG[@]}" --ca-input="$outdir" --output="$outdir/admin" --admin \
+      --org-unit=OU1 --enrollmentId=eid1 --revocationHandle=rh1
+
     echo "done: $scheme/$curve"
   done
 done
