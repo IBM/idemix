@@ -420,10 +420,30 @@ func (msp *MSP) DeserializeIdentity(serializedID []byte) (Identity, error) {
 		return nil, fmt.Errorf("expected MSP ID %s, received %s", msp.name, sID.Mspid)
 	}
 
-	return msp.DeserializeIdentityInternal(sID.GetIdBytes())
+	return msp.deserializeIdentityInternal(sID.GetIdBytes())
 }
 
-func (msp *MSP) DeserializeIdentityInternal(serializedID []byte) (Identity, error) {
+func (msp *MSP) DeserializeSigningIdentity(raw []byte) (SigningIdentity, error) {
+	id, err := msp.deserializeIdentityInternal(raw)
+	if err != nil {
+		return nil, err
+	}
+
+	nymKey, err := msp.csp.GetKey(id.NymPublicKey.SKI())
+	if err != nil {
+		return nil, fmt.Errorf("cannot find nym secret key: %w", err)
+	}
+
+	return NewSigningIdentity(
+		id,
+		msp.signer.Cred,
+		msp.signer.UserKey,
+		nymKey,
+		msp.signer.enrollmentId,
+	), nil
+}
+
+func (msp *MSP) deserializeIdentityInternal(serializedID []byte) (*identity, error) {
 	msp.logger.Debug("idemixmsp: deserializing identity")
 	serialized := new(im.SerializedIdemixIdentity)
 	err := proto.Unmarshal(serializedID, serialized)
@@ -571,10 +591,13 @@ func (msp *MSP) Pseudonym() (SigningIdentity, []byte, error) {
 		return nil, nil, fmt.Errorf("failed signing identity: %w", err)
 	}
 
-	// Set up default signer
-	id := NewIdemixIdentity(msp, NymPublicKey, role, ou, proof)
-
-	return NewSigningIdentity(id, msp.signer.Cred, msp.signer.UserKey, nymKey, enrollmentID), nil, nil
+	return NewSigningIdentity(
+		NewIdemixIdentity(msp, NymPublicKey, role, ou, proof),
+		msp.signer.Cred,
+		msp.signer.UserKey,
+		nymKey,
+		enrollmentID,
+	), nil, nil
 }
 
 func (msp *MSP) EnrollmentID() string {
