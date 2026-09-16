@@ -9,6 +9,7 @@ package msp
 import (
 	"testing"
 
+	"github.com/IBM/idemix/bccsp/keystore/kvs"
 	im "github.com/IBM/idemix/msp/config"
 	m "github.com/hyperledger/fabric-protos-go-apiv2/msp"
 	"github.com/stretchr/testify/require"
@@ -158,6 +159,29 @@ func setupCurveAdmin(t *testing.T, sc schemeCurve, mspID string) (*MSP, error) {
 	}
 
 	if err := mspInst.Setup(loadCurveAdminConfig(t, sc, mspID, IDEMIX)); err != nil {
+		return nil, err
+	}
+
+	return mspInst, nil
+}
+
+// setupCurveWithKeyStore sets up an MSP backed by a fresh, per-test file-based
+// keystore.KVS, so that keys derived with Temporary: false actually get persisted
+// and can be recovered later via BCCSP.GetKey (e.g. by DeserializeSigningIdentity).
+func setupCurveWithKeyStore(t *testing.T, sc schemeCurve, mspID string) (*MSP, error) {
+	t.Helper()
+
+	fileKVS, err := kvs.NewFileBased(t.TempDir())
+	if err != nil {
+		return nil, err
+	}
+
+	mspInst, err := NewIdemixMspWithKeyStore(MSPv1_3, nil, fileKVS)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := mspInst.Setup(loadCurveConfig(t, sc, mspID, IDEMIX)); err != nil {
 		return nil, err
 	}
 
