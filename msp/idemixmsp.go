@@ -326,8 +326,10 @@ func (msp *MSP) setupWithScheme(newCSP cspConstructor, defaultCurveID string, co
 		return fmt.Errorf("failed importing signer secret key: %w", err)
 	}
 
-	// Derive NymPublicKey
-	NymKey, err := msp.csp.KeyDeriv(UserKey, &bccsp.IdemixNymKeyDerivationOpts{Temporary: true, IssuerPK: IssuerPublicKey})
+	// Derive NymPublicKey. Persist the nym secret key when a real keystore (msp.kvs) is
+	// configured, so that DeserializeSigningIdentity can later recover it by SKI; with the
+	// non-persistent Dummy keystore (no kvs) it stays ephemeral, as before.
+	NymKey, err := msp.csp.KeyDeriv(UserKey, &bccsp.IdemixNymKeyDerivationOpts{Temporary: msp.kvs == nil, IssuerPK: IssuerPublicKey})
 	if err != nil {
 		return fmt.Errorf("failed deriving nym: %w", err)
 	}
@@ -557,11 +559,13 @@ func (msp *MSP) GetTLSIntermediateCerts() [][]byte {
 }
 
 func (msp *MSP) Pseudonym() (SigningIdentity, []byte, error) {
-	// Derive NymPublicKey
+	// Derive NymPublicKey. Persist the nym secret key when a real keystore (msp.kvs) is
+	// configured, so that DeserializeSigningIdentity can later recover it by SKI; with the
+	// non-persistent Dummy keystore (no kvs) it stays ephemeral, as before.
 	nymKey, err := msp.csp.KeyDeriv(
 		msp.signer.UserKey,
 		&bccsp.IdemixNymKeyDerivationOpts{
-			Temporary: true,
+			Temporary: msp.kvs == nil,
 			IssuerPK:  msp.ipk,
 		},
 	)
