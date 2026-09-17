@@ -449,7 +449,17 @@ func (msp *MSP) DeserializeIdentity(serializedID []byte) (Identity, error) {
 }
 
 func (msp *MSP) DeserializeSigningIdentity(raw []byte) (SigningIdentity, error) {
-	id, err := msp.deserializeIdentityInternal(raw)
+	sID := &m.SerializedIdentity{}
+	err := proto.Unmarshal(raw, sID)
+	if err != nil {
+		return nil, fmt.Errorf("could not deserialize a SerializedIdentity: %w", err)
+	}
+
+	if sID.Mspid != msp.name {
+		return nil, fmt.Errorf("expected MSP ID %s, received %s", msp.name, sID.Mspid)
+	}
+
+	id, err := msp.deserializeIdentityInternal(sID.GetIdBytes())
 	if err != nil {
 		return nil, err
 	}
