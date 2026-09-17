@@ -9,7 +9,7 @@ package msp
 import (
 	"time"
 
-	"github.com/hyperledger/fabric-protos-go-apiv2/msp"
+	m "github.com/hyperledger/fabric-protos-go-apiv2/msp"
 )
 
 // IdentityDeserializer is implemented by both MSPManger and MSP
@@ -21,76 +21,7 @@ type IdentityDeserializer interface {
 	DeserializeIdentity(serializedIdentity []byte) (Identity, error)
 
 	// IsWellFormed checks if the given identity can be deserialized into its provider-specific form
-	IsWellFormed(identity *msp.SerializedIdentity) error
-}
-
-// Membership service provider APIs for Hyperledger Fabric:
-//
-// By "membership service provider" we refer to an abstract component of the
-// system that would provide (anonymous) credentials to clients, and peers for
-// them to participate in Hyperledger/fabric network. Clients use these
-// credentials to authenticate their transactions, and peers use these credentials
-// to authenticate transaction processing results (endorsements). While
-// strongly connected to the transaction processing components of the systems,
-// this interface aims to have membership services components defined, in such
-// a way such that alternate implementations of this can be smoothly plugged in
-// without modifying the core of transaction processing components of the system.
-//
-// This file includes Membership service provider interface that covers the
-// needs of a peer membership service provider interface.
-
-// MSPManager is an interface defining a manager of one or more MSPs. This
-// essentially acts as a mediator to MSP calls and routes MSP related calls
-// to the appropriate MSP.
-// This object is immutable, it is initialized once and never changed.
-type MSPManager interface {
-
-	// IdentityDeserializer interface needs to be implemented by MSPManager
-	IdentityDeserializer
-
-	// Setup the MSP manager instance according to configuration information
-	Setup(msps []MSP) error
-
-	// GetMSPs Provides a list of Membership Service providers
-	GetMSPs() (map[string]MSP, error)
-}
-
-// MSP is the minimal Membership Service Provider Interface to be implemented
-// to accommodate peer functionality
-type MSP interface {
-
-	// IdentityDeserializer interface needs to be implemented by MSP
-	IdentityDeserializer
-
-	// Setup the MSP instance according to configuration information
-	Setup(config *msp.MSPConfig) error
-
-	// GetVersion returns the version of this MSP
-	GetVersion() MSPVersion
-
-	// GetType returns the provider type
-	GetType() ProviderType
-
-	// GetIdentifier returns the provider identifier
-	GetIdentifier() (string, error)
-
-	// GetDefaultSigningIdentity returns the default signing identity
-	GetDefaultSigningIdentity() (SigningIdentity, error)
-
-	// GetTLSRootCerts returns the TLS root certificates for this MSP
-	GetTLSRootCerts() [][]byte
-
-	// GetTLSIntermediateCerts returns the TLS intermediate root certificates for this MSP
-	GetTLSIntermediateCerts() [][]byte
-
-	// Validate checks whether the supplied identity is valid
-	Validate(id Identity) error
-
-	// SatisfiesPrincipal checks whether the identity matches
-	// the description supplied in MSPPrincipal. The check may
-	// involve a byte-by-byte comparison (if the principal is
-	// a serialized identity) or may require MSP validation
-	SatisfiesPrincipal(id Identity, principal *msp.MSPPrincipal) error
+	IsWellFormed(identity *m.SerializedIdentity) error
 }
 
 // OUIdentifier represents an organizational unit and
@@ -160,7 +91,7 @@ type Identity interface {
 	// the description supplied in MSPPrincipal. The check may
 	// involve a byte-by-byte comparison (if the principal is
 	// a serialized identity) or may require MSP validation
-	SatisfiesPrincipal(principal *msp.MSPPrincipal) error
+	SatisfiesPrincipal(principal *m.MSPPrincipal) error
 }
 
 // SigningIdentity is an extension of Identity to cover signing capabilities.
@@ -168,7 +99,6 @@ type Identity interface {
 // to sign transactions, or fabric endorser who wishes to sign proposal
 // processing outcomes.
 type SigningIdentity interface {
-
 	// Extends Identity
 	Identity
 
@@ -195,19 +125,17 @@ type ProviderType int
 
 // The ProviderType of a member relative to the member API
 const (
-	FABRIC       ProviderType = iota // MSP is of FABRIC type
-	IDEMIX                           // MSP is of IDEMIX type
-	IDEMIX_ARIES                     // MSP is of IDEMIX_ARIES type
-	OTHER                            // MSP is of OTHER TYPE
+	FABRIC ProviderType = iota // MSP is of FABRIC type
+	IDEMIX                     // MSP is of IDEMIX type
+	OTHER                      // MSP is of OTHER TYPE
 
 	// NOTE: as new types are added to this set,
 	// the mspTypes map below must be extended
 )
 
 var mspTypeStrings = map[ProviderType]string{
-	FABRIC:       "bccsp",
-	IDEMIX:       "idemix",
-	IDEMIX_ARIES: "idemix-aries",
+	FABRIC: "bccsp",
+	IDEMIX: "idemix",
 }
 
 // ProviderTypeToString returns a string that represents the ProviderType integer

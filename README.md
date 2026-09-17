@@ -23,14 +23,13 @@ This project is a Go implementation of an anonymous identity stack for blockchai
 
 ## Constructors
 
-Two MSP constructors are available, corresponding to the two cryptographic backends:
+A single MSP constructor is available:
 
-- **`NewIdemixMsp(version)`** — uses the legacy dlog scheme. Accepts any supported curve; defaults to `FP256BN_AMCL` when `curve_id` is absent.
-- **`NewIdemixMspAries(version)`** — uses the Aries/BBS+ scheme. Accepts only BBS curves (`BLS12_381_BBS` or `BLS12_381_BBS_GURVY`); defaults to `BLS12_381_BBS` when `curve_id` is absent.
+- **`NewIdemixMsp(version)`** (and `NewIdemixMspWithLogger`) — `Setup` auto-detects the underlying cryptographic scheme from the key material in the config: it first attempts to load the config using the legacy dlog scheme and, if that fails, retries using the Aries/BBS+ scheme. Either scheme accepts any supported curve; `Setup` rejects any config whose type is not `IDEMIX`.
 
 ## Curve selection
 
-The elliptic curve is no longer hardcoded at construction time. Instead, `Setup` reads `IdemixMSPConfig.CurveId` (set by `idemixgen` when generating key material) and builds the BCCSP with the matching curve and translator.
+The elliptic curve is no longer hardcoded at construction time. Instead, `Setup` reads `IdemixMSPConfig.CurveId` (set by `idemixgen` when generating key material) and builds the BCCSP with the matching curve and translator, for whichever scheme (dlog or Aries) the material is detected to use.
 
 Supported `curve_id` values and their backends:
 
@@ -45,7 +44,7 @@ Supported `curve_id` values and their backends:
 | `BLS12_381_BBS` | Gurvy (it was Kilic)  | Default for Aries |
 | `BLS12_381_BBS_GURVY` | Gurvy                 | |
 
-The `curve_id` value is written into the MSP config by `idemixgen --curve <curve_id>`. An empty `curve_id` triggers the per-scheme default (backward-compatible). `Setup` errors if the config type (`IDEMIX` vs `IDEMIX_ARIES`) does not match the constructor used, or if an Aries MSP is configured with a non-BBS curve.
+The `curve_id` value is written into the MSP config by `idemixgen --curve <curve_id>`. An empty `curve_id` triggers the per-scheme default (backward-compatible): `FP256BN_AMCL` for the dlog attempt, `BLS12_381_BBS` for the Aries attempt. `Setup` errors if the config type is not `IDEMIX`, or if the key material does not load under either scheme.
 
 # Protocol
 

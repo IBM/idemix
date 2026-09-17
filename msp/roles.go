@@ -25,8 +25,8 @@ func (role Role) getValue() int {
 	return int(role)
 }
 
-// checkRole Prove that the desired role is contained or not in the bitmask
-func checkRole(bitmask int, role Role) bool {
+// CheckRole Prove that the desired role is contained or not in the bitmask
+func CheckRole(bitmask int, role Role) bool {
 	return (bitmask & role.getValue()) == role.getValue()
 }
 

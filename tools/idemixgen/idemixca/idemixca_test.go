@@ -64,17 +64,17 @@ func TestIdemixCaAries(t *testing.T) {
 	require.NoError(t, err)
 	cleanupSigner()
 	require.NoError(t, writeSignerToFile(conf))
-	require.NoError(t, setupMSP(imsp.IDEMIX_ARIES))
+	require.NoError(t, setupMSP(imsp.IDEMIX))
 
 	conf, err = GenerateSignerConfigAries(imsp.GetRoleMaskFromIdemixRole(imsp.ADMIN), "OU1", "enrollmentid2", "1234", iskBytes, ipkBytes, revocationkey, curve)
 	require.NoError(t, err)
 	cleanupSigner()
 	require.NoError(t, writeSignerToFile(conf))
-	require.NoError(t, setupMSP(imsp.IDEMIX_ARIES))
+	require.NoError(t, setupMSP(imsp.IDEMIX))
 
 	// Without the verifier dir present, setup should give an error
 	cleanupVerifier()
-	require.Error(t, setupMSP(imsp.IDEMIX_ARIES))
+	require.Error(t, setupMSP(imsp.IDEMIX))
 
 	_, err = GenerateSignerConfigAries(imsp.GetRoleMaskFromIdemixRole(imsp.ADMIN), "", "enrollmentid", "1", iskBytes, ipkBytes, revocationkey, curve)
 	require.EqualError(t, err, "the OU attribute value is empty")
@@ -178,13 +178,7 @@ func writeSignerToFile(signerBytes []byte) error {
 // with the generated config bytes
 func setupMSP(idType imsp.ProviderType) error {
 	// setup an idemix msp from the test directory
-	var msp imsp.MSP
-	var err error
-	if idType == imsp.IDEMIX {
-		msp, err = imsp.NewIdemixMsp(imsp.MSPv1_1)
-	} else {
-		msp, err = imsp.NewIdemixMspAries(imsp.MSPv1_1)
-	}
+	msp, err := imsp.NewIdemixMsp(imsp.MSPv1_1)
 	if err != nil {
 		return fmt.Errorf("Getting MSP failed: %w", err)
 	}
