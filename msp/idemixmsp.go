@@ -219,7 +219,11 @@ func (msp *MSP) Setup(conf1 *m.MSPConfig) error {
 		return nil
 	}
 
-	msp.logger.Debugf("dlog scheme setup failed for Idemix MSP instance %s, retrying with Aries/BBS+: %v", msp.name, dlogErr)
+	// Do not log dlogErr itself: it may transitively wrap errors produced while handling
+	// the user secret key (e.g. nym derivation failures), which CodeQL's clear-text-logging
+	// check flags as a potential sensitive-data leak. The full error is still surfaced to the
+	// caller via the errors.Join below if both schemes fail.
+	msp.logger.Debugf("dlog scheme setup failed for Idemix MSP instance %s, retrying with Aries/BBS+", msp.name)
 	msp.resetCryptoMaterial()
 
 	ariesErr := msp.setupWithScheme(newAriesCSP, curveIDBLS12_381_BBS, &conf)
