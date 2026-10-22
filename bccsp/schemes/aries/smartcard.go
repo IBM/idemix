@@ -39,7 +39,7 @@ type Smartcard struct {
 func (sc *Smartcard) PRF(input []byte, K cipher.Block) *math.Zr {
 	bytes := make([]byte, sc.Curve.ScalarByteSize)
 
-	PRF := cipher.NewCBCEncrypter(K, make([]byte, K.BlockSize()))
+	PRF := cipher.NewCBCEncrypter(K, make([]byte, K.BlockSize())) //nolint:gosec // deterministic PRF construction, not encryption; zero IV is intentional
 	PRF.CryptBlocks(bytes, input)
 	PRF.CryptBlocks(bytes[sc.PRF_K1.BlockSize():], input)
 
