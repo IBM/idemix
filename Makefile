@@ -73,4 +73,31 @@ lint-auto-fix:
 # install golangci-lint
 install-linter-tool:
 	@echo "Installing golangci Linter"
-	@curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/HEAD/install.sh | sh -s -- -b $(HOME)/go/bin v2.12.2
+	@curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/HEAD/install.sh | sh -s -- -b $(HOME)/go/bin v2.14.0
+
+.PHONY: gofix
+gofix:
+	@echo Running go fix
+	@for dir in $(GO_MODULES); do \
+		echo "  Checking module: $$dir"; \
+		(cd $$dir && { \
+			OUTPUT="$$(go fix -diff ./... 2>&1 | grep -v '^go: warning:' | grep -v '^no packages to fix')"; \
+			if [ -n "$$OUTPUT" ]; then \
+				echo "go fix found modernization opportunities in $$dir:"; \
+				echo "$$OUTPUT"; \
+				echo ""; \
+				echo "Run 'make gofix-apply' to apply these changes automatically."; \
+				exit 1; \
+			fi; \
+		}) || exit 1; \
+	done
+	@echo "✓ No go fix suggestions - code is up to date."
+
+.PHONY: gofix-apply
+gofix-apply:
+	@echo Applying go fix to all modules
+	@for dir in $(GO_MODULES); do \
+		echo "  Applying fixes to module: $$dir"; \
+		(cd $$dir && go fix ./...); \
+	done
+	@echo "✓ go fix applied to all modules."

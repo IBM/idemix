@@ -38,6 +38,8 @@ func innerIdemixIDBytes(t *testing.T, serializedIdentity []byte) []byte {
 // happens without one.
 func TestDeserializeSigningIdentity(t *testing.T) {
 	forEachSchemeCurve(t, func(t *testing.T, sc schemeCurve) {
+		t.Helper()
+
 		msp1, err := setupCurveWithKeyStore(t, sc, "MSP1OU1")
 		require.NoError(t, err)
 
@@ -81,7 +83,7 @@ func TestDeserializeSigningIdentity(t *testing.T) {
 		// would reproduce byte-for-byte.
 		reconstructedSigningID, ok := reconstructed.(*signingIdentity)
 		require.True(t, ok)
-		pubBytes, err := reconstructedSigningID.GetPublicVersion().(Identity).Serialize()
+		pubBytes, err := reconstructedSigningID.GetPublicVersion().Serialize()
 		require.NoError(t, err)
 		require.Equal(t, serializedID, pubBytes)
 
@@ -97,6 +99,8 @@ func TestDeserializeSigningIdentity(t *testing.T) {
 // then never stored, so BCCSP.GetKey always fails to find it later.
 func TestDeserializeSigningIdentityRequiresPersistentKeyStore(t *testing.T) {
 	forEachSchemeCurve(t, func(t *testing.T, sc schemeCurve) {
+		t.Helper()
+
 		msp1, err := setupCurve(t, sc, "MSP1OU1")
 		require.NoError(t, err)
 
@@ -114,6 +118,8 @@ func TestDeserializeSigningIdentityRequiresPersistentKeyStore(t *testing.T) {
 
 func TestDeserializeSigningIdentityBadInput(t *testing.T) {
 	forEachSchemeCurve(t, func(t *testing.T, sc schemeCurve) {
+		t.Helper()
+
 		msp1, err := setupCurveWithKeyStore(t, sc, "MSP1OU1")
 		require.NoError(t, err)
 
@@ -129,6 +135,8 @@ func TestDeserializeSigningIdentityBadInput(t *testing.T) {
 // given the inner SerializedIdemixIdentity bytes directly.
 func TestDeserializeSigningIdentityRejectsOuterEnvelope(t *testing.T) {
 	forEachSchemeCurve(t, func(t *testing.T, sc schemeCurve) {
+		t.Helper()
+
 		msp1, err := setupCurveWithKeyStore(t, sc, "MSP1OU1")
 		require.NoError(t, err)
 
@@ -155,6 +163,8 @@ func TestDeserializeSigningIdentityRejectsOuterEnvelope(t *testing.T) {
 // point here is that its result is still rejected by msp1.
 func TestDeserializeSigningIdentityCrossMSP(t *testing.T) {
 	forEachSchemeCurve(t, func(t *testing.T, sc schemeCurve) {
+		t.Helper()
+
 		msp1, err := setupCurveWithKeyStore(t, sc, "MSP1OU1")
 		require.NoError(t, err)
 		msp2, err := setupCurveWithKeyStore(t, sc, "MSP2OU1")
@@ -186,6 +196,8 @@ func TestDeserializeSigningIdentityCrossMSP(t *testing.T) {
 // nil-pointer-dereference given msp.signer == nil here.
 func TestDeserializeSigningIdentityNoDefaultSigner(t *testing.T) {
 	forEachSchemeCurve(t, func(t *testing.T, sc schemeCurve) {
+		t.Helper()
+
 		signerMsp, err := setupCurveWithKeyStore(t, sc, "MSP1OU1")
 		require.NoError(t, err)
 		id1, err := getDefaultSigner(t, signerMsp)

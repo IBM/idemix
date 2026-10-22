@@ -19,6 +19,8 @@ import (
 // still rejects a config that does not declare type IDEMIX.
 func TestSetupSchemeAutoDetection(t *testing.T) {
 	forEachSchemeCurve(t, func(t *testing.T, sc schemeCurve) {
+		t.Helper()
+
 		type testCase struct {
 			name         string
 			declaredType ProviderType

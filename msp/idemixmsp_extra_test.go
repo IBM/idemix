@@ -17,6 +17,8 @@ import (
 
 func TestMSPGetVersionAndIdentifier(t *testing.T) {
 	forEachSchemeCurve(t, func(t *testing.T, sc schemeCurve) {
+		t.Helper()
+
 		msp1, err := setupCurve(t, sc, "MSP1OU1")
 		require.NoError(t, err)
 
@@ -30,6 +32,8 @@ func TestMSPGetVersionAndIdentifier(t *testing.T) {
 
 func TestMSPGetTLSCerts(t *testing.T) {
 	forEachSchemeCurve(t, func(t *testing.T, sc schemeCurve) {
+		t.Helper()
+
 		msp1, err := setupCurve(t, sc, "MSP1OU1")
 		require.NoError(t, err)
 
@@ -40,6 +44,8 @@ func TestMSPGetTLSCerts(t *testing.T) {
 
 func TestMSPSatisfiesPrincipal(t *testing.T) {
 	forEachSchemeCurve(t, func(t *testing.T, sc schemeCurve) {
+		t.Helper()
+
 		msp1, err := setupCurve(t, sc, "MSP1OU1")
 		require.NoError(t, err)
 
@@ -60,6 +66,8 @@ func TestMSPSatisfiesPrincipal(t *testing.T) {
 
 func TestMSPSatisfiesPrincipalInvalidIdentity(t *testing.T) {
 	forEachSchemeCurve(t, func(t *testing.T, sc schemeCurve) {
+		t.Helper()
+
 		msp1, err := setupCurve(t, sc, "MSP1OU1")
 		require.NoError(t, err)
 		msp2, err := setupCurve(t, sc, "MSP2OU1")
@@ -76,6 +84,8 @@ func TestMSPSatisfiesPrincipalInvalidIdentity(t *testing.T) {
 
 func TestPseudonym(t *testing.T) {
 	forEachSchemeCurve(t, func(t *testing.T, sc schemeCurve) {
+		t.Helper()
+
 		msp1, err := setupCurve(t, sc, "MSP1OU1")
 		require.NoError(t, err)
 
@@ -97,6 +107,8 @@ func TestPseudonym(t *testing.T) {
 
 func TestEnrollmentID(t *testing.T) {
 	forEachSchemeCurve(t, func(t *testing.T, sc schemeCurve) {
+		t.Helper()
+
 		msp1, err := setupCurve(t, sc, "MSP1OU1")
 		require.NoError(t, err)
 
@@ -106,6 +118,8 @@ func TestEnrollmentID(t *testing.T) {
 
 func TestIdentityAnonymousAndExpiry(t *testing.T) {
 	forEachSchemeCurve(t, func(t *testing.T, sc schemeCurve) {
+		t.Helper()
+
 		msp1, err := setupCurve(t, sc, "MSP1OU1")
 		require.NoError(t, err)
 
@@ -120,6 +134,8 @@ func TestIdentityAnonymousAndExpiry(t *testing.T) {
 
 func TestSigningIdentityGetPublicVersion(t *testing.T) {
 	forEachSchemeCurve(t, func(t *testing.T, sc schemeCurve) {
+		t.Helper()
+
 		msp1, err := setupCurve(t, sc, "MSP1OU1")
 		require.NoError(t, err)
 
@@ -136,6 +152,8 @@ func TestSigningIdentityGetPublicVersion(t *testing.T) {
 
 func TestValidateUnrecognizedIdentityType(t *testing.T) {
 	forEachSchemeCurve(t, func(t *testing.T, sc schemeCurve) {
+		t.Helper()
+
 		msp1, err := setupCurve(t, sc, "MSP1OU1")
 		require.NoError(t, err)
 
@@ -148,7 +166,7 @@ func TestValidateUnrecognizedIdentityType(t *testing.T) {
 func TestProviderTypeToString(t *testing.T) {
 	require.Equal(t, "bccsp", ProviderTypeToString(FABRIC))
 	require.Equal(t, "idemix", ProviderTypeToString(IDEMIX))
-	require.Equal(t, "", ProviderTypeToString(OTHER))
+	require.Empty(t, ProviderTypeToString(OTHER))
 }
 
 func TestRoleMask(t *testing.T) {
@@ -160,6 +178,8 @@ func TestRoleMask(t *testing.T) {
 
 func TestGetIdemixMspConfig(t *testing.T) {
 	forEachSchemeCurve(t, func(t *testing.T, sc schemeCurve) {
+		t.Helper()
+
 		conf, err := GetIdemixMspConfig(sc.dir(), "MSP1OU1")
 		require.NoError(t, err)
 		require.Equal(t, int32(IDEMIX), conf.Type)

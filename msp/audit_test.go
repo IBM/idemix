@@ -18,11 +18,15 @@ import (
 
 func TestAudit(t *testing.T) {
 	forEachSchemeCurve(t, func(t *testing.T, sc schemeCurve) {
+		t.Helper()
+
 		testAudit(t, sc)
 	})
 }
 
 func testAudit(t *testing.T, sc schemeCurve) {
+	t.Helper()
+
 	mspI, err := NewIdemixMsp(MSPv1_3)
 	require.NoError(t, err)
 

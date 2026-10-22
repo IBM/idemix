@@ -42,6 +42,8 @@ func getDefaultSigner(t *testing.T, msp *MSP) (SigningIdentity, error) {
 
 func TestSetup(t *testing.T) {
 	forEachSchemeCurve(t, func(t *testing.T, sc schemeCurve) {
+		t.Helper()
+
 		msp, err := setupCurve(t, sc, "MSP1OU1")
 		require.NoError(t, err)
 
@@ -123,6 +125,8 @@ func TestSetupBad(t *testing.T) {
 
 func TestSigning(t *testing.T) {
 	forEachSchemeCurve(t, func(t *testing.T, sc schemeCurve) {
+		t.Helper()
+
 		msp, err := setupCurve(t, sc, "MSP1")
 		require.NoError(t, err)
 
@@ -152,6 +156,8 @@ func TestSigning(t *testing.T) {
 
 func TestSigningBad(t *testing.T) {
 	forEachSchemeCurve(t, func(t *testing.T, sc schemeCurve) {
+		t.Helper()
+
 		msp, err := setupCurve(t, sc, "MSP1OU1")
 		require.NoError(t, err)
 
@@ -169,6 +175,8 @@ func TestSigningBad(t *testing.T) {
 
 func TestIdentitySerialization(t *testing.T) {
 	forEachSchemeCurve(t, func(t *testing.T, sc schemeCurve) {
+		t.Helper()
+
 		msp, err := setupCurve(t, sc, "MSP1OU1")
 		require.NoError(t, err)
 
@@ -192,6 +200,8 @@ func TestIdentitySerialization(t *testing.T) {
 
 func TestIdentitySerializationBad(t *testing.T) {
 	forEachSchemeCurve(t, func(t *testing.T, sc schemeCurve) {
+		t.Helper()
+
 		msp, err := setupCurve(t, sc, "MSP1OU1")
 		require.NoError(t, err)
 
@@ -203,6 +213,8 @@ func TestIdentitySerializationBad(t *testing.T) {
 
 func TestIdentitySerializationWrongMSP(t *testing.T) {
 	forEachSchemeCurve(t, func(t *testing.T, sc schemeCurve) {
+		t.Helper()
+
 		msp1, err := setupCurve(t, sc, "MSP1OU1")
 		require.NoError(t, err)
 		msp2, err := setupCurve(t, sc, "MSP2OU1")
@@ -235,6 +247,8 @@ func TestIdentitySerializationWrongMSP(t *testing.T) {
 // proof to an arbitrary pseudonym of their choosing.
 func TestNymSwapAttack(t *testing.T) {
 	forEachSchemeCurve(t, func(t *testing.T, sc schemeCurve) {
+		t.Helper()
+
 		mspI, err := setupCurve(t, sc, "MSP1OU1")
 		require.NoError(t, err)
 
@@ -278,6 +292,8 @@ func TestNymSwapAttack(t *testing.T) {
 
 func TestPrincipalIdentity(t *testing.T) {
 	forEachSchemeCurve(t, func(t *testing.T, sc schemeCurve) {
+		t.Helper()
+
 		msp1, err := setupCurve(t, sc, "MSP1OU1")
 		require.NoError(t, err)
 
@@ -298,6 +314,8 @@ func TestPrincipalIdentity(t *testing.T) {
 
 func TestPrincipalIdentityWrongIdentity(t *testing.T) {
 	forEachSchemeCurve(t, func(t *testing.T, sc schemeCurve) {
+		t.Helper()
+
 		msp1, err := setupCurve(t, sc, "MSP1OU1")
 		require.NoError(t, err)
 
@@ -325,6 +343,8 @@ func TestPrincipalIdentityWrongIdentity(t *testing.T) {
 
 func TestPrincipalIdentityBadIdentity(t *testing.T) {
 	forEachSchemeCurve(t, func(t *testing.T, sc schemeCurve) {
+		t.Helper()
+
 		msp1, err := setupCurve(t, sc, "MSP1OU1")
 		require.NoError(t, err)
 
@@ -345,6 +365,8 @@ func TestPrincipalIdentityBadIdentity(t *testing.T) {
 
 func TestAnonymityPrincipal(t *testing.T) {
 	forEachSchemeCurve(t, func(t *testing.T, sc schemeCurve) {
+		t.Helper()
+
 		msp1, err := setupCurve(t, sc, "MSP1OU1")
 		require.NoError(t, err)
 
@@ -365,6 +387,8 @@ func TestAnonymityPrincipal(t *testing.T) {
 
 func TestAnonymityPrincipalBad(t *testing.T) {
 	forEachSchemeCurve(t, func(t *testing.T, sc schemeCurve) {
+		t.Helper()
+
 		msp1, err := setupCurve(t, sc, "MSP1OU1")
 		require.NoError(t, err)
 
@@ -386,6 +410,8 @@ func TestAnonymityPrincipalBad(t *testing.T) {
 
 func TestAnonymityPrincipalV11(t *testing.T) {
 	forEachSchemeCurve(t, func(t *testing.T, sc schemeCurve) {
+		t.Helper()
+
 		msp1, err := setupCurveWithVersion(t, sc, "MSP1OU1", MSPv1_1)
 		require.NoError(t, err)
 
@@ -407,6 +433,8 @@ func TestAnonymityPrincipalV11(t *testing.T) {
 
 func TestIdemixIsWellFormed(t *testing.T) {
 	forEachSchemeCurve(t, func(t *testing.T, sc schemeCurve) {
+		t.Helper()
+
 		idemixMSP, err := setupCurve(t, sc, "TestName")
 		require.NoError(t, err)
 
@@ -429,6 +457,8 @@ func TestIdemixIsWellFormed(t *testing.T) {
 
 func TestPrincipalOU(t *testing.T) {
 	forEachSchemeCurve(t, func(t *testing.T, sc schemeCurve) {
+		t.Helper()
+
 		msp1, err := setupCurve(t, sc, "MSP1OU1")
 		require.NoError(t, err)
 
@@ -454,6 +484,8 @@ func TestPrincipalOU(t *testing.T) {
 
 func TestPrincipalOUWrongOU(t *testing.T) {
 	forEachSchemeCurve(t, func(t *testing.T, sc schemeCurve) {
+		t.Helper()
+
 		msp1, err := setupCurve(t, sc, "MSP1OU1")
 		require.NoError(t, err)
 
@@ -480,6 +512,8 @@ func TestPrincipalOUWrongOU(t *testing.T) {
 
 func TestPrincipalOUWrongMSP(t *testing.T) {
 	forEachSchemeCurve(t, func(t *testing.T, sc schemeCurve) {
+		t.Helper()
+
 		msp1, err := setupCurve(t, sc, "MSP1OU1")
 		require.NoError(t, err)
 
@@ -506,6 +540,8 @@ func TestPrincipalOUWrongMSP(t *testing.T) {
 
 func TestPrincipalOUBad(t *testing.T) {
 	forEachSchemeCurve(t, func(t *testing.T, sc schemeCurve) {
+		t.Helper()
+
 		msp1, err := setupCurve(t, sc, "MSP1OU1")
 		require.NoError(t, err)
 
@@ -527,6 +563,8 @@ func TestPrincipalOUBad(t *testing.T) {
 
 func TestPrincipalRoleMember(t *testing.T) {
 	forEachSchemeCurve(t, func(t *testing.T, sc schemeCurve) {
+		t.Helper()
+
 		msp1, err := setupCurve(t, sc, "MSP1OU1")
 		require.NoError(t, err)
 
@@ -558,6 +596,8 @@ func TestPrincipalRoleMember(t *testing.T) {
 
 func TestPrincipalRoleAdmin(t *testing.T) {
 	forEachSchemeCurve(t, func(t *testing.T, sc schemeCurve) {
+		t.Helper()
+
 		msp1, err := setupCurveAdmin(t, sc, "MSP1OU1Admin")
 		require.NoError(t, err)
 
@@ -589,6 +629,8 @@ func TestPrincipalRoleAdmin(t *testing.T) {
 
 func TestPrincipalRoleNotPeer(t *testing.T) {
 	forEachSchemeCurve(t, func(t *testing.T, sc schemeCurve) {
+		t.Helper()
+
 		msp1, err := setupCurveAdmin(t, sc, "MSP1OU1")
 		require.NoError(t, err)
 
@@ -610,6 +652,8 @@ func TestPrincipalRoleNotPeer(t *testing.T) {
 
 func TestPrincipalRoleNotAdmin(t *testing.T) {
 	forEachSchemeCurve(t, func(t *testing.T, sc schemeCurve) {
+		t.Helper()
+
 		msp1, err := setupCurve(t, sc, "MSP1OU1")
 		require.NoError(t, err)
 
@@ -631,6 +675,8 @@ func TestPrincipalRoleNotAdmin(t *testing.T) {
 
 func TestPrincipalRoleWrongMSP(t *testing.T) {
 	forEachSchemeCurve(t, func(t *testing.T, sc schemeCurve) {
+		t.Helper()
+
 		msp1, err := setupCurve(t, sc, "MSP1OU1")
 		require.NoError(t, err)
 
@@ -652,6 +698,8 @@ func TestPrincipalRoleWrongMSP(t *testing.T) {
 
 func TestPrincipalRoleBadRole(t *testing.T) {
 	forEachSchemeCurve(t, func(t *testing.T, sc schemeCurve) {
+		t.Helper()
+
 		msp1, err := setupCurve(t, sc, "MSP1OU1")
 		require.NoError(t, err)
 
@@ -674,6 +722,8 @@ func TestPrincipalRoleBadRole(t *testing.T) {
 
 func TestPrincipalBad(t *testing.T) {
 	forEachSchemeCurve(t, func(t *testing.T, sc schemeCurve) {
+		t.Helper()
+
 		msp1, err := setupCurve(t, sc, "MSP1OU1")
 		require.NoError(t, err)
 
@@ -692,6 +742,8 @@ func TestPrincipalBad(t *testing.T) {
 
 func TestPrincipalCombined(t *testing.T) {
 	forEachSchemeCurve(t, func(t *testing.T, sc schemeCurve) {
+		t.Helper()
+
 		msp1, err := setupCurve(t, sc, "MSP1OU1")
 		require.NoError(t, err)
 
@@ -733,6 +785,8 @@ func TestPrincipalCombined(t *testing.T) {
 
 func TestPrincipalCombinedBad(t *testing.T) {
 	forEachSchemeCurve(t, func(t *testing.T, sc schemeCurve) {
+		t.Helper()
+
 		msp1, err := setupCurve(t, sc, "MSP1OU1")
 		require.NoError(t, err)
 
@@ -776,6 +830,8 @@ func TestPrincipalCombinedBad(t *testing.T) {
 
 func TestPrincipalCombinedV11(t *testing.T) {
 	forEachSchemeCurve(t, func(t *testing.T, sc schemeCurve) {
+		t.Helper()
+
 		msp1, err := setupCurveWithVersion(t, sc, "MSP1OU1", MSPv1_1)
 		require.NoError(t, err)
 
@@ -818,6 +874,8 @@ func TestPrincipalCombinedV11(t *testing.T) {
 
 func TestRoleClientV11(t *testing.T) {
 	forEachSchemeCurve(t, func(t *testing.T, sc schemeCurve) {
+		t.Helper()
+
 		msp1, err := setupCurveWithVersion(t, sc, "MSP1OU1", MSPv1_1)
 		require.NoError(t, err)
 		id1, err := getDefaultSigner(t, msp1)
@@ -836,6 +894,8 @@ func TestRoleClientV11(t *testing.T) {
 
 func TestRolePeerV11(t *testing.T) {
 	forEachSchemeCurve(t, func(t *testing.T, sc schemeCurve) {
+		t.Helper()
+
 		msp1, err := setupCurveWithVersion(t, sc, "MSP1OU1", MSPv1_1)
 		require.NoError(t, err)
 		id1, err := getDefaultSigner(t, msp1)
