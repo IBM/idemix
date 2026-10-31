@@ -62,6 +62,25 @@ func (sp *PoKOfSignatureProof) GetBytesForChallenge(revealedMessages map[int]*Si
 // Verify verifies PoKOfSignatureProof.
 func (sp *PoKOfSignatureProof) Verify(challenge *ml.Zr, pubKey *PublicKeyWithGenerators,
 	revealedMessages map[int]*SignatureMessage, messages []*SignatureMessage) error {
+	// A' must not be the identity: with A' = O the pairing check
+	// e(A', w) = e(Abar, g2) degenerates (it holds for Abar = O) and the
+	// remaining sigma protocols can be satisfied without knowledge of a
+	// BBS+ signature, e.g. when the VC2 verifier adds a caller-supplied base
+	// (smartcard mode). For honest proofs A' = A*r1 with A != O and r1 != 0,
+	// Abar = x*A' != O and d = b*r1 - H0*r2 is the identity only with
+	// negligible probability, so rejecting all three is sound.
+	if sp.aPrime == nil || sp.aPrime.IsInfinity() {
+		return errors.New("bad signature: A' is the identity")
+	}
+
+	if sp.aBar == nil || sp.aBar.IsInfinity() {
+		return errors.New("bad signature: Abar is the identity")
+	}
+
+	if sp.d == nil || sp.d.IsInfinity() {
+		return errors.New("bad signature: d is the identity")
+	}
+
 	aBar := sp.aBar.Copy()
 	aBar.Neg()
 

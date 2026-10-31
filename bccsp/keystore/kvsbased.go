@@ -46,6 +46,30 @@ type KVSStore struct {
 	Curve      *math.Curve
 }
 
+// NewKVSStore returns a KVSStore backed by the passed KVS. It fails if the
+// translator is bound to a curve other than the passed one.
+func NewKVSStore(kvs KVS, curve *math.Curve, translator idemix.Translator) (*KVSStore, error) {
+	if err := idemix.CheckTranslatorCurve(curve, translator); err != nil {
+		return nil, fmt.Errorf("invalid curve/translator pair: %w", err)
+	}
+
+	return &KVSStore{KVS: kvs, Translator: translator, Curve: curve}, nil
+}
+
+// check validates that, when both are set, the translator and the curve of
+// the store agree.
+func (ks *KVSStore) check() error {
+	if ks.Translator == nil || ks.Curve == nil {
+		return nil
+	}
+
+	if err := idemix.CheckTranslatorCurve(ks.Curve, ks.Translator); err != nil {
+		return fmt.Errorf("invalid curve/translator pair: %w", err)
+	}
+
+	return nil
+}
+
 // ReadOnly returns true if this KeyStore is read only, false otherwise.
 // If ReadOnly is true then StoreKey will fail.
 func (ks *KVSStore) ReadOnly() bool {
@@ -53,17 +77,32 @@ func (ks *KVSStore) ReadOnly() bool {
 }
 
 // GetKey returns a key object whose SKI is the one passed.
-func (ks *KVSStore) GetKey(ski []byte) (bccsp.Key, error) {
+func (ks *KVSStore) GetKey(ski []byte) (_ bccsp.Key, err error) {
+	if err := ks.check(); err != nil {
+		return nil, err
+	}
+
 	id := hex.EncodeToString(ski)
 
+	// a corrupted entry must not take down the caller
+	defer func() {
+		if r := recover(); r != nil {
+			err = fmt.Errorf("could not decode key [%s]: %v", id, r)
+		}
+	}()
+
 	entry := &entry{}
-	err := ks.Get(id, entry)
+	err = ks.Get(id, entry)
 	if err != nil {
 		return nil, fmt.Errorf("could not get key [%s] from kvs: %w", id, err)
 	}
 
 	switch {
 	case entry.NymSecretKey != nil:
+		if ks.Translator == nil || ks.Curve == nil {
+			return nil, fmt.Errorf("could not decode key [%s]: store has no translator or curve", id)
+		}
+
 		pk, err := ks.Translator.G1FromProto(entry.NymSecretKey.Pk)
 		if err != nil {
 			return nil, err
@@ -77,6 +116,10 @@ func (ks *KVSStore) GetKey(ski []byte) (bccsp.Key, error) {
 			Translator: ks.Translator,
 		}, nil
 	case entry.UserSecretKey != nil:
+		if ks.Curve == nil {
+			return nil, fmt.Errorf("could not decode key [%s]: store has no curve", id)
+		}
+
 		return &handlers.UserSecretKey{
 			Exportable: entry.UserSecretKey.Exportable,
 			Sk:         ks.Curve.NewZrFromBytes(entry.UserSecretKey.Sk),
@@ -89,6 +132,10 @@ func (ks *KVSStore) GetKey(ski []byte) (bccsp.Key, error) {
 // StoreKey stores the key k in this KeyStore.
 // If this KeyStore is read only then the method will fail.
 func (ks *KVSStore) StoreKey(k bccsp.Key) error {
+	if err := ks.check(); err != nil {
+		return err
+	}
+
 	entry := &entry{}
 	var id string
 

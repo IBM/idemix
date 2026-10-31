@@ -7,11 +7,22 @@ SPDX-License-Identifier: Apache-2.0
 package amcl
 
 import (
+	"fmt"
+
 	math "github.com/IBM/mathlib"
 )
 
 type Gurvy struct {
 	C *math.Curve
+}
+
+// Curve returns the curve this translator is bound to.
+func (a *Gurvy) Curve() *math.Curve {
+	if a == nil {
+		return nil
+	}
+
+	return a.C
 }
 
 func (a *Gurvy) G1ToProto(g1 *math.G1) *ECP {
@@ -26,6 +37,16 @@ func (a *Gurvy) G1ToProto(g1 *math.G1) *ECP {
 }
 
 func (a *Gurvy) G1FromRawBytes(raw []byte) (*math.G1, error) {
+	if a.C == nil {
+		return nil, errNilCurve
+	}
+
+	// the raw encoding is the uncompressed encoding of the point, that is,
+	// the concatenation of the two coordinates.
+	if len(raw) != 2*a.C.CoordByteSize {
+		return nil, fmt.Errorf("%w: expected [%d] bytes, got [%d]", errInvalidLength, 2*a.C.CoordByteSize, len(raw))
+	}
+
 	l := len(raw) / 2
 
 	return a.G1FromProto(&ECP{
@@ -35,6 +56,18 @@ func (a *Gurvy) G1FromRawBytes(raw []byte) (*math.G1, error) {
 }
 
 func (a *Gurvy) G1FromProto(e *ECP) (*math.G1, error) {
+	if e == nil {
+		return nil, errNilArgument
+	}
+
+	if a.C == nil {
+		return nil, errNilCurve
+	}
+
+	if len(e.X) != a.C.CoordByteSize || len(e.Y) != a.C.CoordByteSize {
+		return nil, errInvalidLength
+	}
+
 	bytes := make([]byte, len(e.X)*2)
 	l := len(e.X)
 	copy(bytes, e.X)
@@ -56,6 +89,18 @@ func (a *Gurvy) G2ToProto(g2 *math.G2) *ECP2 {
 }
 
 func (a *Gurvy) G2FromProto(e *ECP2) (*math.G2, error) {
+	if e == nil {
+		return nil, errNilArgument
+	}
+
+	if a.C == nil {
+		return nil, errNilCurve
+	}
+
+	if len(e.Xa) != a.C.CoordByteSize || len(e.Xb) != a.C.CoordByteSize || len(e.Ya) != a.C.CoordByteSize || len(e.Yb) != a.C.CoordByteSize {
+		return nil, errInvalidLength
+	}
+
 	bytes := make([]byte, len(e.Xa)*4)
 	l := len(e.Xa)
 	copy(bytes[0:l], e.Xa)
