@@ -76,3 +76,54 @@ func TestFileBased(t *testing.T) {
 		assert.Equal(t, b1, b2)
 	}
 }
+
+func TestKVSStoreRejectsMismatchedTranslator(t *testing.T) {
+	bn := math.Curves[math.BN254]
+	bls := math.Curves[math.BLS12_381_BBS]
+
+	k, err := kvs.NewFileBased(t.TempDir())
+	require.NoError(t, err)
+
+	_, err = NewKVSStore(k, bls, &amcl.Gurvy{C: bn})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "invalid curve/translator pair")
+
+	ks, err := NewKVSStore(k, bls, &amcl.Gurvy{C: bls})
+	require.NoError(t, err)
+
+	rnd, err := bls.Rand()
+	require.NoError(t, err)
+	usk := handlers.NewUserSecretKey(bls.NewRandomZr(rnd), true)
+	require.NoError(t, ks.StoreKey(usk))
+	_, err = ks.GetKey(usk.SKI())
+	require.NoError(t, err)
+
+	// a store built as a struct literal with a mismatched pair fails on use
+	bad := &KVSStore{KVS: k, Curve: bls, Translator: &amcl.Gurvy{C: bn}}
+	_, err = bad.GetKey(usk.SKI())
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "invalid curve/translator pair")
+	require.Error(t, bad.StoreKey(usk))
+}
+
+func TestKVSStoreGetKeyCorruptedNym(t *testing.T) {
+	curve := math.Curves[math.BLS12_381_BBS]
+	translator := &amcl.Gurvy{C: curve}
+
+	k, err := kvs.NewFileBased(t.TempDir())
+	require.NoError(t, err)
+	ks, err := NewKVSStore(k, curve, translator)
+	require.NoError(t, err)
+
+	// a nym entry with no public key used to panic in the Gurvy translator
+	require.NoError(t, k.Put("abcd", &entry{NymSecretKey: &NymSecretKey{Sk: []byte{1}}}))
+	assert.NotPanics(t, func() {
+		_, err = ks.GetKey([]byte{0xab, 0xcd})
+	})
+	require.Error(t, err)
+
+	// truncated coordinates
+	require.NoError(t, k.Put("abce", &entry{NymSecretKey: &NymSecretKey{Sk: []byte{1}, Pk: &amcl.ECP{X: []byte{1}, Y: []byte{2}}}}))
+	_, err = ks.GetKey([]byte{0xab, 0xce})
+	require.Error(t, err)
+}

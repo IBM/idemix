@@ -107,12 +107,10 @@ func (i *Issuer) NewKey(AttributeNames []string) (types.IssuerSecretKey, error) 
 	}
 
 	return &IssuerSecretKey{
-		SK: SK,
-		IssuerPublicKey: IssuerPublicKey{
-			PK:   PK,
-			PKwG: PKwG,
-			N:    len(AttributeNames),
-		},
+		SK:   SK,
+		PK:   PK,
+		PKwG: PKwG,
+		N:    len(AttributeNames),
 	}, nil
 }
 
@@ -132,12 +130,10 @@ func (i *Issuer) NewKeyFromBytes(raw []byte, attributes []string) (types.IssuerS
 	}
 
 	return &IssuerSecretKey{
-		SK: SK,
-		IssuerPublicKey: IssuerPublicKey{
-			PK:   PK,
-			PKwG: PKwG,
-			N:    len(attributes),
-		},
+		SK:   SK,
+		PK:   PK,
+		PKwG: PKwG,
+		N:    len(attributes),
 	}, nil
 }
 

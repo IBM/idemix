@@ -24,6 +24,10 @@ type csp struct {
 }
 
 func New(keyStore bccsp.KeyStore, curve *math.Curve, translator idemix.Translator, exportable bool) (*csp, error) {
+	if err := idemix.CheckTranslatorCurve(curve, translator); err != nil {
+		return nil, fmt.Errorf("invalid curve/translator pair: %w", err)
+	}
+
 	base, err := NewImpl(keyStore)
 	if err != nil {
 		return nil, fmt.Errorf("failed instantiating base bccsp: %w", err)
@@ -184,6 +188,10 @@ func New(keyStore bccsp.KeyStore, curve *math.Curve, translator idemix.Translato
 }
 
 func NewAries(keyStore bccsp.KeyStore, curve *math.Curve, _translator idemix.Translator, exportable bool) (*csp, error) {
+	if err := idemix.CheckTranslatorCurve(curve, _translator); err != nil {
+		return nil, fmt.Errorf("invalid curve/translator pair: %w", err)
+	}
+
 	base, err := NewImpl(keyStore)
 	if err != nil {
 		return nil, fmt.Errorf("failed instantiating base bccsp: %w", err)

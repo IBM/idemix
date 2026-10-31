@@ -22,10 +22,12 @@ import (
 
 	math "github.com/IBM/mathlib"
 	"github.com/alecthomas/kingpin/v2"
+	"google.golang.org/protobuf/proto"
 
 	idemix "github.com/IBM/idemix/bccsp/schemes/dlog/crypto"
 	"github.com/IBM/idemix/bccsp/schemes/dlog/crypto/translator/amcl"
 	imsp "github.com/IBM/idemix/msp"
+	im "github.com/IBM/idemix/msp/config"
 	"github.com/IBM/idemix/tools/idemixgen/idemixca"
 	"github.com/IBM/idemix/tools/idemixgen/metadata"
 )
@@ -193,6 +195,8 @@ func main() {
 			)
 		}
 		handleError(err)
+		config, err = stampSignerCurveID(config, *curveID)
+		handleError(err)
 
 		path := filepath.Join(*outputDir, imsp.IdemixConfigDirUser)
 		checkDirectoryNotExists(path, fmt.Sprintf("This MSP config already contains a directory \"%s\"", path))
@@ -215,6 +219,18 @@ func main() {
 
 func printVersion() {
 	fmt.Println(metadata.GetVersionInfo())
+}
+
+// stampSignerCurveID records curveID in the serialized signer config, so that a config loaded
+// without the msp/CurveId file still names its curve.
+func stampSignerCurveID(config []byte, curveID string) ([]byte, error) {
+	signer := &im.IdemixMSPSignerConfig{}
+	if err := proto.Unmarshal(config, signer); err != nil {
+		return nil, err
+	}
+	signer.CurveId = curveID
+
+	return proto.Marshal(signer)
 }
 
 // writeFile writes bytes to a file and panics in case of an error
