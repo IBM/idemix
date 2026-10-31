@@ -690,7 +690,9 @@ var _ = Describe("Idemix Bridge", func() {
 					nil,
 					&types.IdemixCredentialRequestSignerOpts{IssuerNonce: IssuerNonce},
 				)
-				Expect(err).To(MatchError("zero knowledge proof is invalid"))
+				// the corrupted byte lies in the encoding of the nym, which is now
+				// rejected when decoded instead of being mapped to the identity
+				Expect(err).To(MatchError("invalid G1 point: not on the curve or the identity"))
 				Expect(valid).NotTo(BeTrue())
 			})
 
@@ -713,7 +715,7 @@ var _ = Describe("Idemix Bridge", func() {
 						},
 					},
 				)
-				Expect(err).To(MatchError("failed creating new credential: zero knowledge proof is invalid"))
+				Expect(err).To(MatchError("failed creating new credential: invalid G1 point: not on the curve or the identity"))
 				Expect(credential).To(BeNil())
 			})
 
@@ -783,7 +785,9 @@ var _ = Describe("Idemix Bridge", func() {
 						},
 					},
 				)
-				Expect(err).To(MatchError("credential is not cryptographically valid"))
+				// the corrupted byte lies in the encoding of A, which is now
+				// rejected when decoded instead of being mapped to the identity
+				Expect(err).To(MatchError("invalid G1 point: not on the curve or the identity"))
 				Expect(valid).To(BeFalse())
 			})
 
@@ -1167,7 +1171,6 @@ var _ = Describe("Idemix Bridge", func() {
 				SignatureScheme types.SignatureScheme
 				Signer          *handlers.Signer
 				SignAttributes  []types.IdemixAttribute
-				Verifier        *handlers.Verifier
 			)
 
 			BeforeEach(func() {
@@ -1180,7 +1183,6 @@ var _ = Describe("Idemix Bridge", func() {
 					{Type: types.IdemixHiddenAttribute},
 					{Type: types.IdemixHiddenAttribute},
 				}
-				Verifier = &handlers.Verifier{SignatureScheme: SignatureScheme}
 			})
 
 			It("fails when the credential is malformed", func() {
@@ -1247,6 +1249,9 @@ var _ = Describe("Idemix Bridge", func() {
 					credential[4] = 1
 				}
 
+				// the corrupted byte lies in the encoding of A: it used to decode to
+				// the identity, producing a signature with APrime = 1 that was only
+				// caught by the verifier; it is now rejected when decoded.
 				signature, err := Signer.Sign(
 					UserKey,
 					[]byte("a message"),
@@ -1261,25 +1266,8 @@ var _ = Describe("Idemix Bridge", func() {
 						CRI:        cri,
 					},
 				)
-				Expect(err).NotTo(HaveOccurred())
-				Expect(signature).NotTo(BeNil())
-
-				valid, err := Verifier.Verify(
-					IssuerPublicKey,
-					signature,
-					[]byte("a message"),
-					&types.IdemixSignerOpts{
-						RevocationPublicKey: RevocationPublicKey,
-						Attributes:          SignAttributes,
-						RhIndex:             0,
-						EidIndex:            2,
-						Epoch:               0,
-						Nym:                 NymPublicKey,
-					},
-				)
-				Expect(err).To(MatchError("signature invalid: APrime = 1"))
-				Expect(valid).To(BeFalse())
-
+				Expect(err).To(MatchError("failed creating new signature: invalid G1 point: not on the curve or the identity"))
+				Expect(signature).To(BeNil())
 			})
 
 			It("fails when the credential is nil", func() {

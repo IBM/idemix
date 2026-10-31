@@ -23,6 +23,39 @@ type Translator interface {
 	G2FromProto(*amcl.ECP2) (*math.G2, error)
 }
 
+// CurveTranslator is an optional interface a Translator may implement to
+// expose the curve it is bound to. When a Translator implements it,
+// CheckTranslatorCurve can verify that the translator and the curve used
+// alongside it agree.
+type CurveTranslator interface {
+	Curve() *math.Curve
+}
+
+// CheckTranslatorCurve returns an error if the passed translator implements
+// CurveTranslator and is bound to a curve different from the passed one.
+// Translators that do not implement CurveTranslator are accepted, as before.
+func CheckTranslatorCurve(curve *math.Curve, t Translator) error {
+	if curve == nil {
+		return errors.New("nil curve")
+	}
+
+	ct, ok := t.(CurveTranslator)
+	if !ok {
+		return nil
+	}
+
+	tc := ct.Curve()
+	if tc == nil {
+		return errors.New("translator is not bound to a curve")
+	}
+
+	if tc.ID() != curve.ID() {
+		return fmt.Errorf("translator curve [%d] does not match curve [%d]", tc.ID(), curve.ID())
+	}
+
+	return nil
+}
+
 // Identity Mixer Credential is a list of attributes certified (signed) by the issuer
 // A credential also contains a user secret key blindly signed by the issuer
 // Without the secret key the credential cannot be used

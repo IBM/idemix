@@ -178,3 +178,53 @@ func TestBBSG2Pub_VerifyProof_MessagesCountExceedsMax(t *testing.T) {
 	require.Error(t, err)
 	require.EqualError(t, err, fmt.Sprintf("invalid message count in proof: %d", hugeCount))
 }
+
+// TestPoKOfSignatureProof_Verify_RejectsIdentityPoints regression-tests the
+// degenerate-proof forgery: Verify must reject A', Abar or d equal to the
+// identity before running the pairing check and the sigma protocols.
+func TestPoKOfSignatureProof_Verify_RejectsIdentityPoints(t *testing.T) {
+	for _, curveID := range []ml.CurveID{ml.BLS12_381_BBS, ml.BLS12_381_BBS_GURVY, ml.FP256BN_AMCL, ml.FP256BN_AMCL_MIRACL, ml.BN254} {
+		t.Run(ml.CurveIDToString(curveID), func(t *testing.T) {
+			curve := ml.Curves[curveID]
+
+			pubKey, privKey, err := generateKeyPairRandom(curve)
+			require.NoError(t, err)
+
+			messagesBytes := [][]byte{[]byte("message1"), []byte("message2")}
+			bls := bbs.New(curve)
+
+			privKeyBytes, err := privKey.Marshal()
+			require.NoError(t, err)
+
+			sigBytes, err := bls.Sign(messagesBytes, privKeyBytes)
+			require.NoError(t, err)
+
+			pubKeyBytes, err := pubKey.Marshal()
+			require.NoError(t, err)
+
+			nonce := []byte("nonce")
+			proofBytes, err := bls.DeriveProof(messagesBytes, sigBytes, nonce, pubKeyBytes, []int{0})
+			require.NoError(t, err)
+
+			// the honest proof verifies
+			require.NoError(t, bls.VerifyProof(messagesBytes[:1], proofBytes, nonce, pubKeyBytes))
+
+			payload, err := bbs.ParsePoKPayload(proofBytes)
+			require.NoError(t, err)
+
+			identity := curve.NewG1().Compressed()
+			g1Size := curve.CompressedG1ByteSize
+
+			for i, name := range []string{"A'", "Abar", "d"} {
+				tampered := make([]byte, len(proofBytes))
+				copy(tampered, proofBytes)
+				offset := payload.LenInBytes() + i*g1Size
+				copy(tampered[offset:offset+g1Size], identity)
+
+				err := bls.VerifyProof(messagesBytes[:1], tampered, nonce, pubKeyBytes)
+				require.Error(t, err)
+				require.ErrorContains(t, err, fmt.Sprintf("bad signature: %s is the identity", name))
+			}
+		})
+	}
+}
