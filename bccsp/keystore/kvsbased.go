@@ -7,7 +7,9 @@ SPDX-License-Identifier: Apache-2.0
 package keystore
 
 import (
+	"bytes"
 	"encoding/hex"
+	"errors"
 	"fmt"
 
 	"github.com/IBM/idemix/bccsp/handlers"
@@ -103,27 +105,64 @@ func (ks *KVSStore) GetKey(ski []byte) (_ bccsp.Key, err error) {
 			return nil, fmt.Errorf("could not decode key [%s]: store has no translator or curve", id)
 		}
 
+		if len(entry.NymSecretKey.Sk) != ks.Curve.ScalarByteSize {
+			return nil, fmt.Errorf("could not decode key [%s]: invalid secret key length %d, expected %d", id, len(entry.NymSecretKey.Sk), ks.Curve.ScalarByteSize)
+		}
+		if entry.NymSecretKey.Pk == nil {
+			return nil, fmt.Errorf("could not decode key [%s]: missing public key", id)
+		}
+
 		pk, err := ks.Translator.G1FromProto(entry.NymSecretKey.Pk)
 		if err != nil {
 			return nil, err
 		}
 
-		return &handlers.NymSecretKey{
+		nymSk, err := ks.Curve.NewZrFromBytesCanonical(entry.NymSecretKey.Sk)
+		if err != nil {
+			return nil, fmt.Errorf("could not decode key [%s]: %w", id, err)
+		}
+
+		key := &handlers.NymSecretKey{
 			Exportable: entry.NymSecretKey.Exportable,
-			Sk:         ks.Curve.NewZrFromBytes(entry.NymSecretKey.Sk),
+			Sk:         nymSk,
 			Ski:        entry.NymSecretKey.Ski,
 			Pk:         pk,
 			Translator: ks.Translator,
-		}, nil
+		}
+
+		// nym keys are stored under the SKI of their public part (see StoreKey)
+		pub, err := key.PublicKey()
+		if err != nil {
+			return nil, fmt.Errorf("could not decode key [%s]: %w", id, err)
+		}
+		if !bytes.Equal(pub.SKI(), ski) {
+			return nil, fmt.Errorf("could not decode key [%s]: SKI mismatch", id)
+		}
+
+		return key, nil
 	case entry.UserSecretKey != nil:
 		if ks.Curve == nil {
 			return nil, fmt.Errorf("could not decode key [%s]: store has no curve", id)
 		}
 
-		return &handlers.UserSecretKey{
+		if len(entry.UserSecretKey.Sk) != ks.Curve.ScalarByteSize {
+			return nil, fmt.Errorf("could not decode key [%s]: invalid secret key length %d, expected %d", id, len(entry.UserSecretKey.Sk), ks.Curve.ScalarByteSize)
+		}
+
+		userSk, err := ks.Curve.NewZrFromBytesCanonical(entry.UserSecretKey.Sk)
+		if err != nil {
+			return nil, fmt.Errorf("could not decode key [%s]: %w", id, err)
+		}
+
+		key := &handlers.UserSecretKey{
 			Exportable: entry.UserSecretKey.Exportable,
-			Sk:         ks.Curve.NewZrFromBytes(entry.UserSecretKey.Sk),
-		}, nil
+			Sk:         userSk,
+		}
+		if !bytes.Equal(key.SKI(), ski) {
+			return nil, fmt.Errorf("could not decode key [%s]: SKI mismatch", id)
+		}
+
+		return key, nil
 	default:
 		return nil, fmt.Errorf("key not found for [%s]", id)
 	}
@@ -141,6 +180,12 @@ func (ks *KVSStore) StoreKey(k bccsp.Key) error {
 
 	switch key := k.(type) {
 	case *handlers.NymSecretKey:
+		if key == nil || key.Sk == nil || key.Pk == nil {
+			return errors.New("invalid nym secret key: missing secret or public part")
+		}
+		if ks.Translator == nil {
+			return errors.New("could not store key: store has no translator")
+		}
 		entry.NymSecretKey = &NymSecretKey{
 			Ski:        key.Ski,
 			Sk:         key.Sk.Bytes(),
@@ -155,6 +200,9 @@ func (ks *KVSStore) StoreKey(k bccsp.Key) error {
 
 		id = hex.EncodeToString(pk.SKI())
 	case *handlers.UserSecretKey:
+		if key == nil || key.Sk == nil {
+			return errors.New("invalid user secret key: missing secret")
+		}
 		entry.UserSecretKey = &UserSecretKey{
 			Sk:         key.Sk.Bytes(),
 			Exportable: key.Exportable,

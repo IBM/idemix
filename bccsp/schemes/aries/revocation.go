@@ -99,10 +99,22 @@ func (r *RevocationAuthority) Verify(pk *ecdsa.PublicKey, criRaw []byte, epoch i
 		return err
 	}
 
-	epochPkSig := cri.EpochPkSig
-	cri.EpochPkSig = nil
-	cri.Epoch = int64(epoch)
-	cri.RevocationAlg = int32(alg)
+	return verifyEpochPK(pk, cri.EpochPk, cri.EpochPkSig, epoch, alg)
+}
+
+// verifyEpochPK checks that epochPkSig is a valid signature, under the revocation
+// authority's long term key pk, of the CRI (epoch, epochPK, alg) as produced by
+// RevocationAuthority.Sign.
+func verifyEpochPK(pk *ecdsa.PublicKey, epochPK, epochPkSig []byte, epoch int, alg types.RevocationAlgorithm) error {
+	if pk == nil || len(epochPK) == 0 {
+		return errors.New("epochPK invalid: received nil input")
+	}
+
+	cri := &CredentialRevocationInformation{
+		Epoch:         int64(epoch),
+		EpochPk:       epochPK,
+		RevocationAlg: int32(alg),
+	}
 
 	bytesToVer, err := proto.Marshal(cri)
 	if err != nil {
@@ -112,8 +124,17 @@ func (r *RevocationAuthority) Verify(pk *ecdsa.PublicKey, criRaw []byte, epoch i
 	digest := sha256.Sum256(bytesToVer)
 
 	var sig struct{ R, S *big.Int }
-	if _, err := asn1.Unmarshal(epochPkSig, &sig); err != nil {
+	rest, err := asn1.Unmarshal(epochPkSig, &sig)
+	if err != nil {
 		return fmt.Errorf("failed unmashalling signature: %w", err)
+	}
+
+	if len(rest) != 0 {
+		return errors.New("failed unmashalling signature: trailing data")
+	}
+
+	if sig.R == nil || sig.S == nil || sig.R.Sign() <= 0 || sig.S.Sign() <= 0 {
+		return errors.New("epochPKSig invalid")
 	}
 
 	if !ecdsa.Verify(pk, digest[:], sig.R, sig.S) {

@@ -149,7 +149,11 @@ func newCredential(key *IssuerKey, m *CredRequest, attrs []*math.Zr, rng io.Read
 	}
 
 	// Set Exp as \frac{1}{e+x}
-	Exp := curve.ModAdd(curve.NewZrFromBytes(key.GetIsk()), E, curve.GroupOrder)
+	ISk, err := curve.NewZrFromBytesCanonical(key.GetIsk())
+	if err != nil {
+		return nil, fmt.Errorf("invalid issuer secret key: %w", err)
+	}
+	Exp := curve.ModAdd(ISk, E, curve.GroupOrder)
 	Exp.InvModP(curve.GroupOrder)
 	// Finalise A as B^Exp
 	A := B.Mul(Exp)
@@ -184,13 +188,30 @@ func (cred *Credential) Ver(sk *math.Zr, ipk *IssuerPublicKey, curve *math.Curve
 	if err != nil {
 		return err
 	}
-	E := curve.NewZrFromBytes(cred.GetE())
-	S := curve.NewZrFromBytes(cred.GetS())
+	E, err := curve.NewZrFromBytesCanonical(cred.GetE())
+	if err != nil {
+		return fmt.Errorf("invalid credential E: %w", err)
+	}
+	S, err := curve.NewZrFromBytesCanonical(cred.GetS())
+	if err != nil {
+		return fmt.Errorf("invalid credential S: %w", err)
+	}
+
+	// - verify that the credential carries exactly one value per issuer attribute
+	if len(cred.GetAttrs()) != len(ipk.GetAttributeNames()) || len(ipk.GetHAttrs()) != len(ipk.GetAttributeNames()) {
+		return fmt.Errorf("credential has %d attributes, the issuer public key defines %d names and %d bases",
+			len(cred.GetAttrs()), len(ipk.GetAttributeNames()), len(ipk.GetHAttrs()))
+	}
 
 	// - verify that all attribute values are present
+	attrs := make([]*math.Zr, len(cred.GetAttrs()))
 	for i := range len(cred.GetAttrs()) {
 		if cred.Attrs[i] == nil {
 			return fmt.Errorf("credential has no value for attribute %s", ipk.AttributeNames[i])
+		}
+		attrs[i], err = curve.NewZrFromBytesCanonical(cred.Attrs[i])
+		if err != nil {
+			return fmt.Errorf("invalid credential value for attribute %s: %w", ipk.AttributeNames[i], err)
 		}
 	}
 
@@ -220,14 +241,14 @@ func (cred *Credential) Ver(sk *math.Zr, ipk *IssuerPublicKey, curve *math.Curve
 	for i := range len(cred.Attrs) / 2 {
 		BPrime.Add(
 			HAttrs[2*i].Mul2(
-				curve.NewZrFromBytes(cred.Attrs[2*i]),
+				attrs[2*i],
 				HAttrs[2*i+1],
-				curve.NewZrFromBytes(cred.Attrs[2*i+1]),
+				attrs[2*i+1],
 			),
 		)
 	}
 	if len(cred.Attrs)%2 != 0 {
-		BPrime.Add(HAttrs[len(cred.Attrs)-1].Mul(curve.NewZrFromBytes(cred.Attrs[len(cred.Attrs)-1])))
+		BPrime.Add(HAttrs[len(cred.Attrs)-1].Mul(attrs[len(cred.Attrs)-1]))
 	}
 	if !B.Equals(BPrime) {
 		return errors.New("b-value from credential does not match the attribute values")

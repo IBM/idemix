@@ -333,7 +333,12 @@ func (b *BBSLib) ParseProofG1(bytes []byte) (*ProofG1, error) {
 
 	responses := make([]*ml.Zr, length)
 	for i := range length {
-		responses[i] = b.parseFr(bytes[offset : offset+frCompressedSize])
+		r, err := b.parseFr(bytes[offset : offset+frCompressedSize])
+		if err != nil {
+			return nil, fmt.Errorf("parse G1 proof response %d: %w", i, err)
+		}
+
+		responses[i] = r
 		offset += frCompressedSize
 	}
 

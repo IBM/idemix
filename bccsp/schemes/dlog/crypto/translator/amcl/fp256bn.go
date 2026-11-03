@@ -13,21 +13,33 @@ import (
 )
 
 var (
-	errNilArgument    = errors.New("nil argument")
-	errInvalidLength  = errors.New("invalid marshalled length")
-	errInvalidG1Point = errors.New("invalid G1 point: not on the curve or the identity")
-	errInvalidG2Point = errors.New("invalid G2 point: not on the curve or the identity")
-	errNilCurve       = errors.New("translator is not bound to a curve")
+	errNilArgument     = errors.New("nil argument")
+	errInvalidLength   = errors.New("invalid marshalled length")
+	errInvalidG1Point  = errors.New("invalid G1 point: not on the curve or the identity")
+	errInvalidG2Point  = errors.New("invalid G2 point: not on the curve or the identity")
+	errNilCurve        = errors.New("translator is not bound to a curve")
+	errG2NotInSubgroup = errors.New("invalid G2 point: not in the prime-order subgroup")
 )
 
-// checkFp256bnG1 rejects the identity. The AMCL decoder maps every
-// malformed encoding (coordinates not reduced modulo p, off-curve points,
-// points of another curve) to the point at infinity without reporting an
-// error, so the identity is what an invalid encoding looks like after
-// decoding. No honest code path serializes the identity of G1.
+// invalidPointError reports a decoding failure with the translator's stable error, keeping the
+// underlying decoder error in the chain for diagnostics.
+type invalidPointError struct {
+	public error
+	cause  error
+}
+
+func (e *invalidPointError) Error() string { return e.public.Error() }
+
+func (e *invalidPointError) Unwrap() []error { return []error{e.public, e.cause} }
+
+// checkFp256bnG1 rejects the identity and any encoding the decoder refuses. Older AMCL decoders
+// map every malformed encoding (coordinates not reduced modulo p, off-curve points, points of
+// another curve) to the point at infinity without reporting an error, while newer mathlib
+// releases return an error instead; both are reported as errInvalidG1Point. No honest code path
+// serializes the identity of G1.
 func checkFp256bnG1(p *math.G1, err error) (*math.G1, error) {
 	if err != nil {
-		return nil, err
+		return nil, &invalidPointError{public: errInvalidG1Point, cause: err}
 	}
 	if p == nil || p.IsInfinity() {
 		return nil, errInvalidG1Point
@@ -36,13 +48,22 @@ func checkFp256bnG1(p *math.G1, err error) (*math.G1, error) {
 	return p, nil
 }
 
-// checkFp256bnG2 is the G2 counterpart of checkFp256bnG1.
+// checkFp256bnG2 is the G2 counterpart of checkFp256bnG1. In addition to
+// rejecting the identity, it rejects points outside the order-r subgroup
+// ([r]P != O): the twist's group order has a large cofactor. The mathlib
+// version pinned in go.mod already checks subgroup membership when decoding
+// FP256BN G2 points, so this check is defense in depth (e.g. against a
+// regression in, or a downgrade of, mathlib). It is not free: it costs a G2
+// scalar multiplication per decoded point.
 func checkFp256bnG2(c *math.Curve, p *math.G2, err error) (*math.G2, error) {
 	if err != nil {
-		return nil, err
+		return nil, &invalidPointError{public: errInvalidG2Point, cause: err}
 	}
 	if p == nil || p.Equals(c.NewG2()) {
 		return nil, errInvalidG2Point
+	}
+	if !p.Mul(c.GroupOrder).Equals(c.NewG2()) {
+		return nil, errG2NotInSubgroup
 	}
 
 	return p, nil

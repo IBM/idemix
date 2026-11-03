@@ -8,6 +8,7 @@ package aries
 import (
 	"crypto/rand"
 	"crypto/sha256"
+	"errors"
 	"fmt"
 
 	"github.com/IBM/idemix/bbs"
@@ -74,10 +75,15 @@ func (i *Issuer) Bases(key types.IssuerPublicKey, ipkType types.CommitmentBasesR
 	if RhIndex == EidIndex ||
 		EidIndex == SKIndex ||
 		RhIndex == SKIndex ||
+		RhIndex < 0 || EidIndex < 0 || SKIndex < 0 ||
 		RhIndex >= ipk.N ||
 		EidIndex >= ipk.N ||
 		SKIndex >= ipk.N {
 		return nil, fmt.Errorf("invalid indices %d, %d, %d", RhIndex, EidIndex, SKIndex)
+	}
+
+	if ipk.PKwG == nil || len(ipk.PKwG.H) <= ipk.N {
+		return nil, errors.New("invalid issuer public key: not enough generators")
 	}
 
 	return map[types.CommitmentType]any{

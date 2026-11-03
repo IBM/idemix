@@ -482,9 +482,9 @@ var _ = Describe("Idemix Bridge", func() {
 				Expect(err).To(MatchError("invalid issuer public key, expected *IssuerPublicKey, got [<nil>]"))
 			})
 
-			It("panic on nil signature", func() {
+			It("fail on nil signature", func() {
 				err := NymSignatureScheme.Verify(issuerPublicKey, nymPublicKey, nil, nil, 0)
-				Expect(err).To(MatchError(ContainSubstring("failure [runtime error: invalid memory address or nil pointer dereference]")))
+				Expect(err).To(MatchError(ContainSubstring("invalid scalar encoding")))
 			})
 
 			It("fail on invalid signature", func() {

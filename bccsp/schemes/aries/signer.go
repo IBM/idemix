@@ -150,7 +150,10 @@ func (s *Signer) getPoKOfSignature(
 		return nil, nil, fmt.Errorf("parse signature: %w", err)
 	}
 
-	messagesFr := credential.toSignatureMessage(sk, s.Curve)
+	messagesFr, err := credential.toSignatureMessage(sk, s.Curve)
+	if err != nil {
+		return nil, nil, err
+	}
 
 	var pokOS *bbs.PoKOfSignature
 	if sigtype == types.Smartcard || sigtype == types.SmartcardNoNyms {
@@ -182,7 +185,7 @@ func (s *Signer) getPoKOfSignature(
 
 		pokOS, err = p.PoKOfSignatureB(signature, messagesFrNoSk, revealedAttributesIndexNoSk(attributes), ipk, b)
 	} else {
-		pokOS, err = bbs.NewBBSLib(s.Curve).NewPoKOfSignature(signature, messagesFr, revealedAttributesIndex(attributes), ipk)
+		pokOS, err = bbs.NewBBSLib(s.Curve).NewPoKOfSignature(signature, messagesFr, revealedAttributesIndex(attributes, int(credential.SkPos)), ipk)
 	}
 	if err != nil {
 		return nil, nil, fmt.Errorf("bbs.NewPoKOfSignature error: %w", err)
@@ -255,6 +258,7 @@ func (s *Signer) getChallengeHash(
 
 func (s *Signer) packageProof(
 	attributes []types.IdemixAttribute,
+	skPos int,
 	Nym *math.G1,
 	proof *bbs.PoKOfSignatureProof,
 	proofNym *bbs.ProofG1,
@@ -265,7 +269,7 @@ func (s *Signer) packageProof(
 	cri *CredentialRevocationInformation,
 	nonce *math.Zr,
 ) ([]byte, error) {
-	payload := bbs.NewPoKPayload(len(attributes)+1, revealedAttributesIndex(attributes))
+	payload := bbs.NewPoKPayload(len(attributes)+1, revealedAttributesIndex(attributes, skPos))
 
 	payloadBytes, err := payload.ToBytes()
 	if err != nil {
@@ -310,6 +314,7 @@ func (s *Signer) getCommitNym(
 	pokSignature *bbs.PoKOfSignature,
 	sigType types.SignatureType,
 	userSecretKeyIndex int,
+	revealedIndexes []int,
 ) *bbs.ProverCommittedG1 {
 	if sigType == types.Smartcard || sigType == types.SmartcardNoNyms {
 		return nil
@@ -326,7 +331,7 @@ func (s *Signer) getCommitNym(
 	// 2) pokSignature.PokVC2.BlindingFactors[2] is the blinding factor for the sk in
 	//    D * (-r3~) + Q_1 * s~ + H_j1 * m~_j1 + ... + H_jU * m~_jU
 	//    index 0 is for D, index 1 is for s~ and index 2 is for the first message (which is the sk)
-	commit.BlindingFactors[AttributeIndexInNym] = pokSignature.PokVC2.BlindingFactors[IndexOffsetVC2Attributes+userSecretKeyIndex]
+	commit.BlindingFactors[AttributeIndexInNym] = pokSignature.PokVC2.BlindingFactors[IndexOffsetVC2Attributes+hiddenPosition(userSecretKeyIndex, revealedIndexes)]
 
 	return commit.Finish()
 }
@@ -506,7 +511,7 @@ func (s *Signer) Sign(
 	// Handling Nym //
 	// ////////////////
 
-	commitNym := s.getCommitNym(ipk, pokSignature, sigType, int(credential.SkPos))
+	commitNym := s.getCommitNym(ipk, pokSignature, sigType, int(credential.SkPos), revealedAttributesIndex(attributes, int(credential.SkPos)))
 
 	// /////////////////
 	// Handle NymEID //
@@ -568,7 +573,7 @@ func (s *Signer) Sign(
 	// Package proof //
 	// /////////////////
 
-	sigBytes, err := s.packageProof(attributes, Nym, proof, proofNym, nymEid, proofNymEid, rhNym, proofRhNym, cri, Nonce)
+	sigBytes, err := s.packageProof(attributes, int(credential.SkPos), Nym, proof, proofNym, nymEid, proofNymEid, rhNym, proofRhNym, cri, Nonce)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -609,8 +614,8 @@ func (s *Signer) Verify(
 	nym *math.G1,
 	attributes []types.IdemixAttribute,
 	rhIndex, eidIndex, skIndex int,
-	_ *ecdsa.PublicKey,
-	_ int,
+	revPk *ecdsa.PublicKey,
+	epoch int,
 	verType types.VerificationType,
 	meta *types.IdemixSignerMetadata,
 ) (err error) {
@@ -641,6 +646,18 @@ func (s *Signer) Verify(
 		return errors.New("unsupported revocation algorithm")
 	}
 
+	// Verify that the revocation authority signed the epoch public key the
+	// signature was produced against, and that it is for the expected epoch.
+	if revPk != nil {
+		if sig.Epoch != int64(epoch) {
+			return fmt.Errorf("signature invalid: epoch [%d] does not match the expected epoch [%d]", sig.Epoch, epoch)
+		}
+
+		if err := verifyEpochPK(revPk, sig.RevocationEpochPk, sig.RevocationPkSig, epoch, types.RevocationAlgorithm(sig.NonRevocationProof.RevocationAlg)); err != nil {
+			return fmt.Errorf("signature invalid: revocation epoch public key: %w", err)
+		}
+	}
+
 	if verType == types.ExpectEidNym &&
 		(len(sig.NymEid) == 0 || len(sig.NymEidProof) == 0) {
 		return errors.New("no EidNym provided but ExpectEidNym required")
@@ -667,6 +684,20 @@ func (s *Signer) Verify(
 	verifyRHNym := (verType == types.BestEffort && sig.NymRh != nil) || verType == types.ExpectEidNymRhNym
 	verifyEIDNym := (verType == types.BestEffort && sig.NymEid != nil) || verType == types.ExpectEidNym || verType == types.ExpectEidNymRhNym || verType == types.ExpectSmartcard || verifyRHNym
 
+	if ipk.PKwG == nil || ipk.PKwG.H0 == nil {
+		return errors.New("invalid issuer public key: missing generators")
+	}
+
+	messagesCount := len(ipk.PKwG.H) // user secret key + attributes
+
+	if len(attributes)+1 != messagesCount {
+		return fmt.Errorf("invalid attributes: got %d attributes, issuer public key has %d", len(attributes), messagesCount-1)
+	}
+
+	if skIndex < 0 || skIndex > len(attributes) {
+		return fmt.Errorf("invalid signature: sk index %d out of range", skIndex)
+	}
+
 	messages := attributesToSignatureMessage(attributes, s.Curve, skIndex)
 
 	payload, err := bbs.ParsePoKPayload(sig.MainSignature)
@@ -679,8 +710,31 @@ func (s *Signer) Verify(
 		return fmt.Errorf("parse signature proof: %w", err)
 	}
 
-	if len(payload.Revealed) > len(messages) {
-		return errors.New("payload revealed bigger from messages")
+	// The payload is attacker controlled and not part of the Fiat-Shamir challenge:
+	// it must describe exactly the proof the verifier expects. Otherwise attributes
+	// the verifier expects to be disclosed could be left hidden (and thus unbound),
+	// or extra indices without a generator could absorb expected disclosed values.
+	if payload.MessagesCount != messagesCount {
+		return fmt.Errorf("invalid signature: proof covers %d messages, issuer public key has %d", payload.MessagesCount, messagesCount)
+	}
+
+	for _, idx := range payload.Revealed {
+		if idx < 0 || idx >= messagesCount {
+			return fmt.Errorf("invalid signature: revealed index %d out of range", idx)
+		}
+	}
+
+	// must match what the prover discloses (see Signer.Sign / packageProof)
+	expectedRevealed := revealedAttributesIndex(attributes, skIndex)
+
+	if len(payload.Revealed) != len(expectedRevealed) {
+		return fmt.Errorf("invalid signature: proof discloses %d attributes, expected %d", len(payload.Revealed), len(expectedRevealed))
+	}
+
+	for i := range expectedRevealed {
+		if payload.Revealed[i] != expectedRevealed[i] {
+			return fmt.Errorf("invalid signature: proof discloses attribute at index %d, expected index %d", payload.Revealed[i], expectedRevealed[i])
+		}
 	}
 
 	Nym, err := s.Curve.NewG1FromBytes(sig.Nym)
@@ -868,7 +922,8 @@ func (s *Signer) Verify(
 	vc2ResponsesLen := len(signatureProof.ProofVC2.Responses)
 
 	if verType != types.ExpectSmartcard && verType != types.ExpectSmartcardNoNyms {
-		skRespIdx := IndexOffsetVC2Attributes + skIndex
+		// VC2 responses only cover hidden messages: skip the disclosed ones preceding sk
+		skRespIdx := IndexOffsetVC2Attributes + hiddenPosition(skIndex, expectedRevealed)
 		if skRespIdx < 0 || skRespIdx >= vc2ResponsesLen {
 			return errors.New("invalid signature: sk index out of range")
 		}
@@ -886,8 +941,13 @@ func (s *Signer) Verify(
 	}
 
 	if verifyEIDNym {
+		// the index is carried by the signature but must be the one of the hidden eid
+		// attribute: otherwise the nym eid could be bound to another hidden attribute
 		if sig.NymEidIdx < 0 || int(sig.NymEidIdx) >= vc2ResponsesLen {
 			return errors.New("invalid signature: nym eid index out of range")
+		}
+		if want := vc2ResponseIndex(eidIndex, attributes, skIndex, verType); int(sig.NymEidIdx) != want {
+			return fmt.Errorf("invalid signature: nym eid index %d does not refer to the eid attribute (expected %d)", sig.NymEidIdx, want)
 		}
 
 		// verify that eid in the NymEid is the same as the one in the signature
@@ -903,8 +963,12 @@ func (s *Signer) Verify(
 	}
 
 	if verifyRHNym {
+		// see the nym eid index check above
 		if sig.NymRhIdx < 0 || int(sig.NymRhIdx) >= vc2ResponsesLen {
 			return errors.New("invalid signature: nym rh index out of range")
+		}
+		if want := vc2ResponseIndex(rhIndex, attributes, skIndex, verType); int(sig.NymRhIdx) != want {
+			return fmt.Errorf("invalid signature: nym rh index %d does not refer to the rh attribute (expected %d)", sig.NymRhIdx, want)
 		}
 
 		// verify that rh in the RhNym is the same as the one in the signature
@@ -928,6 +992,18 @@ func (s *Signer) Verify(
 	}
 
 	return signatureProof.Verify(proofChallenge, ipk.PKwG, revealedMessages, messages)
+}
+
+// vc2ResponseIndex returns the index, in the VC2 responses of a signature proof, of the response
+// for the message at idxInBases (an index in the BBS+ message vector, which includes the user
+// secret key at skIndex). VC2 has one response per hidden message after the first
+// IndexOffsetVC2Attributes ones; with a smartcard the user secret key has no VC2 response.
+func vc2ResponseIndex(idxInBases int, attributes []types.IdemixAttribute, skIndex int, verType types.VerificationType) int {
+	if verType == types.ExpectSmartcard || verType == types.ExpectSmartcardNoNyms {
+		return IndexOffsetVC2Attributes + hiddenPosition(idxInBases-1, revealedAttributesIndexNoSk(attributes))
+	}
+
+	return IndexOffsetVC2Attributes + hiddenPosition(idxInBases, revealedAttributesIndex(attributes, skIndex))
 }
 
 // AuditNymEid permits the auditing of the nym eid generated by a signer

@@ -115,15 +115,15 @@ func TestAmclTranslatorRejectsInvalidPoints(t *testing.T) {
 
 			// G1: identity
 			_, err = tr.G1FromProto(tr.G1ToProto(c.NewG1()))
-			assert.EqualError(t, err, errInvalidG1Point.Error())
+			require.EqualError(t, err, errInvalidG1Point.Error())
 
 			// G1: off-curve
 			bad := cloneECP(honest)
 			bad.Y[len(bad.Y)-1] ^= 1
 			_, err = tr.G1FromProto(bad)
-			assert.EqualError(t, err, errInvalidG1Point.Error())
+			require.EqualError(t, err, errInvalidG1Point.Error())
 			_, err = tr.G1FromRawBytes(append(append([]byte{}, bad.X...), bad.Y...))
-			assert.EqualError(t, err, errInvalidG1Point.Error())
+			require.EqualError(t, err, errInvalidG1Point.Error())
 
 			// G1: coordinate not reduced modulo p
 			bad = cloneECP(honest)
@@ -131,21 +131,21 @@ func TestAmclTranslatorRejectsInvalidPoints(t *testing.T) {
 				bad.X[i] = 0xff
 			}
 			_, err = tr.G1FromProto(bad)
-			assert.EqualError(t, err, errInvalidG1Point.Error())
+			require.EqualError(t, err, errInvalidG1Point.Error())
 
 			// G1: point of another curve with the same coordinate size
 			_, err = tr.G1FromRawBytes(foreign)
-			assert.EqualError(t, err, errInvalidG1Point.Error())
+			require.EqualError(t, err, errInvalidG1Point.Error())
 
 			// G2: identity
 			_, err = tr.G2FromProto(tr.G2ToProto(c.NewG2()))
-			assert.EqualError(t, err, errInvalidG2Point.Error())
+			require.EqualError(t, err, errInvalidG2Point.Error())
 
 			// G2: off-curve
 			bad2 := cloneECP2(honest2)
 			bad2.Yb[len(bad2.Yb)-1] ^= 1
 			_, err = tr.G2FromProto(bad2)
-			assert.EqualError(t, err, errInvalidG2Point.Error())
+			require.EqualError(t, err, errInvalidG2Point.Error())
 
 			// G2: coordinate not reduced modulo p
 			bad2 = cloneECP2(honest2)
@@ -153,7 +153,7 @@ func TestAmclTranslatorRejectsInvalidPoints(t *testing.T) {
 				bad2.Xa[i] = 0xff
 			}
 			_, err = tr.G2FromProto(bad2)
-			assert.EqualError(t, err, errInvalidG2Point.Error())
+			require.EqualError(t, err, errInvalidG2Point.Error())
 
 			// G2: point of another curve
 			_, err = tr.G2FromProto(tr.G2ToProto(bn254.GenG2))
@@ -161,9 +161,9 @@ func TestAmclTranslatorRejectsInvalidPoints(t *testing.T) {
 
 			// nil and lengths
 			_, err = tr.G1FromProto(nil)
-			assert.EqualError(t, err, errNilArgument.Error())
+			require.EqualError(t, err, errNilArgument.Error())
 			_, err = tr.G2FromProto(nil)
-			assert.EqualError(t, err, errNilArgument.Error())
+			require.EqualError(t, err, errNilArgument.Error())
 			_, err = tr.G1FromRawBytes(nil)
 			assert.EqualError(t, err, errInvalidLength.Error())
 		})
@@ -201,11 +201,11 @@ func TestGurvyTranslatorRejectsMalformedInput(t *testing.T) {
 			assert.NotPanics(t, func() {
 				_, err = tr.G1FromProto(nil)
 			})
-			assert.EqualError(t, err, errNilArgument.Error())
+			require.EqualError(t, err, errNilArgument.Error())
 			assert.NotPanics(t, func() {
 				_, err = tr.G2FromProto(nil)
 			})
-			assert.EqualError(t, err, errNilArgument.Error())
+			require.EqualError(t, err, errNilArgument.Error())
 			assert.NotPanics(t, func() {
 				_, err = tr.G1FromRawBytes(nil)
 			})
@@ -220,7 +220,7 @@ func TestGurvyTranslatorRejectsMalformedInput(t *testing.T) {
 				{X: append([]byte{0}, honest.X...), Y: append([]byte{0}, honest.Y...)},
 			} {
 				_, err = tr.G1FromProto(e)
-				assert.EqualError(t, err, errInvalidLength.Error())
+				require.EqualError(t, err, errInvalidLength.Error())
 			}
 
 			for _, e := range []*ECP2{
@@ -230,7 +230,7 @@ func TestGurvyTranslatorRejectsMalformedInput(t *testing.T) {
 				{Xa: honest2.Xa, Xb: honest2.Xb, Ya: honest2.Ya, Yb: append(append([]byte{}, honest2.Yb...), 0)},
 			} {
 				_, err = tr.G2FromProto(e)
-				assert.EqualError(t, err, errInvalidLength.Error())
+				require.EqualError(t, err, errInvalidLength.Error())
 			}
 
 			// raw bytes: 0x04 prefix, trailing data, compressed form, truncation
@@ -246,9 +246,9 @@ func TestGurvyTranslatorRejectsMalformedInput(t *testing.T) {
 
 			// unbound translator
 			_, err = (&Gurvy{}).G1FromProto(cloneECP(honest))
-			assert.EqualError(t, err, errNilCurve.Error())
+			require.EqualError(t, err, errNilCurve.Error())
 			_, err = (&Gurvy{}).G2FromProto(cloneECP2(honest2))
-			assert.EqualError(t, err, errNilCurve.Error())
+			require.EqualError(t, err, errNilCurve.Error())
 			_, err = (&Gurvy{}).G1FromRawBytes(raw)
 			assert.EqualError(t, err, errNilCurve.Error())
 		})

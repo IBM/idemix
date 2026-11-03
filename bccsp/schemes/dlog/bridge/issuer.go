@@ -6,6 +6,7 @@ SPDX-License-Identifier: Apache-2.0
 package bridge
 
 import (
+	"errors"
 	"fmt"
 
 	idemix "github.com/IBM/idemix/bccsp/schemes/dlog/crypto"
@@ -83,7 +84,7 @@ func (i *Issuer) NewKeyFromBytes(raw []byte, attributes []string) (res bccsp.Iss
 }
 
 func (i *Issuer) Bases(ipk bccsp.IssuerPublicKey, ipkType bccsp.CommitmentBasesRequest, RhIndex, EidIndex, SKIndex int) (map[bccsp.CommitmentType]any, error) {
-	panic("not implemented")
+	return nil, errors.New("commitment bases are not supported by the dlog scheme")
 }
 
 func (i *Issuer) NewPublicKeyFromBytes(raw []byte, attributes []string) (res bccsp.IssuerPublicKey, err error) {
