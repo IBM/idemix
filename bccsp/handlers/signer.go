@@ -151,6 +151,10 @@ func (v *Verifier) Verify(k types.Key, signature, digest []byte, opts types.Sign
 		if !ok || !revocationPK.valid() {
 			return false, errors.New("invalid options, expected *revocationPublicKey")
 		}
+		// a set key must carry a key: otherwise the revocation checks would be skipped
+		if revocationPK.pubKey == nil {
+			return false, errors.New("invalid options, revocation public key is empty")
+		}
 		rPK = revocationPK.pubKey
 	}
 
