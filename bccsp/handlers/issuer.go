@@ -24,6 +24,16 @@ func NewIssuerSecretKey(sk bccsp.IssuerSecretKey, exportable bool) *issuerSecret
 	return &issuerSecretKey{sk: sk, exportable: exportable}
 }
 
+// valid returns true if the key is not a typed-nil pointer.
+func (k *issuerSecretKey) valid() bool {
+	return k != nil
+}
+
+// valid returns true if the key is not a typed-nil pointer.
+func (k *issuerPublicKey) valid() bool {
+	return k != nil
+}
+
 func (k *issuerSecretKey) Bytes() ([]byte, error) {
 	if k.exportable {
 		return k.sk.Bytes()
@@ -94,7 +104,7 @@ type IssuerKeyGen struct {
 
 func (g *IssuerKeyGen) KeyGen(opts bccsp.KeyGenOpts) (k bccsp.Key, err error) {
 	o, ok := opts.(*bccsp.IdemixIssuerKeyGenOpts)
-	if !ok {
+	if !ok || o == nil {
 		return nil, errors.New("invalid options, expected *bccsp.IdemixIssuerKeyGenOpts")
 	}
 
@@ -124,7 +134,7 @@ func (i *IssuerPublicKeyImporter) KeyImport(raw any, opts bccsp.KeyImportOpts) (
 	}
 
 	o, ok := opts.(*bccsp.IdemixIssuerPublicKeyImportOpts)
-	if !ok {
+	if !ok || o == nil {
 		return nil, errors.New("invalid options, expected *bccsp.IdemixIssuerPublicKeyImportOpts")
 	}
 
@@ -167,7 +177,7 @@ func (i *IssuerKeyImporter) KeyImport(raw any, opts bccsp.KeyImportOpts) (k bccs
 	}
 
 	o, ok := opts.(*bccsp.IdemixIssuerKeyImportOpts)
-	if !ok {
+	if !ok || o == nil {
 		return nil, errors.New("invalid options, expected *bccsp.IdemixIssuerKeyImportOpts")
 	}
 
