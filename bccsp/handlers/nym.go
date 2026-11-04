@@ -43,6 +43,18 @@ func NewNymSecretKey(sk *math.Zr, pk *math.G1, translator idemix.Translator, exp
 	return &NymSecretKey{Ski: ski, Sk: sk, Pk: pk, Exportable: exportable, Translator: translator}, nil
 }
 
+// valid returns true if the key is not a typed-nil pointer.
+// The validity of the inner group elements is checked by the underlying scheme.
+func (k *NymSecretKey) valid() bool {
+	return k != nil
+}
+
+// valid returns true if the key is not a typed-nil pointer.
+// The validity of the inner group element is checked by the underlying scheme.
+func (k *nymPublicKey) valid() bool {
+	return k != nil
+}
+
 func (k *NymSecretKey) Bytes() ([]byte, error) {
 	if k.Exportable {
 		return k.Sk.Bytes(), nil
@@ -120,18 +132,18 @@ type NymKeyDerivation struct {
 
 func (kd *NymKeyDerivation) KeyDeriv(k bccsp.Key, opts bccsp.KeyDerivOpts) (dk bccsp.Key, err error) {
 	userSecretKey, ok := k.(*UserSecretKey)
-	if !ok {
+	if !ok || !userSecretKey.valid() {
 		return nil, errors.New("invalid key, expected *userSecretKey")
 	}
 	nymKeyDerivationOpts, ok := opts.(*bccsp.IdemixNymKeyDerivationOpts)
-	if !ok {
+	if !ok || nymKeyDerivationOpts == nil {
 		return nil, errors.New("invalid options, expected *IdemixNymKeyDerivationOpts")
 	}
 	if nymKeyDerivationOpts.IssuerPK == nil {
 		return nil, errors.New("invalid options, missing issuer public key")
 	}
 	issuerPK, ok := nymKeyDerivationOpts.IssuerPK.(*issuerPublicKey)
-	if !ok {
+	if !ok || !issuerPK.valid() {
 		return nil, errors.New("invalid options, expected IssuerPK as *issuerPublicKey")
 	}
 

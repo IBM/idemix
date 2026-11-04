@@ -19,18 +19,18 @@ type CredentialRequestSigner struct {
 
 func (c *CredentialRequestSigner) Sign(k bccsp.Key, digest []byte, opts bccsp.SignerOpts) ([]byte, error) {
 	userSecretKey, ok := k.(*UserSecretKey)
-	if !ok {
+	if !ok || !userSecretKey.valid() {
 		return nil, errors.New("invalid key, expected *userSecretKey")
 	}
 	credentialRequestSignerOpts, ok := opts.(*bccsp.IdemixCredentialRequestSignerOpts)
-	if !ok {
+	if !ok || credentialRequestSignerOpts == nil {
 		return nil, errors.New("invalid options, expected *IdemixCredentialRequestSignerOpts")
 	}
 	if credentialRequestSignerOpts.IssuerPK == nil {
 		return nil, errors.New("invalid options, missing issuer public key")
 	}
 	issuerPK, ok := credentialRequestSignerOpts.IssuerPK.(*issuerPublicKey)
-	if !ok {
+	if !ok || !issuerPK.valid() {
 		return nil, errors.New("invalid options, expected IssuerPK as *issuerPublicKey")
 	}
 
@@ -43,18 +43,18 @@ type BlindCredentialRequestSigner struct {
 
 func (c *BlindCredentialRequestSigner) Sign(k bccsp.Key, digest []byte, opts bccsp.SignerOpts) ([]byte, error) {
 	userSecretKey, ok := k.(*UserSecretKey)
-	if !ok {
+	if !ok || !userSecretKey.valid() {
 		return nil, errors.New("invalid key, expected *userSecretKey")
 	}
 	credentialRequestSignerOpts, ok := opts.(*bccsp.IdemixBlindCredentialRequestSignerOpts)
-	if !ok {
+	if !ok || credentialRequestSignerOpts == nil {
 		return nil, errors.New("invalid options, expected *IdemixCredentialRequestSignerOpts")
 	}
 	if credentialRequestSignerOpts.IssuerPK == nil {
 		return nil, errors.New("invalid options, missing issuer public key")
 	}
 	issuerPK, ok := credentialRequestSignerOpts.IssuerPK.(*issuerPublicKey)
-	if !ok {
+	if !ok || !issuerPK.valid() {
 		return nil, errors.New("invalid options, expected IssuerPK as *issuerPublicKey")
 	}
 
@@ -76,11 +76,11 @@ type CredentialRequestVerifier struct {
 
 func (c *CredentialRequestVerifier) Verify(k bccsp.Key, signature, digest []byte, opts bccsp.SignerOpts) (bool, error) {
 	issuerPublicKey, ok := k.(*issuerPublicKey)
-	if !ok {
+	if !ok || !issuerPublicKey.valid() {
 		return false, errors.New("invalid key, expected *issuerPublicKey")
 	}
 	credentialRequestSignerOpts, ok := opts.(*bccsp.IdemixCredentialRequestSignerOpts)
-	if !ok {
+	if !ok || credentialRequestSignerOpts == nil {
 		return false, errors.New("invalid options, expected *IdemixCredentialRequestSignerOpts")
 	}
 
@@ -98,11 +98,11 @@ type BlindCredentialRequestVerifier struct {
 
 func (c *BlindCredentialRequestVerifier) Verify(k bccsp.Key, signature, digest []byte, opts bccsp.SignerOpts) (bool, error) {
 	issuerPublicKey, ok := k.(*issuerPublicKey)
-	if !ok {
+	if !ok || !issuerPublicKey.valid() {
 		return false, errors.New("invalid key, expected *issuerPublicKey")
 	}
 	credentialRequestSignerOpts, ok := opts.(*bccsp.IdemixBlindCredentialRequestSignerOpts)
-	if !ok {
+	if !ok || credentialRequestSignerOpts == nil {
 		return false, errors.New("invalid options, expected *IdemixCredentialRequestSignerOpts")
 	}
 
@@ -120,11 +120,11 @@ type CredentialSigner struct {
 
 func (s *CredentialSigner) Sign(k bccsp.Key, digest []byte, opts bccsp.SignerOpts) (signature []byte, err error) {
 	issuerSecretKey, ok := k.(*issuerSecretKey)
-	if !ok {
+	if !ok || !issuerSecretKey.valid() {
 		return nil, errors.New("invalid key, expected *issuerSecretKey")
 	}
 	credOpts, ok := opts.(*bccsp.IdemixCredentialSignerOpts)
-	if !ok {
+	if !ok || credOpts == nil {
 		return nil, errors.New("invalid options, expected *IdemixCredentialSignerOpts")
 	}
 
@@ -142,18 +142,18 @@ type CredentialVerifier struct {
 
 func (v *CredentialVerifier) Verify(k bccsp.Key, signature, digest []byte, opts bccsp.SignerOpts) (valid bool, err error) {
 	userSecretKey, ok := k.(*UserSecretKey)
-	if !ok {
+	if !ok || !userSecretKey.valid() {
 		return false, errors.New("invalid key, expected *userSecretKey")
 	}
 	credOpts, ok := opts.(*bccsp.IdemixCredentialSignerOpts)
-	if !ok {
+	if !ok || credOpts == nil {
 		return false, errors.New("invalid options, expected *IdemixCredentialSignerOpts")
 	}
 	if credOpts.IssuerPK == nil {
 		return false, errors.New("invalid options, missing issuer public key")
 	}
 	ipk, ok := credOpts.IssuerPK.(*issuerPublicKey)
-	if !ok {
+	if !ok || !ipk.valid() {
 		return false, errors.New("invalid issuer public key, expected *issuerPublicKey")
 	}
 	if len(signature) == 0 {
