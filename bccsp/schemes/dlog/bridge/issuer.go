@@ -17,6 +17,9 @@ import (
 // IssuerPublicKey encapsulate an idemix issuer public key.
 type IssuerPublicKey struct {
 	PK *idemix.IssuerPublicKey
+
+	// decoded is set at import; nil keys are decoded on every verification.
+	decoded *idemix.DecodedIssuerPublicKey
 }
 
 func (o *IssuerPublicKey) Bytes() ([]byte, error) {
@@ -37,7 +40,7 @@ func (o *IssuerSecretKey) Bytes() ([]byte, error) {
 }
 
 func (o *IssuerSecretKey) Public() bccsp.IssuerPublicKey {
-	return &IssuerPublicKey{o.SK.Ipk}
+	return &IssuerPublicKey{PK: o.SK.Ipk}
 }
 
 // Issuer encapsulates the idemix algorithms to generate issuer key-pairs
@@ -112,7 +115,7 @@ func (i *Issuer) NewPublicKeyFromBytes(raw []byte, attributes []string) (res bcc
 			Cause:    err}
 	}
 
-	err = ipk.Check(i.Idemix.Curve, i.Translator)
+	decoded, err := ipk.CheckAndDecode(i.Idemix.Curve, i.Translator)
 	if err != nil {
 		return nil, &bccsp.IdemixIssuerPublicKeyImporterError{
 			Type:     bccsp.IdemixIssuerPublicKeyImporterValidationError,
@@ -140,7 +143,7 @@ func (i *Issuer) NewPublicKeyFromBytes(raw []byte, attributes []string) (res bcc
 		}
 	}
 
-	res = &IssuerPublicKey{PK: ipk}
+	res = &IssuerPublicKey{PK: ipk, decoded: decoded}
 
 	return res, err
 }

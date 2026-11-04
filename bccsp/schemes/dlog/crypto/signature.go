@@ -13,6 +13,7 @@ import (
 	"io"
 	"sort"
 
+	"github.com/IBM/idemix/bccsp/schemes/internal/epochcache"
 	opts "github.com/IBM/idemix/bccsp/types"
 	math "github.com/IBM/mathlib"
 )
@@ -849,17 +850,65 @@ func (sig *Signature) Ver(
 	verType opts.VerificationType,
 	meta *opts.IdemixSignerMetadata,
 ) error {
-	// Validate inputs
 	if ipk == nil {
 		return errors.New("cannot verify idemix signature: received nil input")
 	}
 
+	return sig.ver(Disclosure, protoIssuerKey{ipk: ipk}, msg, expectedNym, attributeValues, rhIndex, eidIndex,
+		revPk, epoch, curve, t, verType, meta, nil)
+}
+
+// VerDecoded is like Ver with a decoded issuer key and an optional epoch PK cache.
+func (sig *Signature) VerDecoded(
+	Disclosure []byte,
+	ipk *DecodedIssuerPublicKey,
+	msg []byte,
+	expectedNym *math.G1,
+	attributeValues []*math.Zr,
+	rhIndex, eidIndex int,
+	revPk *ecdsa.PublicKey,
+	epoch int,
+	curve *math.Curve,
+	t Translator,
+	verType opts.VerificationType,
+	meta *opts.IdemixSignerMetadata,
+	epochPKCache *EpochPKCache,
+) error {
+	if ipk == nil {
+		return errors.New("cannot verify idemix signature: received nil input")
+	}
+
+	if err := ipk.checkCurve(curve); err != nil {
+		return err
+	}
+
+	return sig.ver(Disclosure, ipk, msg, expectedNym, attributeValues, rhIndex, eidIndex,
+		revPk, epoch, curve, t, verType, meta, epochPKCache)
+}
+
+func (sig *Signature) ver(
+	Disclosure []byte,
+	ipk issuerKeyView,
+	msg []byte,
+	expectedNym *math.G1,
+	attributeValues []*math.Zr,
+	rhIndex, eidIndex int,
+	revPk *ecdsa.PublicKey,
+	epoch int,
+	curve *math.Curve,
+	t Translator,
+	verType opts.VerificationType,
+	meta *opts.IdemixSignerMetadata,
+	epochPKCache *EpochPKCache,
+) error {
+	// Validate inputs
 	if sig == nil || curve == nil || t == nil {
 		return errors.New("cannot verify idemix signature: received nil input")
 	}
 
-	if rhIndex < 0 || rhIndex >= len(ipk.AttributeNames) || len(Disclosure) != len(ipk.AttributeNames) ||
-		len(ipk.HAttrs) != len(ipk.AttributeNames) {
+	attributeNames := ipk.attributeNames()
+	if rhIndex < 0 || rhIndex >= len(attributeNames) || len(Disclosure) != len(attributeNames) ||
+		ipk.baseCount() != len(attributeNames) {
 		return errors.New("cannot verify idemix signature: received invalid input")
 	}
 
@@ -912,7 +961,7 @@ func (sig *Signature) Ver(
 	verifyEIDNym := (verType == opts.BestEffort && sig.EidNym != nil) || verType == opts.ExpectEidNym || verType == opts.ExpectEidNymRhNym || verifyRHNym
 
 	if verifyEIDNym {
-		if eidIndex < 0 || eidIndex >= len(ipk.AttributeNames) || eidIndex == rhIndex {
+		if eidIndex < 0 || eidIndex >= len(attributeNames) || eidIndex == rhIndex {
 			return errors.New("cannot verify idemix signature: invalid enrollment id index")
 		}
 		if sig.EidNym == nil || sig.EidNym.Nym == nil || sig.EidNym.ProofSEid == nil {
@@ -927,13 +976,18 @@ func (sig *Signature) Ver(
 
 	// Verify that the revocation authority signed the epoch public key the
 	// signature was produced against, and that it is for the expected epoch.
+	var revocationEpochPk *math.G2
+	var epochPkCacheKey *epochcache.Key
 	if revPk != nil {
 		if sig.Epoch != int64(epoch) {
 			return fmt.Errorf("signature invalid: epoch [%d] does not match the expected epoch [%d]", sig.Epoch, epoch)
 		}
-		if err := verifyEpochPK(revPk, sig.RevocationEpochPk, sig.RevocationPkSig, epoch, RevocationAlgorithm(sig.NonRevocationProof.RevocationAlg)); err != nil {
+		cachedEpochPk, cacheKey, err := epochPKCache.verify(revPk, sig.RevocationEpochPk, sig.RevocationPkSig, epoch,
+			RevocationAlgorithm(sig.NonRevocationProof.RevocationAlg))
+		if err != nil {
 			return fmt.Errorf("signature invalid: revocation epoch public key: %w", err)
 		}
+		revocationEpochPk, epochPkCacheKey = cachedEpochPk, cacheKey
 	}
 
 	HiddenIndices := hiddenIndices(Disclosure)
@@ -992,18 +1046,11 @@ func (sig *Signature) Ver(
 	}
 
 	// Parse issuer public key
-	W, err := t.G2FromProto(ipk.W)
+	bases, err := ipk.bases(t, true, true)
 	if err != nil {
 		return err
 	}
-	HRand, err := t.G1FromProto(ipk.HRand)
-	if err != nil {
-		return err
-	}
-	HSk, err := t.G1FromProto(ipk.HSk)
-	if err != nil {
-		return err
-	}
+	W, HRand, HSk, HAttrs := bases.W, bases.HRand, bases.HSk, bases.HAttrs
 	// logger.Printf("Signature Verification : \n"+
 	//	"	[W:%v]\n",
 	//	W.Bytes(),
@@ -1025,14 +1072,6 @@ func (sig *Signature) Ver(
 
 	// Recover t-values
 
-	HAttrs := make([]*math.G1, len(ipk.HAttrs))
-	for i := range ipk.HAttrs {
-		var err error
-		HAttrs[i], err = t.G1FromProto(ipk.HAttrs[i])
-		if err != nil {
-			return err
-		}
-	}
 	// Recompute t1
 	t1 := APrime.Mul2(ProofSE, HRand, ProofSR2)
 	temp := curve.NewG1()
@@ -1065,10 +1104,7 @@ func (sig *Signature) Ver(
 	// Attribute pseudonym extension signature verification
 	var t4_eid *math.G1
 	if verifyEIDNym {
-		H_a_eid, err := t.G1FromProto(ipk.HAttrs[eidIndex])
-		if err != nil {
-			return err
-		}
+		H_a_eid := HAttrs[eidIndex]
 
 		v, err := curve.NewZrFromBytesCanonical(sig.EidNym.ProofSEid)
 		if err != nil {
@@ -1087,10 +1123,7 @@ func (sig *Signature) Ver(
 	}
 	var t4_rh *math.G1
 	if verifyRHNym {
-		H_a_rh, err := t.G1FromProto(ipk.HAttrs[rhIndex])
-		if err != nil {
-			return err
-		}
+		H_a_rh := HAttrs[rhIndex]
 
 		rhHiddenIdx, err := searchHiddenIndex(HiddenIndices, rhIndex)
 		if err != nil {
@@ -1118,9 +1151,13 @@ func (sig *Signature) Ver(
 		return fmt.Errorf("signature invalid: zero-knowledge proof is invalid: %w", err)
 	}
 	proofSRh := ProofSAttrs[i]
-	RevocationEpochPk, err := t.G2FromProto(sig.RevocationEpochPk)
-	if err != nil {
-		return err
+	RevocationEpochPk := revocationEpochPk
+	if RevocationEpochPk == nil {
+		RevocationEpochPk, err = t.G2FromProto(sig.RevocationEpochPk)
+		if err != nil {
+			return err
+		}
+		epochPKCache.add(epochPkCacheKey, RevocationEpochPk)
 	}
 
 	nonRevokedProofBytes, err := nonRevokedVer.recomputeFSContribution(sig.NonRevocationProof, ProofC, RevocationEpochPk, proofSRh)
@@ -1176,7 +1213,7 @@ func (sig *Signature) Ver(
 		index = appendBytesG1(proofData, index, t4_rh)
 	}
 	index = appendBytes(proofData, index, nonRevokedProofBytes)
-	copy(proofData[index:], ipk.Hash)
+	copy(proofData[index:], ipk.hash())
 	index = index + curve.ScalarByteSize
 	copy(proofData[index:], Disclosure)
 	index = index + len(Disclosure)
@@ -1196,10 +1233,7 @@ func (sig *Signature) Ver(
 		}
 
 		if meta.EidNymAuditData != nil {
-			H_a_eid, err := t.G1FromProto(ipk.HAttrs[eidIndex])
-			if err != nil {
-				return err
-			}
+			H_a_eid := HAttrs[eidIndex]
 
 			Nym_eid := H_a_eid.Mul2(meta.EidNymAuditData.Attr, HRand, meta.EidNymAuditData.Rand)
 			if !Nym_eid.Equals(EidNym) {
@@ -1229,10 +1263,7 @@ func (sig *Signature) Ver(
 		}
 
 		if meta.RhNymAuditData != nil {
-			H_a_rh, err := t.G1FromProto(ipk.HAttrs[rhIndex])
-			if err != nil {
-				return err
-			}
+			H_a_rh := HAttrs[rhIndex]
 
 			Nym_rh := H_a_rh.Mul2(meta.RhNymAuditData.Attr, HRand, meta.RhNymAuditData.Rand)
 			if !Nym_rh.Equals(RhNym) {
@@ -1285,7 +1316,7 @@ func (sig *Signature) Ver(
 			BPrime.Bytes(),
 			Nym.Bytes(),
 			nonRevokedProofBytes,
-			ipk.Hash,
+			ipk.hash(),
 			Disclosure,
 			msg,
 			proofData,
