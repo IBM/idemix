@@ -25,14 +25,14 @@ This project is a Go implementation of an anonymous identity stack for blockchai
 
 A single MSP constructor is available:
 
-- **`NewIdemixMsp(version)`** (and `NewIdemixMspWithLogger`) — `Setup` auto-detects the underlying cryptographic scheme from the key material in the config: it first attempts to load the config using the legacy dlog scheme and, if that fails, retries using the Aries/BBS+ scheme. Either scheme accepts any supported curve; `Setup` rejects any config whose type is not `IDEMIX`.
+- **`NewMSP(version)`** (and `NewMSPWithLogger`) — `Setup` auto-detects the underlying cryptographic scheme from the key material in the config: it first attempts to load the config using the legacy dlog scheme and, if that fails, retries using the Aries/BBS+ scheme. Either scheme accepts any supported curve; `Setup` rejects any config whose type is not `IDEMIX`.
 
 ### Breaking changes
 
-- `NewIdemixMspAries` and `NewIdemixMspAriesWithLogger` are removed; use `NewIdemixMsp` / `NewIdemixMspWithLogger`.
+- `NewIdemixMspAries` and `NewIdemixMspAriesWithLogger` are removed; use `NewMSP` / `NewMSPWithLogger`.
 - The `IDEMIX_ARIES` provider type is removed (value 2 stays reserved so `OTHER` keeps its wire value). `Setup` rejects configs with `Type != IDEMIX`; regenerate or re-type old Aries configs as `IDEMIX`.
 - `Setup` detects the scheme by importing the issuer public key (dlog first, then Aries) and completes the setup with the BCCSP built for the detected scheme. `MSP.Scheme()` reports the result (`SchemeDlog` or `SchemeAries`). A failed `Setup` restores the in-memory state of the MSP and persists no new key. `Setup` must not be called concurrently with other methods.
-- `DeserializeSigningIdentity` requires an MSP created with `NewIdemixMspWithKeyStore` and a persistent KVS holding a single user's keys. It verifies the identity's association proof and that the stored nym secret key belongs to the default signer. `Pseudonym()` persists one nym key per successful call when a KVS is configured (no deletion path).
+- `DeserializeSigningIdentity` requires an MSP created with `NewMSPWithKeyStore` and a persistent KVS holding a single user's keys. It verifies the identity's association proof and that the stored nym secret key belongs to the default signer. `Pseudonym()` persists one nym key per successful call when a KVS is configured (no deletion path).
 - `msp.MSP` is now a struct; the `MSP` and `MSPManager` interfaces are removed. `NewIdemixIdentity` and `NewSigningIdentity` are no longer exported.
 - `GetIdemixMspConfigWithType` is deprecated: `IDEMIX` is the only accepted type.
 

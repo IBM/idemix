@@ -58,14 +58,14 @@ func TestSetupBad(t *testing.T) {
 	}
 	sc := schemeCurve{scheme: "dlog", curveID: curveIDFP256BN_AMCL}
 
-	_, err := NewIdemixMsp(MSPv1_3)
+	_, err := NewMSP(MSPv1_3)
 	require.NoError(t, err)
 
 	_, err = GetIdemixMspConfigWithType("testdata/idemix-does-not-exist", "MSPID", IDEMIX)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "failed to read issuer public key file")
 
-	msp1, err := NewIdemixMsp(MSPv1_3)
+	msp1, err := NewMSP(MSPv1_3)
 	require.NoError(t, err)
 
 	// Setup with nil config
