@@ -159,7 +159,15 @@ type MSP struct {
 	conf   *im.IdemixMSPConfig
 	kvs    keystore.KVS
 	scheme CryptoScheme
+	// nymCoordSize is the byte size of each of the two coordinates (NymX, NymY) of a serialized
+	// pseudonym on the curve the MSP was set up with. It is zero before a successful Setup.
+	nymCoordSize int
 }
+
+// maxCombinedPrincipalDepth bounds the nesting depth of COMBINED principals evaluated by
+// SatisfiesPrincipal. Each level re-parses the remaining nested bytes, so unbounded nesting lets
+// an attacker-supplied principal consume quadratic CPU time and an unbounded amount of stack.
+const maxCombinedPrincipalDepth = 32
 
 // NewIdemixMsp creates a new instance of msp. Setup auto-detects the underlying
 // cryptographic scheme (dlog or Aries/BBS+) from the key material in the config: it first
@@ -279,15 +287,17 @@ type mspState struct {
 	name         string
 	conf         *im.IdemixMSPConfig
 	scheme       CryptoScheme
+	epoch        int
+	nymCoordSize int
 }
 
 func (msp *MSP) snapshot() mspState {
-	return mspState{msp.csp, msp.ks, msp.ipk, msp.revocationPK, msp.signer, msp.name, msp.conf, msp.scheme}
+	return mspState{msp.csp, msp.ks, msp.ipk, msp.revocationPK, msp.signer, msp.name, msp.conf, msp.scheme, msp.epoch, msp.nymCoordSize}
 }
 
 func (msp *MSP) restore(s mspState) {
-	msp.csp, msp.ks, msp.ipk, msp.revocationPK, msp.signer, msp.name, msp.conf, msp.scheme =
-		s.csp, s.ks, s.ipk, s.revocationPK, s.signer, s.name, s.conf, s.scheme
+	msp.csp, msp.ks, msp.ipk, msp.revocationPK, msp.signer, msp.name, msp.conf, msp.scheme, msp.epoch, msp.nymCoordSize =
+		s.csp, s.ks, s.ipk, s.revocationPK, s.signer, s.name, s.conf, s.scheme, s.epoch, s.nymCoordSize
 }
 
 type schemeSpec struct {
@@ -320,6 +330,8 @@ type detectedScheme struct {
 	csp  bccsp.BCCSP
 	ks   bccsp.KeyStore
 	ipk  bccsp.Key
+	// nymCoordSize is the byte size of a single coordinate of a serialized pseudonym.
+	nymCoordSize int
 }
 
 // detectScheme returns the first scheme (dlog, then Aries/BBS+) under which the issuer public key
@@ -361,7 +373,9 @@ func (msp *MSP) tryScheme(sc schemeSpec, conf *im.IdemixMSPConfig) (detectedSche
 		return detectedScheme{}, err
 	}
 
-	return detectedScheme{spec: sc, csp: csp, ks: ks, ipk: ipk}, nil
+	// A serialized pseudonym is X||Y (the uncompressed G1 encoding, without the 0x04 prefix used
+	// by some curve drivers), so each coordinate is half of the uncompressed G1 size, rounded down.
+	return detectedScheme{spec: sc, csp: csp, ks: ks, ipk: ipk, nymCoordSize: curve.G1ByteSize / 2}, nil
 }
 
 // importIssuerPublicKey imports raw as a temporary issuer public key with the four fixed MSP
@@ -410,6 +424,8 @@ func (msp *MSP) resetCryptoMaterial() {
 	msp.ipk = nil
 	msp.revocationPK = nil
 	msp.signer = nil
+	msp.epoch = 0
+	msp.nymCoordSize = 0
 }
 
 // setupWithScheme completes the setup with the BCCSP and issuer public key of the detected
@@ -420,6 +436,11 @@ func (msp *MSP) setupWithScheme(d detectedScheme, conf *im.IdemixMSPConfig) erro
 	msp.ks = d.ks
 	IssuerPublicKey := d.ipk
 	msp.ipk = IssuerPublicKey
+	msp.nymCoordSize = d.nymCoordSize
+	if conf.Epoch < 0 || int64(int(conf.Epoch)) != conf.Epoch {
+		return fmt.Errorf("invalid epoch %d", conf.Epoch)
+	}
+	msp.epoch = int(conf.Epoch)
 
 	// Import revocation public key
 	RevocationPublicKey, err := msp.csp.KeyImport(
@@ -645,13 +666,9 @@ func (msp *MSP) deserializeIdentityInternal(serializedID []byte) (*identity, err
 		return nil, errors.New("msp is not set up")
 	}
 	msp.logger.Debug("idemixmsp: deserializing identity")
-	serialized := new(im.SerializedIdemixIdentity)
-	err := proto.Unmarshal(serializedID, serialized)
+	serialized, ou, role, err := msp.parseSerializedIdemixIdentity(serializedID)
 	if err != nil {
-		return nil, fmt.Errorf("could not deserialize a SerializedIdemixIdentity: %w", err)
-	}
-	if serialized.NymX == nil || serialized.NymY == nil {
-		return nil, errors.New("unable to deserialize idemix identity: pseudonym is invalid")
+		return nil, err
 	}
 
 	// Import NymPublicKey
@@ -665,61 +682,117 @@ func (msp *MSP) deserializeIdentityInternal(serializedID []byte) (*identity, err
 	if err != nil {
 		return nil, fmt.Errorf("failed to import nym public key: %w", err)
 	}
-
-	// OU
-	ou := &m.OrganizationUnit{}
-	err = proto.Unmarshal(serialized.Ou, ou)
+	// Only accept the canonical encoding of the pseudonym, i.e. the one Serialize produces.
+	canonical, err := NymPublicKey.Bytes()
 	if err != nil {
-		return nil, fmt.Errorf("cannot deserialize the OU of the identity: %w", err)
+		return nil, fmt.Errorf("failed marshalling nym public key: %w", err)
 	}
-
-	// Role
-	role := &m.MSPRole{}
-	err = proto.Unmarshal(serialized.Role, role)
-	if err != nil {
-		return nil, fmt.Errorf("cannot deserialize the role of the identity: %w", err)
+	if !bytes.Equal(canonical, rawNymPublicKey) {
+		return nil, errors.New("unable to deserialize idemix identity: pseudonym is not canonically encoded")
 	}
 
 	return newIdemixIdentity(msp, NymPublicKey, role, ou, serialized.Proof)
 }
 
+// parseSerializedIdemixIdentity performs the structural (non-cryptographic) checks shared by
+// DeserializeIdentity and IsWellFormed: the SerializedIdemixIdentity, its OU and its role must
+// unmarshal, the pseudonym must consist of two coordinates of the curve's coordinate size (when
+// the MSP is set up) and the role must be one of the roles defined for idemix.
+func (msp *MSP) parseSerializedIdemixIdentity(raw []byte) (*im.SerializedIdemixIdentity, *m.OrganizationUnit, *m.MSPRole, error) {
+	serialized := new(im.SerializedIdemixIdentity)
+	if err := proto.Unmarshal(raw, serialized); err != nil {
+		return nil, nil, nil, fmt.Errorf("could not deserialize a SerializedIdemixIdentity: %w", err)
+	}
+	if len(serialized.NymX) == 0 || len(serialized.NymY) == 0 || len(serialized.NymX) != len(serialized.NymY) {
+		return nil, nil, nil, errors.New("unable to deserialize idemix identity: pseudonym is invalid")
+	}
+	if msp.nymCoordSize != 0 && len(serialized.NymX) != msp.nymCoordSize {
+		return nil, nil, nil, fmt.Errorf("unable to deserialize idemix identity: pseudonym coordinates must be %d bytes, got %d", msp.nymCoordSize, len(serialized.NymX))
+	}
+
+	// OU
+	ou := &m.OrganizationUnit{}
+	if err := proto.Unmarshal(serialized.Ou, ou); err != nil {
+		return nil, nil, nil, fmt.Errorf("cannot deserialize the OU of the identity: %w", err)
+	}
+
+	// Role
+	role := &m.MSPRole{}
+	if err := proto.Unmarshal(serialized.Role, role); err != nil {
+		return nil, nil, nil, fmt.Errorf("cannot deserialize the role of the identity: %w", err)
+	}
+	if !isIdemixRole(role.GetRole()) {
+		return nil, nil, nil, fmt.Errorf("cannot deserialize the role of the identity: undefined role %d", int32(role.GetRole()))
+	}
+
+	return serialized, ou, role, nil
+}
+
 func (msp *MSP) Validate(id Identity) error {
+	_, err := msp.validate(id)
+
+	return err
+}
+
+// validate validates id against this MSP's own key material (issuer public key, revocation
+// public key and epoch) and returns the identity bound to this MSP. An identity object created
+// by a different MSP instance - even one with the same name - is re-deserialized by this MSP from
+// its serialization, so that it is never verified with the material of the MSP that built it.
+func (msp *MSP) validate(id Identity) (*identity, error) {
 	temp, err := asIdentity(id)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	msp.logger.Debugf("Validating identity %+v", temp)
-	if temp.GetMSPIdentifier() != msp.name {
-		return errors.New("the supplied identity does not belong to this msp")
+	if temp.msp == nil || temp.GetMSPIdentifier() != msp.name {
+		return nil, errors.New("the supplied identity does not belong to this msp")
 	}
 
-	return temp.Validate()
+	if temp.msp != msp {
+		raw, err := temp.Serialize()
+		if err != nil {
+			return nil, fmt.Errorf("could not serialize the supplied identity: %w", err)
+		}
+		sID := &m.SerializedIdentity{}
+		if err := proto.Unmarshal(raw, sID); err != nil {
+			return nil, fmt.Errorf("could not deserialize a SerializedIdentity: %w", err)
+		}
+		temp, err = msp.deserializeIdentityInternal(sID.GetIdBytes())
+		if err != nil {
+			return nil, fmt.Errorf("the supplied identity does not belong to this msp: %w", err)
+		}
+	}
+
+	if err := temp.Validate(); err != nil {
+		return nil, err
+	}
+
+	return temp, nil
 }
 
 func (msp *MSP) SatisfiesPrincipal(id Identity, principal *m.MSPPrincipal) error {
-	if err := msp.Validate(id); err != nil {
+	if principal == nil {
+		return errors.New("nil principal")
+	}
+	temp, err := msp.validate(id)
+	if err != nil {
 		return fmt.Errorf("identity is not valid with respect to this MSP: %w", err)
 	}
 
-	temp, err := asIdentity(id)
-	if err != nil {
-		return err
-	}
-
-	return temp.satisfiesPrincipalValidated(principal)
+	return temp.satisfiesPrincipalValidated(principal, 0)
 }
 
-// IsWellFormed checks if the given identity can be deserialized into its provider-specific .
-// In this MSP implementation, an identity is considered well formed if it contains a
-// marshaled SerializedIdemixIdentity protobuf message.
+// IsWellFormed checks if the given identity can be deserialized into its provider-specific form.
+// In this MSP implementation, an identity is considered well formed if it contains a marshaled
+// SerializedIdemixIdentity protobuf message that passes the same structural checks as
+// DeserializeIdentity (pseudonym coordinates of the right size, parsable OU and role, defined
+// role). No cryptographic check is performed.
 func (msp *MSP) IsWellFormed(identity *m.SerializedIdentity) error {
 	if identity == nil {
 		return errors.New("not an idemix identity: nil identity")
 	}
-	sId := new(im.SerializedIdemixIdentity)
-	err := proto.Unmarshal(identity.GetIdBytes(), sId)
-	if err != nil {
+	if _, _, _, err := msp.parseSerializedIdemixIdentity(identity.GetIdBytes()); err != nil {
 		return fmt.Errorf("not an idemix identity: %w", err)
 	}
 
@@ -926,16 +999,23 @@ func (id *identity) Verify(msg []byte, sig []byte) error {
 }
 
 func (id *identity) SatisfiesPrincipal(principal *m.MSPPrincipal) error {
+	if principal == nil {
+		return errors.New("nil principal")
+	}
 	if err := id.Validate(); err != nil {
 		return fmt.Errorf("identity is not valid with respect to this MSP: %w", err)
 	}
 
-	return id.satisfiesPrincipalValidated(principal)
+	return id.satisfiesPrincipalValidated(principal, 0)
 }
 
 // satisfiesPrincipalValidated performs all the tasks of SatisfiesPrincipal except the identity validation,
-// such that combined principals will not cause multiple expensive identity validations.
-func (id *identity) satisfiesPrincipalValidated(principal *m.MSPPrincipal) error {
+// such that combined principals will not cause multiple expensive identity validations. depth is
+// the COMBINED nesting level of principal.
+func (id *identity) satisfiesPrincipalValidated(principal *m.MSPPrincipal, depth int) error {
+	if principal == nil {
+		return errors.New("nil principal")
+	}
 	switch principal.PrincipalClassification {
 	// in this case, we have to check whether the
 	// identity has a role in the msp - member or admin
@@ -1023,6 +1103,9 @@ func (id *identity) satisfiesPrincipalValidated(principal *m.MSPPrincipal) error
 		if id.msp.version <= MSPv1_1 {
 			return errors.New("combined MSP Principals are unsupported in MSPv1_1")
 		}
+		if depth >= maxCombinedPrincipalDepth {
+			return fmt.Errorf("combined MSP Principals nested more than %d levels deep are not supported", maxCombinedPrincipalDepth)
+		}
 
 		// Principal is a combination of multiple principals.
 		principals := &m.CombinedPrincipal{}
@@ -1034,10 +1117,10 @@ func (id *identity) satisfiesPrincipalValidated(principal *m.MSPPrincipal) error
 		if len(principals.Principals) == 0 {
 			return errors.New("no principals in CombinedPrincipal")
 		}
-		// Recursively call satisfiesPrincipalValidated for all combined principals.
-		// There is no limit for the levels of nesting for the combined principals.
+		// Recursively call satisfiesPrincipalValidated for all combined principals, up to
+		// maxCombinedPrincipalDepth levels of nesting.
 		for _, cp := range principals.Principals {
-			err = id.satisfiesPrincipalValidated(cp)
+			err = id.satisfiesPrincipalValidated(cp, depth+1)
 			if err != nil {
 				return err
 			}
@@ -1107,6 +1190,9 @@ func (id *identity) Serialize() ([]byte, error) {
 }
 
 func (id *identity) verifyProof() error {
+	if !isIdemixRole(id.Role.GetRole()) {
+		return fmt.Errorf("invalid MSP role type %d", int32(id.Role.GetRole()))
+	}
 	// Verify signature
 	valid, err := id.msp.csp.Verify(
 		id.msp.ipk,
