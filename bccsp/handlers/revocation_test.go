@@ -6,6 +6,7 @@ SPDX-License-Identifier: Apache-2.0
 package handlers_test
 
 import (
+	"bytes"
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
@@ -42,11 +43,12 @@ var _ = Describe("Revocation", func() {
 			var (
 				sk                  bccsp.Key
 				idemixRevocationKey *ecdsa.PrivateKey
+				d                   []byte
 				SKI                 []byte
 				pkBytes             []byte
 			)
 			BeforeEach(func() {
-				d := make([]byte, 32)
+				d = make([]byte, 32)
 				d[31] = 1
 				var err error
 				idemixRevocationKey, err = ecdsa.ParseRawPrivateKey(elliptic.P256(), d)
@@ -104,7 +106,7 @@ var _ = Describe("Revocation", func() {
 					raw, err := sk.Bytes()
 					Expect(err).NotTo(HaveOccurred())
 					Expect(raw).NotTo(BeNil())
-					Expect(raw).To(BeEquivalentTo([]byte{1}))
+					Expect(raw).To(BeEquivalentTo(bytes.TrimLeft(d, "\x00")))
 				})
 			})
 
