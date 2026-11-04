@@ -147,3 +147,18 @@ func ProviderTypeToString(id ProviderType) string {
 
 	return ""
 }
+
+// Provider is the Membership Service Provider interface (named MSP in idemix v0.3.1 and
+// earlier). It is satisfied by *MSP.
+type Provider interface {
+	IdentityDeserializer
+	Setup(config *m.MSPConfig) error
+	GetVersion() MSPVersion
+	GetType() ProviderType
+	GetIdentifier() (string, error)
+	GetDefaultSigningIdentity() (SigningIdentity, error)
+	GetTLSRootCerts() [][]byte
+	GetTLSIntermediateCerts() [][]byte
+	Validate(id Identity) error
+	SatisfiesPrincipal(id Identity, principal *m.MSPPrincipal) error
+}
