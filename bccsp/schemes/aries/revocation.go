@@ -105,6 +105,20 @@ func (r *RevocationAuthority) Verify(pk *ecdsa.PublicKey, criRaw []byte, epoch i
 // verifyEpochPK checks that epochPkSig is a valid signature, under the revocation
 // authority's long term key pk, of the CRI (epoch, epochPK, alg) as produced by
 // RevocationAuthority.Sign.
+// checkEpoch returns the epoch carried by a signature, as an int. When expected
+// is non-zero, the signature epoch must equal it; zero accepts any epoch, which
+// is then authenticated by the revocation authority's signature on the epoch PK.
+func checkEpoch(sigEpoch int64, expected int) (int, error) {
+	if sigEpoch < 0 || int64(int(sigEpoch)) != sigEpoch {
+		return 0, fmt.Errorf("signature invalid: invalid epoch [%d]", sigEpoch)
+	}
+	if expected != 0 && sigEpoch != int64(expected) {
+		return 0, fmt.Errorf("signature invalid: epoch [%d] does not match the expected epoch [%d]", sigEpoch, expected)
+	}
+
+	return int(sigEpoch), nil
+}
+
 func verifyEpochPK(pk *ecdsa.PublicKey, epochPK, epochPkSig []byte, epoch int, alg types.RevocationAlgorithm) error {
 	if pk == nil || len(epochPK) == 0 {
 		return errors.New("epochPK invalid: received nil input")

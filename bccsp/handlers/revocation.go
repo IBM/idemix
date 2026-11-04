@@ -37,7 +37,7 @@ func (k *revocationSecretKey) valid() bool {
 }
 
 // valid returns true if the key is not a typed-nil pointer.
-// A nil pubKey is passed through to the underlying scheme.
+// Verifier.Verify additionally rejects a nil pubKey.
 func (k *revocationPublicKey) valid() bool {
 	return k != nil
 }
