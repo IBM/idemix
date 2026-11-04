@@ -284,9 +284,14 @@ type IdemixSignerOpts struct {
 	SKIndex int
 	// CRI contains the credential revocation information
 	CRI []byte
-	// Epoch is the revocation epoch the signature should be produced against
+	// Epoch is the revocation epoch the signature should be produced against.
+	// At verification time it is checked against the epoch carried by the
+	// signature only if RevocationPublicKey is set.
 	Epoch int
-	// RevocationPublicKey is the revocation public key
+	// RevocationPublicKey is the revocation public key.
+	// At verification time, if it is nil, neither the epoch nor the revocation
+	// authority's signature on the epoch public key (i.e. the authenticity of the
+	// credential revocation information the signature was produced against) is checked.
 	RevocationPublicKey Key
 	// H is the hash function to be used
 	H crypto.Hash

@@ -24,6 +24,10 @@ type csp struct {
 }
 
 func New(keyStore bccsp.KeyStore, curve *math.Curve, translator idemix.Translator, exportable bool) (*csp, error) {
+	if err := idemix.CheckTranslatorCurve(curve, translator); err != nil {
+		return nil, fmt.Errorf("invalid curve/translator pair: %w", err)
+	}
+
 	base, err := NewImpl(keyStore)
 	if err != nil {
 		return nil, fmt.Errorf("failed instantiating base bccsp: %w", err)
@@ -184,6 +188,10 @@ func New(keyStore bccsp.KeyStore, curve *math.Curve, translator idemix.Translato
 }
 
 func NewAries(keyStore bccsp.KeyStore, curve *math.Curve, _translator idemix.Translator, exportable bool) (*csp, error) {
+	if err := idemix.CheckTranslatorCurve(curve, _translator); err != nil {
+		return nil, fmt.Errorf("invalid curve/translator pair: %w", err)
+	}
+
 	base, err := NewImpl(keyStore)
 	if err != nil {
 		return nil, fmt.Errorf("failed instantiating base bccsp: %w", err)
@@ -429,12 +437,28 @@ type userSecreKeySignerMultiplexer struct {
 func (s *userSecreKeySignerMultiplexer) Sign(k bccsp.Key, digest []byte, opts bccsp.SignerOpts) (signature []byte, err error) {
 	switch opts.(type) {
 	case *bccsp.IdemixSignerOpts:
+		if s.signer == nil {
+			return nil, fmt.Errorf("unsupported opts [%T]: no signer configured", opts)
+		}
+
 		return s.signer.Sign(k, digest, opts)
 	case *bccsp.IdemixNymSignerOpts:
+		if s.nymSigner == nil {
+			return nil, fmt.Errorf("unsupported opts [%T]: no nym signer configured", opts)
+		}
+
 		return s.nymSigner.Sign(k, digest, opts)
 	case *bccsp.IdemixCredentialRequestSignerOpts:
+		if s.credentialRequestSigner == nil {
+			return nil, fmt.Errorf("unsupported opts [%T]: credential request signer not supported by this scheme", opts)
+		}
+
 		return s.credentialRequestSigner.Sign(k, digest, opts)
 	case *bccsp.IdemixBlindCredentialRequestSignerOpts:
+		if s.blindCredentialRequestSigner == nil {
+			return nil, fmt.Errorf("unsupported opts [%T]: blind credential request signer not supported by this scheme", opts)
+		}
+
 		return s.blindCredentialRequestSigner.Sign(k, digest, opts)
 	default:
 		return nil, errors.New("invalid opts, expected *bccsp.IdemixSignerOpt or *bccsp.IdemixNymSignerOpts or *bccsp.IdemixCredentialRequestSignerOpts")
@@ -449,6 +473,12 @@ type issuerPublicKeyVerifierMultiplexer struct {
 
 func (v *issuerPublicKeyVerifierMultiplexer) Verify(k bccsp.Key, signature, digest []byte, opts bccsp.SignerOpts) (valid bool, err error) {
 	switch opts.(type) {
+	case *bccsp.EidNymAuditOpts, *bccsp.RhNymAuditOpts, *bccsp.IdemixSignerOpts:
+		if v.verifier == nil {
+			return false, fmt.Errorf("unsupported opts [%T]: no verifier configured", opts)
+		}
+	}
+	switch opts.(type) {
 	case *bccsp.EidNymAuditOpts:
 		return v.verifier.AuditNymEid(k, signature, digest, opts)
 	case *bccsp.RhNymAuditOpts:
@@ -456,8 +486,16 @@ func (v *issuerPublicKeyVerifierMultiplexer) Verify(k bccsp.Key, signature, dige
 	case *bccsp.IdemixSignerOpts:
 		return v.verifier.Verify(k, signature, digest, opts)
 	case *bccsp.IdemixCredentialRequestSignerOpts:
+		if v.credentialRequestVerifier == nil {
+			return false, fmt.Errorf("unsupported opts [%T]: credential request verifier not supported by this scheme", opts)
+		}
+
 		return v.credentialRequestVerifier.Verify(k, signature, digest, opts)
 	case *bccsp.IdemixBlindCredentialRequestSignerOpts:
+		if v.blindcredentialRequestVerifier == nil {
+			return false, fmt.Errorf("unsupported opts [%T]: blind credential request verifier not supported by this scheme", opts)
+		}
+
 		return v.blindcredentialRequestVerifier.Verify(k, signature, digest, opts)
 	default:
 		return false, errors.New("invalid opts, expected *bccsp.IdemixSignerOpts or *bccsp.IdemixCredentialRequestSignerOpts")

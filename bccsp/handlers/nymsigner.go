@@ -7,6 +7,7 @@ package handlers
 
 import (
 	"errors"
+	"fmt"
 
 	"github.com/IBM/idemix/bccsp/types"
 )
@@ -18,7 +19,7 @@ type NymSigner struct {
 
 func (s *NymSigner) Sign(k types.Key, digest []byte, opts types.SignerOpts) ([]byte, error) {
 	signerOpts, ok := opts.(*types.IdemixNymSignerOpts)
-	if !ok {
+	if !ok || signerOpts == nil {
 		return nil, errors.New("invalid options, expected *IdemixNymSignerOpts")
 	}
 
@@ -27,7 +28,7 @@ func (s *NymSigner) Sign(k types.Key, digest []byte, opts types.SignerOpts) ([]b
 		return nil, errors.New("invalid options, missing issuer public key")
 	}
 	ipk, ok := signerOpts.IssuerPK.(*issuerPublicKey)
-	if !ok {
+	if !ok || !ipk.valid() {
 		return nil, errors.New("invalid issuer public key, expected *issuerPublicKey")
 	}
 
@@ -53,7 +54,7 @@ func (s *NymSigner) Sign(k types.Key, digest []byte, opts types.SignerOpts) ([]b
 	}
 
 	userSecretKey, ok := k.(*UserSecretKey)
-	if !ok {
+	if !ok || !userSecretKey.valid() {
 		return nil, errors.New("invalid key, expected *userSecretKey")
 	}
 
@@ -62,8 +63,12 @@ func (s *NymSigner) Sign(k types.Key, digest []byte, opts types.SignerOpts) ([]b
 		return nil, errors.New("invalid options, missing nym key")
 	}
 	nymSk, ok := signerOpts.Nym.(*NymSecretKey)
-	if !ok {
+	if !ok || !nymSk.valid() {
 		return nil, errors.New("invalid nym key, expected *nymSecretKey")
+	}
+
+	if s.NymSignatureScheme == nil {
+		return nil, errors.New("nym signature scheme is unsupported")
 	}
 
 	sigma, err := s.NymSignatureScheme.Sign(
@@ -83,14 +88,23 @@ type NymVerifier struct {
 	SmartcardNymSignatureScheme types.SmartcardNymSignatureScheme
 }
 
-func (v *NymVerifier) Verify(k types.Key, signature, digest []byte, opts types.SignerOpts) (bool, error) {
+func (v *NymVerifier) Verify(k types.Key, signature, digest []byte, opts types.SignerOpts) (valid bool, err error) {
+	// the underlying schemes operate on attacker-controlled signatures and keys;
+	// a malformed input must surface as an error, never as a panic.
+	defer func() {
+		if r := recover(); r != nil {
+			valid = false
+			err = fmt.Errorf("failed verifying nym signature: %v", r)
+		}
+	}()
+
 	nymPublicKey, ok := k.(*nymPublicKey)
-	if !ok {
+	if !ok || !nymPublicKey.valid() {
 		return false, errors.New("invalid key, expected *nymPublicKey")
 	}
 
 	signerOpts, ok := opts.(*types.IdemixNymSignerOpts)
-	if !ok {
+	if !ok || signerOpts == nil {
 		return false, errors.New("invalid options, expected *IdemixNymSignerOpts")
 	}
 
@@ -98,7 +112,7 @@ func (v *NymVerifier) Verify(k types.Key, signature, digest []byte, opts types.S
 		return false, errors.New("invalid options, missing issuer public key")
 	}
 	ipk, ok := signerOpts.IssuerPK.(*issuerPublicKey)
-	if !ok {
+	if !ok || !ipk.valid() {
 		return false, errors.New("invalid issuer public key, expected *issuerPublicKey")
 	}
 
@@ -115,7 +129,7 @@ func (v *NymVerifier) Verify(k types.Key, signature, digest []byte, opts types.S
 			return false, errors.New("nym eid missing")
 		}
 
-		err := v.SmartcardNymSignatureScheme.Verify(
+		err = v.SmartcardNymSignatureScheme.Verify(
 			ipk.pk,
 			signerOpts.NymEid,
 			signature,
@@ -127,7 +141,14 @@ func (v *NymVerifier) Verify(k types.Key, signature, digest []byte, opts types.S
 		return true, nil
 	}
 
-	err := v.NymSignatureScheme.Verify(
+	if v.NymSignatureScheme == nil {
+		return false, errors.New("nym signature scheme is unsupported")
+	}
+	if signerOpts.SKIndex < 0 {
+		return false, fmt.Errorf("invalid options, SKIndex must not be negative, got %d", signerOpts.SKIndex)
+	}
+
+	err = v.NymSignatureScheme.Verify(
 		ipk.pk,
 		nymPublicKey.pk,
 		signature,

@@ -18,12 +18,12 @@ type Signer struct {
 
 func (s *Signer) Sign(k types.Key, digest []byte, opts types.SignerOpts) ([]byte, error) {
 	userSecretKey, ok := k.(*UserSecretKey)
-	if !ok {
+	if !ok || !userSecretKey.valid() {
 		return nil, errors.New("invalid key, expected *userSecretKey")
 	}
 
 	signerOpts, ok := opts.(*types.IdemixSignerOpts)
-	if !ok {
+	if !ok || signerOpts == nil {
 		return nil, errors.New("invalid options, expected *IdemixSignerOpts")
 	}
 
@@ -32,7 +32,7 @@ func (s *Signer) Sign(k types.Key, digest []byte, opts types.SignerOpts) ([]byte
 		return nil, errors.New("invalid options, missing issuer public key")
 	}
 	ipk, ok := signerOpts.IssuerPK.(*issuerPublicKey)
-	if !ok {
+	if !ok || !ipk.valid() {
 		return nil, errors.New("invalid issuer public key, expected *issuerPublicKey")
 	}
 
@@ -41,7 +41,7 @@ func (s *Signer) Sign(k types.Key, digest []byte, opts types.SignerOpts) ([]byte
 		return nil, errors.New("invalid options, missing nym key")
 	}
 	nymSk, ok := signerOpts.Nym.(*NymSecretKey)
-	if !ok {
+	if !ok || !nymSk.valid() {
 		return nil, errors.New("invalid nym key, expected *nymSecretKey")
 	}
 
@@ -74,12 +74,12 @@ type Verifier struct {
 
 func (v *Verifier) AuditNymEid(k types.Key, signature, digest []byte, opts types.SignerOpts) (bool, error) {
 	issuerPublicKey, ok := k.(*issuerPublicKey)
-	if !ok {
+	if !ok || !issuerPublicKey.valid() {
 		return false, errors.New("invalid key, expected *issuerPublicKey")
 	}
 
 	signerOpts, ok := opts.(*types.EidNymAuditOpts)
-	if !ok {
+	if !ok || signerOpts == nil {
 		return false, errors.New("invalid options, expected *EidNymAuditOpts")
 	}
 
@@ -105,12 +105,12 @@ func (v *Verifier) AuditNymEid(k types.Key, signature, digest []byte, opts types
 
 func (v *Verifier) AuditNymRh(k types.Key, signature, digest []byte, opts types.SignerOpts) (bool, error) {
 	issuerPublicKey, ok := k.(*issuerPublicKey)
-	if !ok {
+	if !ok || !issuerPublicKey.valid() {
 		return false, errors.New("invalid key, expected *issuerPublicKey")
 	}
 
 	signerOpts, ok := opts.(*types.RhNymAuditOpts)
-	if !ok {
+	if !ok || signerOpts == nil {
 		return false, errors.New("invalid options, expected *RhNymAuditOpts")
 	}
 
@@ -136,19 +136,19 @@ func (v *Verifier) AuditNymRh(k types.Key, signature, digest []byte, opts types.
 
 func (v *Verifier) Verify(k types.Key, signature, digest []byte, opts types.SignerOpts) (bool, error) {
 	issuerPublicKey, ok := k.(*issuerPublicKey)
-	if !ok {
+	if !ok || !issuerPublicKey.valid() {
 		return false, errors.New("invalid key, expected *issuerPublicKey")
 	}
 
 	signerOpts, ok := opts.(*types.IdemixSignerOpts)
-	if !ok {
+	if !ok || signerOpts == nil {
 		return false, errors.New("invalid options, expected *IdemixSignerOpts")
 	}
 
 	var rPK *ecdsa.PublicKey
 	if signerOpts.RevocationPublicKey != nil {
 		revocationPK, ok := signerOpts.RevocationPublicKey.(*revocationPublicKey)
-		if !ok {
+		if !ok || !revocationPK.valid() {
 			return false, errors.New("invalid options, expected *revocationPublicKey")
 		}
 		rPK = revocationPK.pubKey
@@ -167,7 +167,7 @@ func (v *Verifier) Verify(k types.Key, signature, digest []byte, opts types.Sign
 		return false, errors.New("invalid options, missing nym key")
 	}
 	nymPk, ok := signerOpts.Nym.(*nymPublicKey)
-	if !ok {
+	if !ok || !nymPk.valid() {
 		return false, errors.New("invalid nym key, expected *nymPublicKey")
 	}
 
