@@ -304,6 +304,19 @@ func prepare(
 		return nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, err
 	}
 
+	S, err := curve.NewZrFromBytesCanonical(cred.S)
+	if err != nil {
+		return nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, fmt.Errorf("invalid credential S: %w", err)
+	}
+	E, err := curve.NewZrFromBytesCanonical(cred.E)
+	if err != nil {
+		return nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, fmt.Errorf("invalid credential E: %w", err)
+	}
+	RH, err := curve.NewZrFromBytesCanonical(cred.Attrs[rhIndex])
+	if err != nil {
+		return nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, fmt.Errorf("invalid credential revocation handle: %w", err)
+	}
+
 	// Randomize credential
 
 	// Compute A' as A^{r_1}
@@ -315,7 +328,7 @@ func prepare(
 
 	// Compute ABar as A'^{-e} b^{r1}
 	ABar := B.Mul(r1)
-	ABar.Sub(APrime.Mul(curve.NewZrFromBytes(cred.E)))
+	ABar.Sub(APrime.Mul(E))
 	// logger.Printf("Signature Generation : \n"+
 	// 	"	[ABar:%v]\n",
 	// 	ABar.Bytes(),
@@ -335,9 +348,6 @@ func prepare(
 	}
 
 	BPrime.Sub(HRand.Mul(r2))
-
-	S := curve.NewZrFromBytes(cred.S)
-	E := curve.NewZrFromBytes(cred.E)
 
 	// Compute s' as s - r_2 \cdot r_3
 	sPrime := curve.ModSub(S, curve.ModMul(r2, r3, curve.GroupOrder), curve.GroupOrder)
@@ -365,7 +375,7 @@ func prepare(
 		return nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, err
 	}
 	nonRevokedProofHashData, err := prover.getFSContribution(
-		curve.NewZrFromBytes(cred.Attrs[rhIndex]),
+		RH,
 		rAttrs[sort.SearchInts(HiddenIndices, rhIndex)],
 		cri,
 		rng,
@@ -451,7 +461,10 @@ func finalise(
 	var err error
 
 	if sigType == opts.EidNym || sigType == opts.EidNymRhNym {
-		EID = curve.NewZrFromBytes(cred.Attrs[eidIndex])
+		EID, err = curve.NewZrFromBytesCanonical(cred.Attrs[eidIndex])
+		if err != nil {
+			return nil, nil, fmt.Errorf("invalid credential enrollment ID: %w", err)
+		}
 		if metadata != nil {
 			if metadata.EidNymAuditData == nil {
 				return nil, nil, errors.New("invalid argument, expected metadata")
@@ -494,7 +507,10 @@ func finalise(
 	}
 
 	if sigType == opts.EidNymRhNym {
-		RH = curve.NewZrFromBytes(cred.Attrs[rhIndex])
+		RH, err = curve.NewZrFromBytesCanonical(cred.Attrs[rhIndex])
+		if err != nil {
+			return nil, nil, fmt.Errorf("invalid credential revocation handle: %w", err)
+		}
 		if metadata != nil {
 			if metadata.RhNymAuditData == nil {
 				return nil, nil, errors.New("invalid argument, expected metadata")
@@ -608,9 +624,12 @@ func finalise(
 	ProofSRNym := curve.ModAdd(rRNym, curve.ModMul(ProofC, RNym, curve.GroupOrder), curve.GroupOrder)       // s_RNym = rRNym + C \cdot RNym
 	ProofSAttrs := make([][]byte, len(HiddenIndices))
 	for i, j := range HiddenIndices {
-		ProofSAttrs[i] =
-			// s_attrsi = rAttrsi + C \cdot cred.Attrs[j]
-			curve.ModAdd(rAttrs[i], curve.ModMul(ProofC, curve.NewZrFromBytes(cred.Attrs[j]), curve.GroupOrder), curve.GroupOrder).Bytes()
+		attr, err := curve.NewZrFromBytesCanonical(cred.Attrs[j])
+		if err != nil {
+			return nil, nil, fmt.Errorf("invalid credential attribute %d: %w", j, err)
+		}
+		// s_attrsi = rAttrsi + C \cdot cred.Attrs[j]
+		ProofSAttrs[i] = curve.ModAdd(rAttrs[i], curve.ModMul(ProofC, attr, curve.GroupOrder), curve.GroupOrder).Bytes()
 	}
 
 	// Compute the revocation part
@@ -739,7 +758,7 @@ func (sig *Signature) AuditNymEid(
 		return errors.New("no EidNym provided")
 	}
 
-	if len(ipk.HAttrs) <= eidIndex {
+	if eidIndex < 0 || len(ipk.HAttrs) <= eidIndex {
 		return errors.New("could not access H_a_eid in array")
 	}
 
@@ -784,7 +803,7 @@ func (sig *Signature) AuditNymRh(
 		return errors.New("no RhNym provided")
 	}
 
-	if len(ipk.HAttrs) <= rhIndex {
+	if rhIndex < 0 || len(ipk.HAttrs) <= rhIndex {
 		return errors.New("could not access H_a_rh in array")
 	}
 
@@ -835,8 +854,32 @@ func (sig *Signature) Ver(
 		return errors.New("cannot verify idemix signature: received nil input")
 	}
 
-	if rhIndex < 0 || rhIndex >= len(ipk.AttributeNames) || len(Disclosure) != len(ipk.AttributeNames) {
+	if sig == nil || curve == nil || t == nil {
+		return errors.New("cannot verify idemix signature: received nil input")
+	}
+
+	if rhIndex < 0 || rhIndex >= len(ipk.AttributeNames) || len(Disclosure) != len(ipk.AttributeNames) ||
+		len(ipk.HAttrs) != len(ipk.AttributeNames) {
 		return errors.New("cannot verify idemix signature: received invalid input")
+	}
+
+	switch verType {
+	case opts.Basic, opts.BestEffort, opts.ExpectStandard, opts.ExpectEidNym, opts.ExpectEidNymRhNym:
+	default:
+		return fmt.Errorf("cannot verify idemix signature: unsupported verification type [%d]", verType)
+	}
+
+	if len(attributeValues) > len(Disclosure) {
+		return errors.New("cannot verify idemix signature: attribute values do not match the disclosure")
+	}
+	for i, disclose := range Disclosure {
+		if disclose != 0 && (i >= len(attributeValues) || attributeValues[i] == nil) {
+			return fmt.Errorf("cannot verify idemix signature: missing value for disclosed attribute %d", i)
+		}
+	}
+
+	if sig.NonRevocationProof == nil {
+		return errors.New("cannot verify idemix signature: missing non-revocation proof")
 	}
 
 	if sig.NonRevocationProof.RevocationAlg != int32(ALG_NO_REVOCATION) && Disclosure[rhIndex] == 1 {
@@ -868,6 +911,31 @@ func (sig *Signature) Ver(
 	verifyRHNym := (verType == opts.BestEffort && sig.RhNym != nil) || verType == opts.ExpectEidNymRhNym
 	verifyEIDNym := (verType == opts.BestEffort && sig.EidNym != nil) || verType == opts.ExpectEidNym || verType == opts.ExpectEidNymRhNym || verifyRHNym
 
+	if verifyEIDNym {
+		if eidIndex < 0 || eidIndex >= len(ipk.AttributeNames) || eidIndex == rhIndex {
+			return errors.New("cannot verify idemix signature: invalid enrollment id index")
+		}
+		if sig.EidNym == nil || sig.EidNym.Nym == nil || sig.EidNym.ProofSEid == nil {
+			return errors.New("signature invalid: EidNym required but not provided")
+		}
+	}
+	if verifyRHNym {
+		if sig.RhNym == nil || sig.RhNym.Nym == nil || sig.RhNym.ProofSRh == nil {
+			return errors.New("signature invalid: RhNym required but not provided")
+		}
+	}
+
+	// Verify that the revocation authority signed the epoch public key the
+	// signature was produced against, and that it is for the expected epoch.
+	if revPk != nil {
+		if sig.Epoch != int64(epoch) {
+			return fmt.Errorf("signature invalid: epoch [%d] does not match the expected epoch [%d]", sig.Epoch, epoch)
+		}
+		if err := verifyEpochPK(revPk, sig.RevocationEpochPk, sig.RevocationPkSig, epoch, RevocationAlgorithm(sig.NonRevocationProof.RevocationAlg)); err != nil {
+			return fmt.Errorf("signature invalid: revocation epoch public key: %w", err)
+		}
+	}
+
 	HiddenIndices := hiddenIndices(Disclosure)
 
 	// Parse signature
@@ -898,21 +966,30 @@ func (sig *Signature) Ver(
 	if expectedNym != nil && !expectedNym.Equals(Nym) {
 		return errors.New("invalid nym, does not match the nym bound to the signature")
 	}
-	ProofC := curve.NewZrFromBytes(sig.GetProofC())
-	ProofSSk := curve.NewZrFromBytes(sig.GetProofSSk())
-	ProofSE := curve.NewZrFromBytes(sig.GetProofSE())
-	ProofSR2 := curve.NewZrFromBytes(sig.GetProofSR2())
-	ProofSR3 := curve.NewZrFromBytes(sig.GetProofSR3())
-	ProofSSPrime := curve.NewZrFromBytes(sig.GetProofSSPrime())
-	ProofSRNym := curve.NewZrFromBytes(sig.GetProofSRNym())
+	var ProofC, ProofSSk, ProofSE, ProofSR2, ProofSR3, ProofSSPrime, ProofSRNym, Nonce *math.Zr
+	err = parseCanonicalScalars(curve,
+		namedScalar{"ProofC", sig.GetProofC(), &ProofC},
+		namedScalar{"ProofSSk", sig.GetProofSSk(), &ProofSSk},
+		namedScalar{"ProofSE", sig.GetProofSE(), &ProofSE},
+		namedScalar{"ProofSR2", sig.GetProofSR2(), &ProofSR2},
+		namedScalar{"ProofSR3", sig.GetProofSR3(), &ProofSR3},
+		namedScalar{"ProofSSPrime", sig.GetProofSSPrime(), &ProofSSPrime},
+		namedScalar{"ProofSRNym", sig.GetProofSRNym(), &ProofSRNym},
+		namedScalar{"Nonce", sig.GetNonce(), &Nonce},
+	)
+	if err != nil {
+		return fmt.Errorf("signature invalid: zero-knowledge proof is invalid: %w", err)
+	}
 	ProofSAttrs := make([]*math.Zr, len(sig.GetProofSAttrs()))
 	if len(sig.ProofSAttrs) != len(HiddenIndices) {
 		return errors.New("signature invalid: incorrect amount of s-values for AttributeProofSpec")
 	}
 	for i, b := range sig.ProofSAttrs {
-		ProofSAttrs[i] = curve.NewZrFromBytes(b)
+		ProofSAttrs[i], err = curve.NewZrFromBytesCanonical(b)
+		if err != nil {
+			return fmt.Errorf("signature invalid: zero-knowledge proof is invalid: ProofSAttrs[%d]: %w", i, err)
+		}
 	}
-	Nonce := curve.NewZrFromBytes(sig.GetNonce())
 
 	// Parse issuer public key
 	W, err := t.G2FromProto(ipk.W)
@@ -993,11 +1070,13 @@ func (sig *Signature) Ver(
 			return err
 		}
 
-		v := curve.NewZrFromBytes(sig.EidNym.ProofSEid)
-		v.Mod(curve.GroupOrder)
+		v, err := curve.NewZrFromBytesCanonical(sig.EidNym.ProofSEid)
+		if err != nil {
+			return fmt.Errorf("signature invalid: zero-knowledge proof is invalid: ProofSEid: %w", err)
+		}
 		eidHiddenIdx, err := searchHiddenIndex(HiddenIndices, eidIndex)
 		if err != nil {
-			return fmt.Errorf("signature invalid: %w", err)
+			return fmt.Errorf("signature invalid: zero-knowledge proof is invalid: %w", err)
 		}
 		t4_eid = H_a_eid.Mul2(ProofSAttrs[eidHiddenIdx], HRand, v)
 		EidNym, err := t.G1FromProto(sig.EidNym.Nym)
@@ -1015,9 +1094,13 @@ func (sig *Signature) Ver(
 
 		rhHiddenIdx, err := searchHiddenIndex(HiddenIndices, rhIndex)
 		if err != nil {
-			return fmt.Errorf("signature invalid: %w", err)
+			return fmt.Errorf("signature invalid: zero-knowledge proof is invalid: %w", err)
 		}
-		t4_rh = H_a_rh.Mul2(ProofSAttrs[rhHiddenIdx], HRand, curve.NewZrFromBytes(sig.RhNym.ProofSRh))
+		proofSRh, err := curve.NewZrFromBytesCanonical(sig.RhNym.ProofSRh)
+		if err != nil {
+			return fmt.Errorf("signature invalid: zero-knowledge proof is invalid: ProofSRh: %w", err)
+		}
+		t4_rh = H_a_rh.Mul2(ProofSAttrs[rhHiddenIdx], HRand, proofSRh)
 		RhNym, err := t.G1FromProto(sig.RhNym.Nym)
 		if err != nil {
 			return err
@@ -1032,7 +1115,7 @@ func (sig *Signature) Ver(
 
 	i, err := searchHiddenIndex(HiddenIndices, rhIndex)
 	if err != nil {
-		return fmt.Errorf("signature invalid: %w", err)
+		return fmt.Errorf("signature invalid: zero-knowledge proof is invalid: %w", err)
 	}
 	proofSRh := ProofSAttrs[i]
 	RevocationEpochPk, err := t.G2FromProto(sig.RevocationEpochPk)
@@ -1130,7 +1213,7 @@ func (sig *Signature) Ver(
 
 		if len(meta.EidNym) != 0 {
 			NymEID, err := curve.NewG1FromBytes(meta.EidNym)
-			if err != nil {
+			if err != nil || NymEID.IsInfinity() {
 				return errors.New("signature invalid: nym eid validation failed, failed to unmarshal meta nym eid")
 			}
 			if !NymEID.Equals(EidNym) {
@@ -1163,7 +1246,7 @@ func (sig *Signature) Ver(
 
 		if len(meta.RhNym) != 0 {
 			NymRH, err := curve.NewG1FromBytes(meta.RhNym)
-			if err != nil {
+			if err != nil || NymRH.IsInfinity() {
 				return errors.New("signature invalid: nym rh validation failed, failed to unmarshal meta nym rh")
 			}
 			if !NymRH.Equals(RhNym) {
