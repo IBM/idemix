@@ -221,8 +221,8 @@ func printVersion() {
 	fmt.Println(metadata.GetVersionInfo())
 }
 
-// stampSignerCurveID records curveID in the serialized signer config, so that a config loaded
-// without the msp/CurveId file still names its curve.
+// stampSignerCurveID records curveID in the serialized signer config, so that the config
+// names its curve.
 func stampSignerCurveID(config []byte, curveID string) ([]byte, error) {
 	signer := &im.IdemixMSPSignerConfig{}
 	if err := proto.Unmarshal(config, signer); err != nil {
