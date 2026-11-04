@@ -649,14 +649,15 @@ func (s *Signer) Verify(
 		return errors.New("unsupported revocation algorithm")
 	}
 
-	// Verify that the revocation authority signed the epoch public key the
-	// signature was produced against, and that it is for the expected epoch.
+	// Verify that the revocation authority signed the epoch public key for the
+	// epoch carried by the signature; a non-zero expected epoch must also match.
 	if revPk != nil {
-		if sig.Epoch != int64(epoch) {
-			return fmt.Errorf("signature invalid: epoch [%d] does not match the expected epoch [%d]", sig.Epoch, epoch)
+		sigEpoch, err := checkEpoch(sig.Epoch, epoch)
+		if err != nil {
+			return err
 		}
 
-		if err := s.epochPKCache.verify(revPk, sig.RevocationEpochPk, sig.RevocationPkSig, epoch, types.RevocationAlgorithm(sig.NonRevocationProof.RevocationAlg)); err != nil {
+		if err := s.epochPKCache.verify(revPk, sig.RevocationEpochPk, sig.RevocationPkSig, sigEpoch, types.RevocationAlgorithm(sig.NonRevocationProof.RevocationAlg)); err != nil {
 			return fmt.Errorf("signature invalid: revocation epoch public key: %w", err)
 		}
 	}
@@ -699,6 +700,16 @@ func (s *Signer) Verify(
 
 	if skIndex < 0 || skIndex > len(attributes) {
 		return fmt.Errorf("invalid signature: sk index %d out of range", skIndex)
+	}
+
+	// a nym is bound to the VC2 response of its attribute, which exists only if
+	// the attribute is hidden (as Sign requires)
+	if verifyEIDNym && !isHidden(attributes, eidIndex) {
+		return errors.New("invalid verification request: enrollment ID must be hidden to verify the nym eid")
+	}
+
+	if verifyRHNym && !isHidden(attributes, rhIndex) {
+		return errors.New("invalid verification request: revocation handle must be hidden to verify the nym rh")
 	}
 
 	messages := attributesToSignatureMessage(attributes, s.Curve, skIndex)
@@ -1001,6 +1012,11 @@ func (s *Signer) Verify(
 // for the message at idxInBases (an index in the BBS+ message vector, which includes the user
 // secret key at skIndex). VC2 has one response per hidden message after the first
 // IndexOffsetVC2Attributes ones; with a smartcard the user secret key has no VC2 response.
+// isHidden reports whether idx is a valid index of a hidden attribute.
+func isHidden(attributes []types.IdemixAttribute, idx int) bool {
+	return idx >= 0 && idx < len(attributes) && attributes[idx].Type == types.IdemixHiddenAttribute
+}
+
 func vc2ResponseIndex(idxInBases int, attributes []types.IdemixAttribute, skIndex int, verType types.VerificationType) int {
 	if verType == types.ExpectSmartcard || verType == types.ExpectSmartcardNoNyms {
 		return IndexOffsetVC2Attributes + hiddenPosition(idxInBases-1, revealedAttributesIndexNoSk(attributes))

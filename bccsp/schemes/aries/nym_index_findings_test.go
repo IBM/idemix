@@ -226,4 +226,45 @@ func TestFindingNymEidIdxMustReferToEidAttribute(t *testing.T) {
 		err = env.verify(forged, types.BestEffort)
 		require.ErrorContains(t, err, "does not refer to the eid attribute")
 	})
+
+	// The verifier discloses the eid (or rh) while expecting its nym: the expected VC2
+	// index would then be the one of the next hidden attribute, so the request is rejected.
+	t.Run("disclosed_attribute_with_nym", func(t *testing.T) {
+		eidDisclosed := append([]types.IdemixAttribute(nil), env.attrs...)
+		eidDisclosed[nymIdxEidIndex] = types.IdemixAttribute{Type: types.IdemixBytesAttribute, Value: []byte("eid")}
+		disclosedEnv := *env
+		disclosedEnv.attrs = eidDisclosed
+		forged := disclosedEnv.forgeEidNymOverRh(t)
+		for _, vt := range []types.VerificationType{types.ExpectEidNym, types.BestEffort} {
+			err := env.signer.Verify(env.ipk, forged, env.msg, env.nym, eidDisclosed, nymIdxRhIndex, nymIdxEidIndex, 0, nil, 0, vt, nil)
+			require.ErrorContains(t, err, "enrollment ID must be hidden")
+		}
+
+		rhDisclosed := append([]types.IdemixAttribute(nil), env.attrs...)
+		rhDisclosed[nymIdxRhIndex] = types.IdemixAttribute{Type: types.IdemixBytesAttribute, Value: []byte("rh")}
+		err := env.signer.Verify(env.ipk, eidNymRhNym, env.msg, env.nym, rhDisclosed, nymIdxRhIndex, nymIdxEidIndex, 0, nil, 0, types.ExpectEidNymRhNym, nil)
+		require.ErrorContains(t, err, "revocation handle must be hidden")
+	})
+}
+
+// A CRI for a non-zero epoch (fabric-ca starts at epoch 1) verifies when no
+// epoch is configured (0) or the configured epoch matches, and fails otherwise.
+func TestSignerVerifyNonZeroEpoch(t *testing.T) {
+	env := newNymIdxEnv(t)
+	rev := &RevocationAuthority{Curve: env.curve, Rng: env.signer.Rng}
+	rk, err := rev.NewKey()
+	require.NoError(t, err)
+	cri, err := rev.Sign(rk, nil, 1, types.AlgNoRevocation)
+	require.NoError(t, err)
+
+	sig, _, err := env.signer.Sign(env.cred, env.sk, env.nym, env.rNym, env.ipk, env.attrs, env.msg, nymIdxRhIndex, nymIdxEidIndex, cri, types.Standard, nil)
+	require.NoError(t, err)
+
+	ver := func(sig []byte, epoch int) error {
+		return env.signer.Verify(env.ipk, sig, env.msg, env.nym, env.attrs, nymIdxRhIndex, nymIdxEidIndex, 0, &rk.PublicKey, epoch, types.Basic, nil)
+	}
+	require.NoError(t, ver(sig, 0), "no configured epoch")
+	require.NoError(t, ver(sig, 1), "matching epoch")
+	require.ErrorContains(t, ver(sig, 2), "does not match the expected epoch")
+	require.Error(t, ver(rewrite(t, sig, func(s *Signature) { s.Epoch = 2 }), 0), "epoch not signed by the revocation authority")
 }
