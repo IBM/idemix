@@ -11,12 +11,10 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"log"
-	"os"
-	"path/filepath"
 	"time"
 
 	idemix "github.com/IBM/idemix/bccsp"
+	"github.com/IBM/idemix/bccsp/handlers"
 	"github.com/IBM/idemix/bccsp/keystore"
 	idemixcrypto "github.com/IBM/idemix/bccsp/schemes/dlog/crypto"
 	"github.com/IBM/idemix/bccsp/schemes/dlog/crypto/translator/amcl"
@@ -24,7 +22,6 @@ import (
 	im "github.com/IBM/idemix/msp/config"
 	math "github.com/IBM/mathlib"
 	m "github.com/hyperledger/fabric-protos-go-apiv2/msp"
-	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 	"google.golang.org/protobuf/proto"
 )
@@ -123,121 +120,79 @@ func curveAndTranslator(curveID string) (*math.Curve, idemixcrypto.Translator, e
 	}
 }
 
-// Logger defines the logging interface required by Idemixmsp.
-// This interface is compatible with the Go SDK log package and common logging facades.
-type Logger interface {
-	Debug(args ...any)
-	Debugf(format string, args ...any)
-	Errorf(format string, args ...any)
-	IsEnabledFor(level zapcore.Level) bool
+// cspConstructor matches the shared signature of idemix.New and idemix.NewAries.
+type cspConstructor func(ks bccsp.KeyStore, curve *math.Curve, translator idemixcrypto.Translator, exportable bool) (bccsp.BCCSP, error)
+
+// resolveKeyStore returns the bccsp.KeyStore to use for the given KVS, curve and translator. If
+// kvs is nil, a non-persistent keystore.Dummy is used; otherwise a keystore.KVSStore backed by
+// kvs is used.
+func resolveKeyStore(kvs keystore.KVS, curve *math.Curve, translator idemixcrypto.Translator) bccsp.KeyStore {
+	if kvs == nil {
+		return &keystore.Dummy{}
+	}
+
+	return &keystore.KVSStore{KVS: kvs, Translator: translator, Curve: curve}
 }
 
-type Idemixmsp struct {
+// CryptoScheme identifies the cryptographic scheme an MSP was set up with.
+type CryptoScheme string
+
+const (
+	// SchemeDlog is the legacy Idemix discrete-log scheme.
+	SchemeDlog CryptoScheme = "dlog"
+	// SchemeAries is the Aries/BBS+ scheme.
+	SchemeAries CryptoScheme = "aries"
+)
+
+type MSP struct {
 	csp          bccsp.BCCSP
+	ks           bccsp.KeyStore
 	version      MSPVersion
 	ipk          bccsp.Key
-	signer       *IdemixSigningIdentity
+	signer       *signingIdentity
 	name         string
 	revocationPK bccsp.Key
 	epoch        int
 	logger       Logger
-	aries        bool
 	exportable   bool
+	// conf is a copy of the config passed to Setup with the signer's secret key removed.
+	conf   *im.IdemixMSPConfig
+	kvs    keystore.KVS
+	scheme CryptoScheme
 }
 
-// defaultLogger is a simple logger implementation that wraps zap.SugaredLogger
-// and satisfies the Logger interface.
-type defaultLogger struct {
-	*zap.SugaredLogger
-	core zapcore.Core
-}
-
-// IsEnabledFor checks if the logger is enabled for the given level
-func (l *defaultLogger) IsEnabledFor(level zapcore.Level) bool {
-	return l.core.Enabled(level)
-}
-
-// newDefaultLogger creates a new logger instance compatible with the Logger interface.
-// It uses zap for structured logging with a development configuration.
-func newDefaultLogger(name string) Logger {
-	config := zap.NewDevelopmentConfig()
-	config.EncoderConfig.EncodeLevel = zapcore.CapitalColorLevelEncoder
-	zapLogger, err := config.Build()
-	if err != nil {
-		// Fallback to standard log if zap initialization fails
-		log.Printf("failed to initialize zap logger: %v, using standard logger", err)
-
-		return &stdLogger{prefix: name}
-	}
-
-	return &defaultLogger{
-		SugaredLogger: zapLogger.Sugar().Named(name),
-		core:          zapLogger.Core(),
-	}
-}
-
-// stdLogger is a fallback logger using Go's standard log package
-type stdLogger struct {
-	prefix string
-}
-
-func (l *stdLogger) Debug(args ...any) {
-	log.Println(append([]any{l.prefix + " [DEBUG]"}, args...)...)
-}
-
-func (l *stdLogger) Debugf(format string, args ...any) {
-	log.Printf(l.prefix+" [DEBUG] "+format, args...)
-}
-
-func (l *stdLogger) Errorf(format string, args ...any) {
-	log.Printf(l.prefix+" [ERROR] "+format, args...)
-}
-
-func (l *stdLogger) IsEnabledFor(level zapcore.Level) bool {
-	return true // Standard logger always logs
-}
-
-// NewIdemixMsp creates a new instance of idemixmsp using the dlog scheme.
-// The curve is determined at Setup time from IdemixMSPConfig.CurveId (default: FP256BN_AMCL).
-func NewIdemixMsp(version MSPVersion) (MSP, error) {
+// NewIdemixMsp creates a new instance of msp. Setup auto-detects the underlying
+// cryptographic scheme (dlog or Aries/BBS+) from the key material in the config: it first
+// attempts to load the config using the dlog scheme and, if that fails, retries using the
+// Aries/BBS+ scheme. Any curve supported by curveAndTranslator is accepted by either scheme;
+// the curve is determined at Setup time from IdemixMSPConfig.CurveId (default: FP256BN_AMCL
+// for dlog, BLS12_381_BBS for Aries).
+func NewIdemixMsp(version MSPVersion) (*MSP, error) {
 	return NewIdemixMspWithLogger(version, newDefaultLogger("idemix"))
 }
 
-// NewIdemixMspWithLogger creates a new instance of idemixmsp using the dlog scheme with a custom logger.
-// The curve is determined at Setup time from IdemixMSPConfig.CurveId (default: FP256BN_AMCL).
+// NewIdemixMspWithLogger creates a new instance of idemixmsp with a custom logger. See
+// NewIdemixMsp for the scheme auto-detection and curve-selection behavior of Setup.
 // If logger is nil, the default logger is used.
-func NewIdemixMspWithLogger(version MSPVersion, logger Logger) (MSP, error) {
+func NewIdemixMspWithLogger(version MSPVersion, logger Logger) (*MSP, error) {
+	return NewIdemixMspWithKeyStore(version, logger, nil)
+}
+
+// NewIdemixMspWithKeyStore creates a new instance of idemixmsp with a custom logger and a
+// custom keystore.KVS used to persist imported/derived keys. See NewIdemixMsp for the scheme
+// auto-detection and curve-selection behavior of Setup. If logger is nil, the default logger is
+// used. If kvs is nil, a non-persistent keystore.Dummy is used.
+func NewIdemixMspWithKeyStore(version MSPVersion, logger Logger, kvs keystore.KVS) (*MSP, error) {
 	if logger == nil {
 		logger = newDefaultLogger("idemix")
 	}
 	logger.Debugf("Creating Idemix-based MSP instance")
-	msp := Idemixmsp{logger: logger, version: version, aries: false, exportable: true}
+	msp := MSP{logger: logger, version: version, exportable: true, kvs: kvs}
 
 	return &msp, nil
 }
 
-// NewIdemixMspAries creates a new instance of idemixmsp using the Aries/BBS+ scheme.
-// The curve is determined at Setup time from IdemixMSPConfig.CurveId; only BLS12_381_BBS
-// and BLS12_381_BBS_GURVY are accepted (default: BLS12_381_BBS).
-func NewIdemixMspAries(version MSPVersion) (MSP, error) {
-	return NewIdemixMspAriesWithLogger(version, newDefaultLogger("idemix"))
-}
-
-// NewIdemixMspAriesWithLogger creates a new instance of idemixmsp using the Aries/BBS+ scheme with a custom logger.
-// The curve is determined at Setup time from IdemixMSPConfig.CurveId; only BLS12_381_BBS
-// and BLS12_381_BBS_GURVY are accepted (default: BLS12_381_BBS).
-// If logger is nil, the default logger is used.
-func NewIdemixMspAriesWithLogger(version MSPVersion, logger Logger) (MSP, error) {
-	if logger == nil {
-		logger = newDefaultLogger("idemix")
-	}
-	logger.Debugf("Creating Idemix-based MSP instance")
-	msp := Idemixmsp{logger: logger, version: version, aries: true, exportable: true}
-
-	return &msp, nil
-}
-
-func (msp *Idemixmsp) Setup(conf1 *m.MSPConfig) error {
+func (msp *MSP) Setup(conf1 *m.MSPConfig) error {
 	msp.logger.Debugf("Setting up Idemix-based MSP instance")
 
 	if conf1 == nil {
@@ -250,85 +205,220 @@ func (msp *Idemixmsp) Setup(conf1 *m.MSPConfig) error {
 		return fmt.Errorf("failed unmarshalling idemix msp config: %w", err)
 	}
 
+	if conf1.Type != int32(IDEMIX) {
+		return fmt.Errorf("setup error: unsupported config type %d, expected IDEMIX", conf1.Type)
+	}
+
+	// Setup is not safe for concurrent use with other methods. On failure the in-memory state of
+	// the MSP is restored to its pre-Setup state (keys already persisted to the KVS by a previous
+	// successful Setup are left untouched); on success all crypto material is replaced, so a
+	// repeated Setup (e.g. with a verification-only config) cannot keep a stale signer from a
+	// previous call.
+	prev := msp.snapshot()
+	msp.resetCryptoMaterial()
 	msp.name = conf.Name
+	msp.conf = retainedConfig(&conf)
 	msp.logger.Debugf("Setting up Idemix MSP instance %s", msp.name)
 
-	// Enforce that the config type matches the constructor used.
-	if msp.aries {
-		if conf1.Type != int32(IDEMIX_ARIES) {
-			return fmt.Errorf("setup error: aries MSP requires config of type IDEMIX_ARIES, got %d", conf1.Type)
-		}
-	} else {
-		if conf1.Type != int32(IDEMIX) {
-			return fmt.Errorf("setup error: dlog MSP requires config of type IDEMIX, got %d", conf1.Type)
-		}
-	}
-
-	// Determine the curve from config.CurveId.
-	curveID := conf.CurveId
-	if msp.aries {
-		switch curveID {
-		case "", curveIDBLS12_381_BBS:
-			curveID = curveIDBLS12_381_BBS
-		case curveIDBLS12_381_BBS_GURVY:
-			// accepted
-		default:
-			return fmt.Errorf("setup error: aries MSP requires a BBS curve, got %q", curveID)
-		}
-	} else {
-		if curveID == "" {
-			curveID = curveIDFP256BN_AMCL
-		}
-	}
-
-	curve, tr, err := curveAndTranslator(curveID)
+	// Auto-detect the underlying cryptographic scheme (dlog or Aries/BBS+) from the issuer
+	// public key, then complete the setup with the detected scheme, reusing the BCCSP and the
+	// issuer public key imported during detection. Detection imports the issuer public key as a
+	// temporary key, so it never writes to the KVS and never touches the user's secret material.
+	d, err := msp.detectScheme(&conf)
 	if err != nil {
+		msp.restore(prev)
+
 		return fmt.Errorf("setup error: %w", err)
 	}
 
-	// Build the BCCSP using the curve selected from config.
-	if msp.aries {
-		msp.csp, err = idemix.NewAries(&keystore.Dummy{}, curve, tr, msp.exportable)
-	} else {
-		msp.csp, err = idemix.New(&keystore.Dummy{}, curve, tr, msp.exportable)
+	if err := msp.setupWithScheme(d, &conf); err != nil {
+		msp.restore(prev)
+
+		return fmt.Errorf("setup error: %s scheme: %w", d.spec.name, err)
 	}
-	if err != nil {
-		return fmt.Errorf("setup error: failed to create BCCSP: %w", err)
+	msp.scheme = d.spec.name
+	msp.logger.Debugf("Idemix MSP instance %s set up using the %s scheme", msp.name, d.spec.name)
+
+	return nil
+}
+
+// Scheme returns the cryptographic scheme detected by Setup: SchemeDlog or SchemeAries. It is
+// empty before a successful Setup.
+func (msp *MSP) Scheme() CryptoScheme {
+	return msp.scheme
+}
+
+// retainedConfig returns the subset of conf the MSP needs after Setup. In particular, the
+// signer's secret key is dropped: it is only needed to import the user key during Setup.
+func retainedConfig(conf *im.IdemixMSPConfig) *im.IdemixMSPConfig {
+	r := &im.IdemixMSPConfig{
+		Name:    conf.Name,
+		Ipk:     conf.Ipk,
+		Epoch:   conf.Epoch,
+		CurveId: conf.CurveId,
+	}
+	if s := conf.Signer; s != nil {
+		r.Signer = &im.IdemixMSPSignerConfig{
+			Cred:                            s.Cred,
+			OrganizationalUnitIdentifier:    s.OrganizationalUnitIdentifier,
+			Role:                            s.Role,
+			EnrollmentId:                    s.EnrollmentId,
+			CredentialRevocationInformation: s.CredentialRevocationInformation,
+		}
 	}
 
-	// Import Issuer Public Key
-	IssuerPublicKey, err := msp.csp.KeyImport(
-		conf.Ipk,
+	return r
+}
+
+type mspState struct {
+	csp          bccsp.BCCSP
+	ks           bccsp.KeyStore
+	ipk          bccsp.Key
+	revocationPK bccsp.Key
+	signer       *signingIdentity
+	name         string
+	conf         *im.IdemixMSPConfig
+	scheme       CryptoScheme
+}
+
+func (msp *MSP) snapshot() mspState {
+	return mspState{msp.csp, msp.ks, msp.ipk, msp.revocationPK, msp.signer, msp.name, msp.conf, msp.scheme}
+}
+
+func (msp *MSP) restore(s mspState) {
+	msp.csp, msp.ks, msp.ipk, msp.revocationPK, msp.signer, msp.name, msp.conf, msp.scheme =
+		s.csp, s.ks, s.ipk, s.revocationPK, s.signer, s.name, s.conf, s.scheme
+}
+
+type schemeSpec struct {
+	name           CryptoScheme
+	defaultCurveID string
+	newCSP         cspConstructor
+}
+
+var (
+	dlogScheme = schemeSpec{
+		name:           SchemeDlog,
+		defaultCurveID: curveIDFP256BN_AMCL,
+		newCSP: func(ks bccsp.KeyStore, curve *math.Curve, tr idemixcrypto.Translator, exportable bool) (bccsp.BCCSP, error) {
+			return idemix.New(ks, curve, tr, exportable)
+		},
+	}
+	ariesScheme = schemeSpec{
+		name:           SchemeAries,
+		defaultCurveID: curveIDBLS12_381_BBS,
+		newCSP: func(ks bccsp.KeyStore, curve *math.Curve, tr idemixcrypto.Translator, exportable bool) (bccsp.BCCSP, error) {
+			return idemix.NewAries(ks, curve, tr, exportable)
+		},
+	}
+)
+
+// detectedScheme is the result of a successful detectScheme: the scheme, together with the BCCSP,
+// keystore and issuer public key built while detecting it.
+type detectedScheme struct {
+	spec schemeSpec
+	csp  bccsp.BCCSP
+	ks   bccsp.KeyStore
+	ipk  bccsp.Key
+}
+
+// detectScheme returns the first scheme (dlog, then Aries/BBS+) under which the issuer public key
+// in conf can be imported. If neither accepts it, the errors of both are returned.
+func (msp *MSP) detectScheme(conf *im.IdemixMSPConfig) (detectedScheme, error) {
+	var errs []error
+	for _, sc := range []schemeSpec{dlogScheme, ariesScheme} {
+		d, err := msp.tryScheme(sc, conf)
+		if err != nil {
+			errs = append(errs, fmt.Errorf("%s: %w", sc.name, err))
+
+			continue
+		}
+
+		return d, nil
+	}
+
+	return detectedScheme{}, fmt.Errorf("issuer public key does not load under any supported scheme: %w", errors.Join(errs...))
+}
+
+// tryScheme builds the BCCSP for sc on the curve named by conf.CurveId (sc's default curve when
+// unset) and imports the issuer public key with it.
+func (msp *MSP) tryScheme(sc schemeSpec, conf *im.IdemixMSPConfig) (detectedScheme, error) {
+	curveID := conf.CurveId
+	if curveID == "" {
+		curveID = sc.defaultCurveID
+	}
+	curve, tr, err := curveAndTranslator(curveID)
+	if err != nil {
+		return detectedScheme{}, err
+	}
+	ks := resolveKeyStore(msp.kvs, curve, tr)
+	csp, err := sc.newCSP(ks, curve, tr, msp.exportable)
+	if err != nil {
+		return detectedScheme{}, fmt.Errorf("failed to create BCCSP: %w", err)
+	}
+	ipk, err := importIssuerPublicKey(csp, conf.Ipk)
+	if err != nil {
+		return detectedScheme{}, err
+	}
+
+	return detectedScheme{spec: sc, csp: csp, ks: ks, ipk: ipk}, nil
+}
+
+// importIssuerPublicKey imports raw as a temporary issuer public key with the four fixed MSP
+// attributes, translating the BCCSP importer errors into MSP-level messages.
+func importIssuerPublicKey(csp bccsp.BCCSP, raw []byte) (bccsp.Key, error) {
+	IssuerPublicKey, err := csp.KeyImport(
+		raw,
 		&bccsp.IdemixIssuerPublicKeyImportOpts{
-			Temporary: true,
-			AttributeNames: []string{
-				AttributeNameOU,
-				AttributeNameRole,
-				AttributeNameEnrollmentId,
-				AttributeNameRevocationHandle,
-			},
+			Temporary:      true,
+			AttributeNames: issuerAttributeNames(),
 		})
 	if err != nil {
 		var importErr *bccsp.IdemixIssuerPublicKeyImporterError
-		ok := errors.As(err, &importErr)
-		if !ok {
-			panic("unexpected condition, BCCSP did not return the expected *bccsp.IdemixIssuerPublicKeyImporterError")
+		if !errors.As(err, &importErr) {
+			// Not every scheme wraps its errors in *bccsp.IdemixIssuerPublicKeyImporterError
+			// (e.g. the Aries importer does not) - treat this as an unmarshalling failure
+			// rather than panicking on attacker-controlled config bytes.
+			return nil, fmt.Errorf("failed to unmarshal ipk from idemix msp config: %w", err)
 		}
 		switch importErr.Type {
 		case bccsp.IdemixIssuerPublicKeyImporterUnmarshallingError:
-			return fmt.Errorf("failed to unmarshal ipk from idemix msp config: %w", err)
+			return nil, fmt.Errorf("failed to unmarshal ipk from idemix msp config: %w", err)
 		case bccsp.IdemixIssuerPublicKeyImporterHashError:
-			return fmt.Errorf("setting the hash of the issuer public key failed: %w", err)
+			return nil, fmt.Errorf("setting the hash of the issuer public key failed: %w", err)
 		case bccsp.IdemixIssuerPublicKeyImporterValidationError:
-			return fmt.Errorf("cannot setup idemix msp with invalid public key: %w", err)
-		case bccsp.IdemixIssuerPublicKeyImporterNumAttributesError:
-			fallthrough
-		case bccsp.IdemixIssuerPublicKeyImporterAttributeNameError:
-			return errors.New("issuer public key must have attributes OU, Role, EnrollmentId, and RevocationHandle")
+			return nil, fmt.Errorf("cannot setup idemix msp with invalid public key: %w", err)
+		case bccsp.IdemixIssuerPublicKeyImporterNumAttributesError, bccsp.IdemixIssuerPublicKeyImporterAttributeNameError:
+			return nil, errors.New("issuer public key must have attributes OU, Role, EnrollmentId, and RevocationHandle")
 		default:
-			panic(fmt.Sprintf("unexpected condtion, issuer public key import error not valid, got [%d]", importErr.Type))
+			return nil, fmt.Errorf("unexpected condition, issuer public key import error not valid, got [%d]", importErr.Type)
 		}
 	}
+
+	return IssuerPublicKey, nil
+}
+
+func issuerAttributeNames() []string {
+	return []string{AttributeNameOU, AttributeNameRole, AttributeNameEnrollmentId, AttributeNameRevocationHandle}
+}
+
+// resetCryptoMaterial clears the fields written by setupWithScheme, so a failed attempt does
+// not leave partial state visible to a subsequent attempt or to callers.
+func (msp *MSP) resetCryptoMaterial() {
+	msp.csp = nil
+	msp.ks = nil
+	msp.ipk = nil
+	msp.revocationPK = nil
+	msp.signer = nil
+}
+
+// setupWithScheme completes the setup with the BCCSP and issuer public key of the detected
+// scheme d: it imports the revocation public key and - if present - the default signer's
+// credential material.
+func (msp *MSP) setupWithScheme(d detectedScheme, conf *im.IdemixMSPConfig) error {
+	msp.csp = d.csp
+	msp.ks = d.ks
+	IssuerPublicKey := d.ipk
 	msp.ipk = IssuerPublicKey
 
 	// Import revocation public key
@@ -356,21 +446,11 @@ func (msp *Idemixmsp) Setup(conf1 *m.MSPConfig) error {
 		return fmt.Errorf("failed importing signer secret key: %w", err)
 	}
 
-	// Derive NymPublicKey
-	NymKey, err := msp.csp.KeyDeriv(UserKey, &bccsp.IdemixNymKeyDerivationOpts{Temporary: true, IssuerPK: IssuerPublicKey})
-	if err != nil {
-		return fmt.Errorf("failed deriving nym: %w", err)
-	}
-	NymPublicKey, err := NymKey.PublicKey()
-	if err != nil {
-		return fmt.Errorf("failed getting public nym key: %w", err)
-	}
-
 	role := &m.MSPRole{
 		MspIdentifier: msp.name,
 		Role:          m.MSPRole_MEMBER,
 	}
-	if checkRole(int(conf.Signer.Role), ADMIN) {
+	if CheckRole(int(conf.Signer.Role), ADMIN) {
 		role.Role = m.MSPRole_ADMIN
 	}
 
@@ -404,6 +484,18 @@ func (msp *Idemixmsp) Setup(conf1 *m.MSPConfig) error {
 		return errors.New("credential is not cryptographically valid")
 	}
 
+	// Derive NymPublicKey. The nym secret key is persisted (see persistNymKey) only once the
+	// identity proof below has been produced, so that a rejected config never leaves an orphan
+	// nym secret key in the KVS.
+	NymKey, err := msp.csp.KeyDeriv(UserKey, &bccsp.IdemixNymKeyDerivationOpts{Temporary: true, IssuerPK: IssuerPublicKey})
+	if err != nil {
+		return fmt.Errorf("failed deriving nym: %w", err)
+	}
+	NymPublicKey, err := NymKey.PublicKey()
+	if err != nil {
+		return fmt.Errorf("failed getting public nym key: %w", err)
+	}
+
 	// Create the cryptographic evidence that this identity is valid
 	proof, err := msp.csp.Sign(
 		UserKey,
@@ -427,31 +519,48 @@ func (msp *Idemixmsp) Setup(conf1 *m.MSPConfig) error {
 		return fmt.Errorf("failed to setup cryptographic proof of identity: %w", err)
 	}
 
+	id, err := newIdemixIdentity(msp, NymPublicKey, role, ou, proof)
+	if err != nil {
+		return err
+	}
+	if err := msp.persistNymKey(NymKey); err != nil {
+		return err
+	}
+
 	// Set up default signer
-	msp.signer = &IdemixSigningIdentity{
-		Idemixidentity: newIdemixIdentity(msp, NymPublicKey, role, ou, proof),
-		Cred:           conf.Signer.Cred,
-		UserKey:        UserKey,
-		NymKey:         NymKey,
-		enrollmentId:   enrollmentId}
+	msp.signer = newSigningIdentity(id, conf.Signer.Cred, UserKey, NymKey, enrollmentId)
+
+	return nil
+}
+
+// persistNymKey stores nymKey in the MSP's keystore when the MSP is backed by a keystore.KVS,
+// so that DeserializeSigningIdentity can later recover it by the SKI of its public key. With the
+// non-persistent Dummy keystore (no kvs) the nym secret key stays ephemeral.
+func (msp *MSP) persistNymKey(nymKey bccsp.Key) error {
+	if msp.kvs == nil {
+		return nil
+	}
+	if err := msp.ks.StoreKey(nymKey); err != nil {
+		return fmt.Errorf("failed storing nym secret key: %w", err)
+	}
 
 	return nil
 }
 
 // GetVersion returns the version of this MSP
-func (msp *Idemixmsp) GetVersion() MSPVersion {
+func (msp *MSP) GetVersion() MSPVersion {
 	return msp.version
 }
 
-func (msp *Idemixmsp) GetType() ProviderType {
+func (msp *MSP) GetType() ProviderType {
 	return IDEMIX
 }
 
-func (msp *Idemixmsp) GetIdentifier() (string, error) {
+func (msp *MSP) GetIdentifier() (string, error) {
 	return msp.name, nil
 }
 
-func (msp *Idemixmsp) GetDefaultSigningIdentity() (SigningIdentity, error) {
+func (msp *MSP) GetDefaultSigningIdentity() (SigningIdentity, error) {
 	msp.logger.Debugf("Obtaining default idemix signing identity")
 
 	if msp.signer == nil {
@@ -461,7 +570,7 @@ func (msp *Idemixmsp) GetDefaultSigningIdentity() (SigningIdentity, error) {
 	return msp.signer, nil
 }
 
-func (msp *Idemixmsp) DeserializeIdentity(serializedID []byte) (Identity, error) {
+func (msp *MSP) DeserializeIdentity(serializedID []byte) (Identity, error) {
 	sID := &m.SerializedIdentity{}
 	err := proto.Unmarshal(serializedID, sID)
 	if err != nil {
@@ -472,10 +581,69 @@ func (msp *Idemixmsp) DeserializeIdentity(serializedID []byte) (Identity, error)
 		return nil, fmt.Errorf("expected MSP ID %s, received %s", msp.name, sID.Mspid)
 	}
 
-	return msp.DeserializeIdentityInternal(sID.GetIdBytes())
+	return msp.deserializeIdentityInternal(sID.GetIdBytes())
 }
 
-func (msp *Idemixmsp) DeserializeIdentityInternal(serializedID []byte) (Identity, error) {
+// DeserializeSigningIdentity rebuilds a SigningIdentity from a serialized identity (the inner
+// SerializedIdemixIdentity bytes) previously produced by this MSP's default signer (or
+// Pseudonym). It requires the MSP to have been created with a persistent keystore.KVS
+// (NewIdemixMspWithKeyStore), because the nym secret key is looked up by the SKI of the
+// identity's nym public key. The identity must carry the default signer's OU and role, its
+// association proof must verify, and the nym secret key found in the KVS must belong to the
+// default signer's user secret key. The KVS is expected to hold the keys of a single user.
+func (msp *MSP) DeserializeSigningIdentity(raw []byte) (SigningIdentity, error) {
+	if msp.csp == nil || msp.signer == nil {
+		return nil, errors.New("no default signer setup")
+	}
+	if msp.kvs == nil {
+		return nil, errors.New("cannot deserialize a signing identity: msp has no persistent keystore")
+	}
+
+	id, err := msp.deserializeIdentityInternal(raw)
+	if err != nil {
+		return nil, err
+	}
+
+	if id.OU.GetOrganizationalUnitIdentifier() != msp.signer.OU.GetOrganizationalUnitIdentifier() ||
+		id.Role.GetRole() != msp.signer.Role.GetRole() {
+		return nil, errors.New("identity does not match the default signer's organizational unit and role")
+	}
+
+	if err := id.Validate(); err != nil {
+		return nil, fmt.Errorf("identity is not valid with respect to this MSP: %w", err)
+	}
+
+	nymKey, err := msp.csp.GetKey(id.NymPublicKey.SKI())
+	if err != nil {
+		return nil, fmt.Errorf("cannot find nym secret key: %w", err)
+	}
+	if _, ok := nymKey.(*handlers.NymSecretKey); !ok {
+		return nil, fmt.Errorf("unexpected key type %T for nym secret key", nymKey)
+	}
+
+	sid := newSigningIdentity(id, msp.signer.Cred, msp.signer.UserKey, nymKey, msp.signer.enrollmentId)
+
+	// The nym signature proves knowledge of the user secret key and of the nym's randomness, so
+	// it only verifies if the stored nym was derived from the default signer's user secret key.
+	sig, err := sid.Sign(nymOwnershipChallenge)
+	if err != nil {
+		return nil, fmt.Errorf("nym secret key does not belong to the default signer: %w", err)
+	}
+	if err := id.Verify(nymOwnershipChallenge, sig); err != nil {
+		return nil, fmt.Errorf("nym secret key does not belong to the default signer: %w", err)
+	}
+
+	return sid, nil
+}
+
+// nymOwnershipChallenge is the message signed by DeserializeSigningIdentity to check that a nym
+// secret key belongs to the default signer.
+var nymOwnershipChallenge = []byte("idemix msp: nym ownership check")
+
+func (msp *MSP) deserializeIdentityInternal(serializedID []byte) (*identity, error) {
+	if msp.csp == nil {
+		return nil, errors.New("msp is not set up")
+	}
 	msp.logger.Debug("idemixmsp: deserializing identity")
 	serialized := new(im.SerializedIdemixIdentity)
 	err := proto.Unmarshal(serializedID, serialized)
@@ -512,67 +680,262 @@ func (msp *Idemixmsp) DeserializeIdentityInternal(serializedID []byte) (Identity
 		return nil, fmt.Errorf("cannot deserialize the role of the identity: %w", err)
 	}
 
-	return newIdemixIdentity(msp, NymPublicKey, role, ou, serialized.Proof), nil
+	return newIdemixIdentity(msp, NymPublicKey, role, ou, serialized.Proof)
 }
 
-func (msp *Idemixmsp) Validate(id Identity) error {
-	var identity *Idemixidentity
-	switch t := id.(type) {
-	case *Idemixidentity:
-		identity = id.(*Idemixidentity)
-	case *IdemixSigningIdentity:
-		identity = id.(*IdemixSigningIdentity).Idemixidentity
-	default:
-		return fmt.Errorf("identity type %T is not recognized", t)
+func (msp *MSP) Validate(id Identity) error {
+	temp, err := asIdentity(id)
+	if err != nil {
+		return err
 	}
 
-	msp.logger.Debugf("Validating identity %+v", identity)
-	if identity.GetMSPIdentifier() != msp.name {
+	msp.logger.Debugf("Validating identity %+v", temp)
+	if temp.GetMSPIdentifier() != msp.name {
 		return errors.New("the supplied identity does not belong to this msp")
 	}
 
-	return identity.verifyProof()
+	return temp.Validate()
 }
 
-func (id *Idemixidentity) verifyProof() error {
-	// Verify signature
-	valid, err := id.msp.csp.Verify(
-		id.msp.ipk,
-		id.associationProof,
-		nil,
-		&bccsp.IdemixSignerOpts{
-			RevocationPublicKey: id.msp.revocationPK,
-			Attributes: []bccsp.IdemixAttribute{
-				{Type: bccsp.IdemixBytesAttribute, Value: []byte(id.OU.OrganizationalUnitIdentifier)},
-				{Type: bccsp.IdemixIntAttribute, Value: getIdemixRoleFromMSPRole(id.Role)},
-				{Type: bccsp.IdemixHiddenAttribute},
-				{Type: bccsp.IdemixHiddenAttribute},
-			},
-			RhIndex:  rhIndex,
-			EidIndex: eidIndex,
-			Epoch:    id.msp.epoch,
-			Nym:      id.NymPublicKey,
+func (msp *MSP) SatisfiesPrincipal(id Identity, principal *m.MSPPrincipal) error {
+	if err := msp.Validate(id); err != nil {
+		return fmt.Errorf("identity is not valid with respect to this MSP: %w", err)
+	}
+
+	temp, err := asIdentity(id)
+	if err != nil {
+		return err
+	}
+
+	return temp.satisfiesPrincipalValidated(principal)
+}
+
+// IsWellFormed checks if the given identity can be deserialized into its provider-specific .
+// In this MSP implementation, an identity is considered well formed if it contains a
+// marshaled SerializedIdemixIdentity protobuf message.
+func (msp *MSP) IsWellFormed(identity *m.SerializedIdentity) error {
+	if identity == nil {
+		return errors.New("not an idemix identity: nil identity")
+	}
+	sId := new(im.SerializedIdemixIdentity)
+	err := proto.Unmarshal(identity.GetIdBytes(), sId)
+	if err != nil {
+		return fmt.Errorf("not an idemix identity: %w", err)
+	}
+
+	return nil
+}
+
+func (msp *MSP) GetTLSRootCerts() [][]byte {
+	// TODO
+	return nil
+}
+
+func (msp *MSP) GetTLSIntermediateCerts() [][]byte {
+	// TODO
+	return nil
+}
+
+// Pseudonym derives a fresh pseudonym from the default signer. The returned byte slice is
+// reserved and currently always nil. When the MSP is backed by a keystore.KVS, each successful
+// call persists a new nym secret key (there is no deletion path, so the store grows with every
+// call) so that DeserializeSigningIdentity can recover it. Nym secret keys are created
+// exportable and stored in clear in the caller-supplied KVS: it must be protected accordingly.
+func (msp *MSP) Pseudonym() (SigningIdentity, []byte, error) {
+	if msp.csp == nil || msp.signer == nil || msp.conf.GetSigner() == nil {
+		return nil, nil, errors.New("no default signer setup")
+	}
+
+	// Derive NymPublicKey. The nym secret key is persisted (see persistNymKey) only once the
+	// identity proof has been produced.
+	nymKey, err := msp.csp.KeyDeriv(
+		msp.signer.UserKey,
+		&bccsp.IdemixNymKeyDerivationOpts{
+			Temporary: true,
+			IssuerPK:  msp.ipk,
 		},
 	)
-	if err == nil && !valid {
-		panic("unexpected condition, an error should be returned for an invalid signature")
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed deriving nym: %w", err)
 	}
+	NymPublicKey, err := nymKey.PublicKey()
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed getting public nym key: %w", err)
+	}
+
+	role := &m.MSPRole{
+		MspIdentifier: msp.name,
+		Role:          m.MSPRole_MEMBER,
+	}
+	if CheckRole(int(msp.conf.Signer.Role), ADMIN) {
+		role.Role = m.MSPRole_ADMIN
+	}
+
+	ou := &m.OrganizationUnit{
+		MspIdentifier:                msp.name,
+		OrganizationalUnitIdentifier: msp.conf.Signer.OrganizationalUnitIdentifier,
+		CertifiersIdentifier:         msp.ipk.SKI(),
+	}
+
+	enrollmentID := msp.conf.Signer.EnrollmentId
+
+	// Create the cryptographic evidence that this identity is valid
+	sigOpts := &bccsp.IdemixSignerOpts{
+		Credential: msp.conf.Signer.Cred,
+		Nym:        nymKey,
+		IssuerPK:   msp.ipk,
+		Attributes: []bccsp.IdemixAttribute{
+			{Type: bccsp.IdemixBytesAttribute},
+			{Type: bccsp.IdemixIntAttribute},
+			{Type: bccsp.IdemixHiddenAttribute},
+			{Type: bccsp.IdemixHiddenAttribute},
+		},
+		RhIndex:  rhIndex,
+		EidIndex: eidIndex,
+		CRI:      msp.conf.Signer.CredentialRevocationInformation,
+		SigType:  bccsp.Standard,
+	}
+	proof, err := msp.csp.Sign(
+		msp.signer.UserKey,
+		nil,
+		sigOpts,
+	)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed signing identity: %w", err)
+	}
+
+	id, err := newIdemixIdentity(msp, NymPublicKey, role, ou, proof)
+	if err != nil {
+		return nil, nil, err
+	}
+	if err := msp.persistNymKey(nymKey); err != nil {
+		return nil, nil, err
+	}
+
+	return newSigningIdentity(id, msp.signer.Cred, msp.signer.UserKey, nymKey, enrollmentID), nil, nil
+}
+
+func (msp *MSP) EnrollmentID() string {
+	return msp.conf.GetSigner().GetEnrollmentId()
+}
+
+func (msp *MSP) IssuerPublicKey() []byte {
+	return bytes.Clone(msp.conf.GetIpk())
+}
+
+type identity struct {
+	NymPublicKey bccsp.Key
+	id           *IdentityIdentifier
+	Role         *m.MSPRole
+	OU           *m.OrganizationUnit
+	// associationProof contains cryptographic proof that this identity
+	// belongs to the MSP identified by mspIdentifier, i.e., it proves that
+	// the pseudonym is constructed from a secret key on which the CA issued
+	// a credential.
+	associationProof []byte
+	msp              *MSP
+}
+
+// asIdentity extracts the underlying *identity from an Identity, whether it wraps a
+// plain identity or a signingIdentity.
+func asIdentity(id Identity) (*identity, error) {
+	switch t := id.(type) {
+	case *identity:
+		return t, nil
+	case *signingIdentity:
+		return t.identity, nil
+	default:
+		return nil, fmt.Errorf("identity type %T is not recognized", t)
+	}
+}
+
+// newIdemixIdentity builds an identity of msp for the given nym public key, role, OU and
+// association proof.
+func newIdemixIdentity(
+	msp *MSP,
+	NymPublicKey bccsp.Key,
+	role *m.MSPRole,
+	ou *m.OrganizationUnit,
+	proof []byte,
+) (*identity, error) {
+	raw, err := NymPublicKey.Bytes()
+	if err != nil {
+		return nil, fmt.Errorf("failed marshalling nym public key: %w", err)
+	}
+
+	return &identity{
+		msp:              msp,
+		NymPublicKey:     NymPublicKey,
+		Role:             role,
+		OU:               ou,
+		associationProof: proof,
+		id:               &IdentityIdentifier{Mspid: msp.name, Id: string(raw)},
+	}, nil
+}
+
+func (id *identity) Anonymous() bool {
+	return true
+}
+
+func (id *identity) ExpiresAt() time.Time {
+	// Idemix MSP currently does not use expiration dates or revocation,
+	// so we return the zero time to indicate this.
+	return time.Time{}
+}
+
+func (id *identity) GetIdentifier() *IdentityIdentifier {
+	return id.id
+}
+
+func (id *identity) GetMSPIdentifier() string {
+	return id.msp.name
+}
+
+func (id *identity) GetOrganizationalUnits() []*OUIdentifier {
+	// we use the (serialized) public key of this MSP as the CertifiersIdentifier
+	certifiersIdentifier, err := id.msp.ipk.Bytes()
+	if err != nil {
+		id.msp.logger.Errorf("failed to marshal ipk in GetOrganizationalUnits: %s", err)
+
+		return nil
+	}
+
+	return []*OUIdentifier{{certifiersIdentifier, id.OU.OrganizationalUnitIdentifier}}
+}
+
+func (id *identity) Validate() error {
+	return id.verifyProof()
+}
+
+func (id *identity) Verify(msg []byte, sig []byte) error {
+	if id.msp.logger.IsEnabledFor(zapcore.DebugLevel) {
+		id.msp.logger.Debugf("Verify Idemix sig: msg = %s", hex.Dump(msg))
+		id.msp.logger.Debugf("Verify Idemix sig: sig = %s", hex.Dump(sig))
+	}
+
+	_, err := id.msp.csp.Verify(
+		id.NymPublicKey,
+		sig,
+		msg,
+		&bccsp.IdemixNymSignerOpts{
+			IssuerPK: id.msp.ipk,
+		},
+	)
 
 	return err
 }
 
-func (msp *Idemixmsp) SatisfiesPrincipal(id Identity, principal *m.MSPPrincipal) error {
-	err := msp.Validate(id)
-	if err != nil {
+func (id *identity) SatisfiesPrincipal(principal *m.MSPPrincipal) error {
+	if err := id.Validate(); err != nil {
 		return fmt.Errorf("identity is not valid with respect to this MSP: %w", err)
 	}
 
-	return msp.satisfiesPrincipalValidated(id, principal)
+	return id.satisfiesPrincipalValidated(principal)
 }
 
-// satisfiesPrincipalValidated performs all the tasks of satisfiesPrincipal except the identity validation,
+// satisfiesPrincipalValidated performs all the tasks of SatisfiesPrincipal except the identity validation,
 // such that combined principals will not cause multiple expensive identity validations.
-func (msp *Idemixmsp) satisfiesPrincipalValidated(id Identity, principal *m.MSPPrincipal) error {
+func (id *identity) satisfiesPrincipalValidated(principal *m.MSPPrincipal) error {
 	switch principal.PrincipalClassification {
 	// in this case, we have to check whether the
 	// identity has a role in the msp - member or admin
@@ -586,7 +949,7 @@ func (msp *Idemixmsp) satisfiesPrincipalValidated(id Identity, principal *m.MSPP
 
 		// at first, we check whether the MSP
 		// identifier is the same as that of the identity
-		if mspRole.MspIdentifier != msp.name {
+		if mspRole.MspIdentifier != id.msp.name {
 			return fmt.Errorf("the identity is a member of a different MSP (expected %s, got %s)", mspRole.MspIdentifier, id.GetMSPIdentifier())
 		}
 
@@ -595,24 +958,24 @@ func (msp *Idemixmsp) satisfiesPrincipalValidated(id Identity, principal *m.MSPP
 		case m.MSPRole_MEMBER:
 			// in the case of member, we simply check
 			// whether this identity is valid for the MSP
-			msp.logger.Debugf("Checking if identity satisfies MEMBER role for %s", msp.name)
+			id.msp.logger.Debugf("Checking if identity satisfies MEMBER role for %s", id.msp.name)
 
 			return nil
 		case m.MSPRole_ADMIN:
-			msp.logger.Debugf("Checking if identity satisfies ADMIN role for %s", msp.name)
-			if id.(*Idemixidentity).Role.Role != m.MSPRole_ADMIN {
+			id.msp.logger.Debugf("Checking if identity satisfies ADMIN role for %s", id.msp.name)
+			if id.Role.Role != m.MSPRole_ADMIN {
 				return errors.New("user is not an admin")
 			}
 
 			return nil
 		case m.MSPRole_PEER:
-			if msp.version >= MSPv1_3 {
+			if id.msp.version >= MSPv1_3 {
 				return errors.New("idemixmsp only supports client use, so it cannot satisfy an MSPRole PEER principal")
 			}
 
 			fallthrough
 		case m.MSPRole_CLIENT:
-			if msp.version >= MSPv1_3 {
+			if id.msp.version >= MSPv1_3 {
 				return nil // any valid idemixmsp member must be a client
 			}
 
@@ -623,7 +986,7 @@ func (msp *Idemixmsp) satisfiesPrincipalValidated(id Identity, principal *m.MSPP
 		// in this case we have to serialize this instance
 		// and compare it byte-by-byte with Principal
 	case m.MSPPrincipal_IDENTITY:
-		msp.logger.Debugf("Checking if identity satisfies IDENTITY principal")
+		id.msp.logger.Debugf("Checking if identity satisfies IDENTITY principal")
 		idBytes, err := id.Serialize()
 		if err != nil {
 			return fmt.Errorf("could not serialize this identity instance: %w", err)
@@ -643,21 +1006,21 @@ func (msp *Idemixmsp) satisfiesPrincipalValidated(id Identity, principal *m.MSPP
 			return fmt.Errorf("could not unmarshal OU from principal: %w", err)
 		}
 
-		msp.logger.Debugf("Checking if identity is part of OU \"%s\" of mspid \"%s\"", ou.OrganizationalUnitIdentifier, ou.MspIdentifier)
+		id.msp.logger.Debugf("Checking if identity is part of OU \"%s\" of mspid \"%s\"", ou.OrganizationalUnitIdentifier, ou.MspIdentifier)
 
 		// at first, we check whether the MSP
 		// identifier is the same as that of the identity
-		if ou.MspIdentifier != msp.name {
+		if ou.MspIdentifier != id.msp.name {
 			return fmt.Errorf("the identity is a member of a different MSP (expected %s, got %s)", ou.MspIdentifier, id.GetMSPIdentifier())
 		}
 
-		if ou.OrganizationalUnitIdentifier != id.(*Idemixidentity).OU.OrganizationalUnitIdentifier {
+		if ou.OrganizationalUnitIdentifier != id.OU.OrganizationalUnitIdentifier {
 			return errors.New("user is not part of the desired organizational unit")
 		}
 
 		return nil
 	case m.MSPPrincipal_COMBINED:
-		if msp.version <= MSPv1_1 {
+		if id.msp.version <= MSPv1_1 {
 			return errors.New("combined MSP Principals are unsupported in MSPv1_1")
 		}
 
@@ -671,10 +1034,10 @@ func (msp *Idemixmsp) satisfiesPrincipalValidated(id Identity, principal *m.MSPP
 		if len(principals.Principals) == 0 {
 			return errors.New("no principals in CombinedPrincipal")
 		}
-		// Recursively call msp.SatisfiesPrincipal for all combined principals.
+		// Recursively call satisfiesPrincipalValidated for all combined principals.
 		// There is no limit for the levels of nesting for the combined principals.
 		for _, cp := range principals.Principals {
-			err = msp.satisfiesPrincipalValidated(id, cp)
+			err = id.satisfiesPrincipalValidated(cp)
 			if err != nil {
 				return err
 			}
@@ -682,7 +1045,7 @@ func (msp *Idemixmsp) satisfiesPrincipalValidated(id Identity, principal *m.MSPP
 		// The identity satisfies all the principals
 		return nil
 	case m.MSPPrincipal_ANONYMITY:
-		if msp.version <= MSPv1_1 {
+		if id.msp.version <= MSPv1_1 {
 			return errors.New("anonymity MSP Principals are unsupported in MSPv1_1")
 		}
 
@@ -704,120 +1067,7 @@ func (msp *Idemixmsp) satisfiesPrincipalValidated(id Identity, principal *m.MSPP
 	}
 }
 
-// IsWellFormed checks if the given identity can be deserialized into its provider-specific .
-// In this MSP implementation, an identity is considered well formed if it contains a
-// marshaled SerializedIdemixIdentity protobuf message.
-func (id *Idemixmsp) IsWellFormed(identity *m.SerializedIdentity) error {
-	sId := new(im.SerializedIdemixIdentity)
-	err := proto.Unmarshal(identity.IdBytes, sId)
-	if err != nil {
-		return fmt.Errorf("not an idemix identity: %w", err)
-	}
-
-	return nil
-}
-
-func (msp *Idemixmsp) GetTLSRootCerts() [][]byte {
-	// TODO
-	return nil
-}
-
-func (msp *Idemixmsp) GetTLSIntermediateCerts() [][]byte {
-	// TODO
-	return nil
-}
-
-type Idemixidentity struct {
-	NymPublicKey bccsp.Key
-	msp          *Idemixmsp
-	id           *IdentityIdentifier
-	Role         *m.MSPRole
-	OU           *m.OrganizationUnit
-	// associationProof contains cryptographic proof that this identity
-	// belongs to the MSP id.msp, i.e., it proves that the pseudonym
-	// is constructed from a secret key on which the CA issued a credential.
-	associationProof []byte
-}
-
-func (id *Idemixidentity) Anonymous() bool {
-	return true
-}
-
-func newIdemixIdentity(msp *Idemixmsp, NymPublicKey bccsp.Key, role *m.MSPRole, ou *m.OrganizationUnit, proof []byte) *Idemixidentity {
-	id := &Idemixidentity{}
-	id.NymPublicKey = NymPublicKey
-	id.msp = msp
-	id.Role = role
-	id.OU = ou
-	id.associationProof = proof
-
-	raw, err := NymPublicKey.Bytes()
-	if err != nil {
-		panic(fmt.Sprintf("unexpected condition, failed marshalling nym public key [%s]", err))
-	}
-	id.id = &IdentityIdentifier{
-		Mspid: msp.name,
-		Id:    bytes.NewBuffer(raw).String(),
-	}
-
-	return id
-}
-
-func (id *Idemixidentity) ExpiresAt() time.Time {
-	// Idemix MSP currently does not use expiration dates or revocation,
-	// so we return the zero time to indicate this.
-	return time.Time{}
-}
-
-func (id *Idemixidentity) GetIdentifier() *IdentityIdentifier {
-	return id.id
-}
-
-func (id *Idemixidentity) GetMSPIdentifier() string {
-	mspid, _ := id.msp.GetIdentifier()
-
-	return mspid
-}
-
-func (id *Idemixidentity) GetOrganizationalUnits() []*OUIdentifier {
-	// we use the (serialized) public key of this MSP as the CertifiersIdentifier
-	certifiersIdentifier, err := id.msp.ipk.Bytes()
-	if err != nil {
-		id.msp.logger.Errorf("failed to marshal ipk in GetOrganizationalUnits: %s", err)
-
-		return nil
-	}
-
-	return []*OUIdentifier{{certifiersIdentifier, id.OU.OrganizationalUnitIdentifier}}
-}
-
-func (id *Idemixidentity) Validate() error {
-	return id.msp.Validate(id)
-}
-
-func (id *Idemixidentity) Verify(msg []byte, sig []byte) error {
-	if id.msp.logger.IsEnabledFor(zapcore.DebugLevel) {
-		id.msp.logger.Debugf("Verify Idemix sig: msg = %s", hex.Dump(msg))
-		id.msp.logger.Debugf("Verify Idemix sig: sig = %s", hex.Dump(sig))
-	}
-
-	_, err := id.msp.csp.Verify(
-		id.NymPublicKey,
-		sig,
-		msg,
-		&bccsp.IdemixNymSignerOpts{
-			IssuerPK: id.msp.ipk,
-		},
-	)
-
-	return err
-}
-
-func (id *Idemixidentity) SatisfiesPrincipal(principal *m.MSPPrincipal) error {
-	return id.msp.SatisfiesPrincipal(id, principal)
-}
-
-func (id *Idemixidentity) Serialize() ([]byte, error) {
+func (id *identity) Serialize() ([]byte, error) {
 	serialized := &im.SerializedIdemixIdentity{}
 
 	raw, err := id.NymPublicKey.Bytes()
@@ -856,15 +1106,52 @@ func (id *Idemixidentity) Serialize() ([]byte, error) {
 	return idBytes, nil
 }
 
-type IdemixSigningIdentity struct {
-	*Idemixidentity
+func (id *identity) verifyProof() error {
+	// Verify signature
+	valid, err := id.msp.csp.Verify(
+		id.msp.ipk,
+		id.associationProof,
+		nil,
+		&bccsp.IdemixSignerOpts{
+			RevocationPublicKey: id.msp.revocationPK,
+			Attributes: []bccsp.IdemixAttribute{
+				{Type: bccsp.IdemixBytesAttribute, Value: []byte(id.OU.OrganizationalUnitIdentifier)},
+				{Type: bccsp.IdemixIntAttribute, Value: getIdemixRoleFromMSPRole(id.Role)},
+				{Type: bccsp.IdemixHiddenAttribute},
+				{Type: bccsp.IdemixHiddenAttribute},
+			},
+			RhIndex:  rhIndex,
+			EidIndex: eidIndex,
+			Epoch:    id.msp.epoch,
+			Nym:      id.NymPublicKey,
+		},
+	)
+	if err == nil && !valid {
+		return errors.New("unexpected condition: invalid signature without an error")
+	}
+
+	return err
+}
+
+type signingIdentity struct {
+	*identity
 	Cred         []byte
 	UserKey      bccsp.Key
 	NymKey       bccsp.Key
 	enrollmentId string
 }
 
-func (id *IdemixSigningIdentity) Sign(msg []byte) ([]byte, error) {
+func newSigningIdentity(
+	identity *identity,
+	cred []byte,
+	userKey bccsp.Key,
+	nymKey bccsp.Key,
+	enrollmentId string,
+) *signingIdentity {
+	return &signingIdentity{identity: identity, Cred: cred, UserKey: userKey, NymKey: nymKey, enrollmentId: enrollmentId}
+}
+
+func (id *signingIdentity) Sign(msg []byte) ([]byte, error) {
 	id.msp.logger.Debugf("Idemix identity %s is signing", id.GetIdentifier())
 
 	sig, err := id.msp.csp.Sign(
@@ -882,68 +1169,6 @@ func (id *IdemixSigningIdentity) Sign(msg []byte) ([]byte, error) {
 	return sig, nil
 }
 
-func (id *IdemixSigningIdentity) GetPublicVersion() Identity {
-	return id.Idemixidentity
-}
-
-func readFile(file string) ([]byte, error) {
-	fileCont, err := os.ReadFile(file)
-	if err != nil {
-		return nil, fmt.Errorf("could not read file %s: %w", file, err)
-	}
-
-	return fileCont, nil
-}
-
-const (
-	IdemixConfigDirMsp                  = "msp"
-	IdemixConfigDirUser                 = "user"
-	IdemixConfigFileIssuerPublicKey     = "IssuerPublicKey"
-	IdemixConfigFileRevocationPublicKey = "RevocationPublicKey"
-	IdemixConfigFileSigner              = "SignerConfig"
-)
-
-// GetIdemixMspConfig returns the configuration for the Idemix MSP
-func GetIdemixMspConfig(dir string, ID string) (*m.MSPConfig, error) {
-	return GetIdemixMspConfigWithType(dir, ID, IDEMIX)
-}
-
-// GetIdemixMspConfigWithType returns the configuration for the Idemix MSP of the specified type
-func GetIdemixMspConfigWithType(dir string, ID string, mspType ProviderType) (*m.MSPConfig, error) {
-	if mspType < 0 {
-		return nil, fmt.Errorf("msp type %d is not supported", mspType)
-	}
-
-	ipkBytes, err := readFile(filepath.Join(dir, IdemixConfigDirMsp, IdemixConfigFileIssuerPublicKey))
-	if err != nil {
-		return nil, fmt.Errorf("failed to read issuer public key file: %w", err)
-	}
-
-	revocationPkBytes, err := readFile(filepath.Join(dir, IdemixConfigDirMsp, IdemixConfigFileRevocationPublicKey))
-	if err != nil {
-		return nil, fmt.Errorf("failed to read revocation public key file: %w", err)
-	}
-
-	idemixConfig := &im.IdemixMSPConfig{
-		Name:         ID,
-		Ipk:          ipkBytes,
-		RevocationPk: revocationPkBytes,
-	}
-
-	signerBytes, err := readFile(filepath.Join(dir, IdemixConfigDirUser, IdemixConfigFileSigner))
-	if err == nil {
-		signerConfig := &im.IdemixMSPSignerConfig{}
-		err = proto.Unmarshal(signerBytes, signerConfig)
-		if err != nil {
-			return nil, err
-		}
-		idemixConfig.Signer = signerConfig
-	}
-
-	confBytes, err := proto.Marshal(idemixConfig)
-	if err != nil {
-		return nil, err
-	}
-
-	return &m.MSPConfig{Config: confBytes, Type: int32(mspType)}, nil //nolint:gosec
+func (id *signingIdentity) GetPublicVersion() Identity {
+	return id.identity
 }
