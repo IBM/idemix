@@ -127,16 +127,18 @@ type ProviderType int
 const (
 	FABRIC ProviderType = iota // MSP is of FABRIC type
 	IDEMIX                     // MSP is of IDEMIX type
-	_                          // reserved: formerly IDEMIX_ARIES; keeps OTHER's wire value stable
-	OTHER                      // MSP is of OTHER TYPE
+	// Deprecated: IDEMIX_ARIES is accepted as an alias of IDEMIX; Setup detects the scheme.
+	IDEMIX_ARIES
+	OTHER // MSP is of OTHER TYPE
 
 	// NOTE: as new types are added to this set,
 	// the mspTypes map below must be extended
 )
 
 var mspTypeStrings = map[ProviderType]string{
-	FABRIC: "bccsp",
-	IDEMIX: "idemix",
+	FABRIC:       "bccsp",
+	IDEMIX:       "idemix",
+	IDEMIX_ARIES: "idemix-aries",
 }
 
 // ProviderTypeToString returns a string that represents the ProviderType integer
