@@ -13,12 +13,11 @@ import (
 )
 
 var (
-	errNilArgument     = errors.New("nil argument")
-	errInvalidLength   = errors.New("invalid marshalled length")
-	errInvalidG1Point  = errors.New("invalid G1 point: not on the curve or the identity")
-	errInvalidG2Point  = errors.New("invalid G2 point: not on the curve or the identity")
-	errNilCurve        = errors.New("translator is not bound to a curve")
-	errG2NotInSubgroup = errors.New("invalid G2 point: not in the prime-order subgroup")
+	errNilArgument    = errors.New("nil argument")
+	errInvalidLength  = errors.New("invalid marshalled length")
+	errInvalidG1Point = errors.New("invalid G1 point: not on the curve or the identity")
+	errInvalidG2Point = errors.New("invalid G2 point: not on the curve or the identity")
+	errNilCurve       = errors.New("translator is not bound to a curve")
 )
 
 // invalidPointError reports a decoding failure with the translator's stable error, keeping the
@@ -48,22 +47,17 @@ func checkFp256bnG1(p *math.G1, err error) (*math.G1, error) {
 	return p, nil
 }
 
-// checkFp256bnG2 is the G2 counterpart of checkFp256bnG1. In addition to
-// rejecting the identity, it rejects points outside the order-r subgroup
-// ([r]P != O): the twist's group order has a large cofactor. The mathlib
-// version pinned in go.mod already checks subgroup membership when decoding
-// FP256BN G2 points, so this check is defense in depth (e.g. against a
-// regression in, or a downgrade of, mathlib). It is not free: it costs a G2
-// scalar multiplication per decoded point.
+// checkFp256bnG2 is the G2 counterpart of checkFp256bnG1. Points outside the
+// order-r subgroup (the twist's group order has a large cofactor) are rejected
+// by the mathlib decoder itself, which checks subgroup membership for FP256BN
+// G2 points; TestFindingFp256bnG2FromProtoAcceptsPointOutsideSubgroup fails if
+// a mathlib upgrade or downgrade stops doing so.
 func checkFp256bnG2(c *math.Curve, p *math.G2, err error) (*math.G2, error) {
 	if err != nil {
 		return nil, &invalidPointError{public: errInvalidG2Point, cause: err}
 	}
 	if p == nil || p.Equals(c.NewG2()) {
 		return nil, errInvalidG2Point
-	}
-	if !p.Mul(c.GroupOrder).Equals(c.NewG2()) {
-		return nil, errG2NotInSubgroup
 	}
 
 	return p, nil

@@ -72,5 +72,9 @@ func (n *NymSignatureScheme) Verify(ipk types.IssuerPublicKey, Nym *math.G1, sig
 		return fmt.Errorf("error unmarshalling signature: %w", err)
 	}
 
+	if iipk.decoded != nil {
+		return sig.VerDecoded(Nym, iipk.decoded, digest, n.Idemix.Curve, n.Translator)
+	}
+
 	return sig.Ver(Nym, iipk.PK, digest, n.Idemix.Curve, n.Translator)
 }

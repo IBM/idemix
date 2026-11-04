@@ -127,5 +127,9 @@ func (c *Credential) Verify(sk *math.Zr, ipk types.IssuerPublicKey, credential [
 		}
 	}
 
+	if iipk.decoded != nil {
+		return cred.VerDecoded(sk, iipk.decoded, c.Idemix.Curve, c.Translator)
+	}
+
 	return cred.Ver(sk, iipk.PK, c.Idemix.Curve, c.Translator)
 }

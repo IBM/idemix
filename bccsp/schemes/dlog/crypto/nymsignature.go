@@ -85,6 +85,23 @@ func newNymSignature(sk *math.Zr, Nym *math.G1, RNym *math.Zr, ipk *IssuerPublic
 
 // Ver verifies an idemix NymSignature
 func (sig *NymSignature) Ver(nym *math.G1, ipk *IssuerPublicKey, msg []byte, curve *math.Curve, tr Translator) error {
+	return sig.ver(nym, protoIssuerKey{ipk: ipk}, msg, curve, tr)
+}
+
+// VerDecoded is like Ver, but takes an already decoded issuer public key.
+func (sig *NymSignature) VerDecoded(nym *math.G1, ipk *DecodedIssuerPublicKey, msg []byte, curve *math.Curve, tr Translator) error {
+	if ipk == nil {
+		return errors.New("pseudonym signature invalid: nil issuer public key")
+	}
+
+	if err := ipk.checkCurve(curve); err != nil {
+		return err
+	}
+
+	return sig.ver(nym, ipk, msg, curve, tr)
+}
+
+func (sig *NymSignature) ver(nym *math.G1, ipk issuerKeyView, msg []byte, curve *math.Curve, tr Translator) error {
 	var ProofC, ProofSSk, ProofSRNym, Nonce *math.Zr
 	err := parseCanonicalScalars(curve,
 		namedScalar{"ProofC", sig.GetProofC(), &ProofC},
@@ -96,15 +113,11 @@ func (sig *NymSignature) Ver(nym *math.G1, ipk *IssuerPublicKey, msg []byte, cur
 		return fmt.Errorf("pseudonym signature invalid: zero-knowledge proof is invalid: %w", err)
 	}
 
-	HRand, err := tr.G1FromProto(ipk.HRand)
+	bases, err := ipk.bases(tr, false, false)
 	if err != nil {
 		return err
 	}
-
-	HSk, err := tr.G1FromProto(ipk.HSk)
-	if err != nil {
-		return err
-	}
+	HRand, HSk := bases.HRand, bases.HSk
 
 	// Verify Proof
 
@@ -118,7 +131,7 @@ func (sig *NymSignature) Ver(nym *math.G1, ipk *IssuerPublicKey, msg []byte, cur
 	index = appendBytesString(proofData, index, signLabel)
 	index = appendBytesG1(proofData, index, t)
 	index = appendBytesG1(proofData, index, nym)
-	copy(proofData[index:], ipk.Hash)
+	copy(proofData[index:], ipk.hash())
 	index = index + curve.ScalarByteSize
 	copy(proofData[index:], msg)
 	c := curve.HashToZr(proofData)
