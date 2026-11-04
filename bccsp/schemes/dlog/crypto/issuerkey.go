@@ -10,6 +10,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"slices"
 
 	"github.com/IBM/idemix/bccsp/schemes/dlog/crypto/translator/amcl"
 	math "github.com/IBM/mathlib"
@@ -138,47 +139,58 @@ func newIssuerKeyFromBytes(raw []byte) (*IssuerKey, error) {
 // Check checks that this issuer public key is valid, i.e.
 // that all components are present and a ZK proofs verifies
 func (IPk *IssuerPublicKey) Check(curve *math.Curve, t Translator) error {
+	_, err := IPk.checkAndDecode(curve, t)
+
+	return err
+}
+
+// checkAndDecode implements Check and returns the decoded and validated key.
+func (IPk *IssuerPublicKey) checkAndDecode(curve *math.Curve, t Translator) (*DecodedIssuerPublicKey, error) {
+	if IPk == nil || curve == nil || t == nil {
+		return nil, errors.New("cannot check issuer public key: received nil input")
+	}
+
 	// Unmarshall the public key
 	NumAttrs := len(IPk.GetAttributeNames())
 	HSk, err := t.G1FromProto(IPk.GetHSk())
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	HRand, err := t.G1FromProto(IPk.GetHRand())
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	HAttrs := make([]*math.G1, len(IPk.GetHAttrs()))
 	for i := range len(IPk.GetHAttrs()) {
 		HAttrs[i], err = t.G1FromProto(IPk.GetHAttrs()[i])
 		if err != nil {
-			return err
+			return nil, err
 		}
 	}
 	BarG1, err := t.G1FromProto(IPk.GetBarG1())
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	BarG2, err := t.G1FromProto(IPk.GetBarG2())
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	W, err := t.G2FromProto(IPk.GetW())
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	ProofC, err := curve.NewZrFromBytesCanonical(IPk.GetProofC())
 	if err != nil {
-		return fmt.Errorf("invalid issuer public key ProofC: %w", err)
+		return nil, fmt.Errorf("invalid issuer public key ProofC: %w", err)
 	}
 	ProofS, err := curve.NewZrFromBytesCanonical(IPk.GetProofS())
 	if err != nil {
-		return fmt.Errorf("invalid issuer public key ProofS: %w", err)
+		return nil, fmt.Errorf("invalid issuer public key ProofS: %w", err)
 	}
 
 	// Check that the public key is well-formed
@@ -190,18 +202,18 @@ func (IPk *IssuerPublicKey) Check(curve *math.Curve, t Translator) error {
 		BarG2 == nil ||
 		HAttrs == nil ||
 		len(IPk.HAttrs) != NumAttrs {
-		return errors.New("some part of the public key is undefined")
+		return nil, errors.New("some part of the public key is undefined")
 	}
 
 	// Reject identity elements: an identity base removes the binding of the
 	// credential to the corresponding value, and W = BarG2 = identity
 	// corresponds to an issuer secret key equal to zero.
 	if HSk.IsInfinity() || HRand.IsInfinity() || BarG2.IsInfinity() || W.Equals(curve.NewG2()) {
-		return errors.New("issuer public key contains the identity element")
+		return nil, errors.New("issuer public key contains the identity element")
 	}
 	for i := range HAttrs {
 		if HAttrs[i] == nil || HAttrs[i].IsInfinity() {
-			return errors.New("issuer public key contains the identity element")
+			return nil, errors.New("issuer public key contains the identity element")
 		}
 	}
 
@@ -211,7 +223,7 @@ func (IPk *IssuerPublicKey) Check(curve *math.Curve, t Translator) error {
 	for _, h := range append([]*math.G1{HSk, HRand}, HAttrs...) {
 		k := string(h.Bytes())
 		if _, ok := bases[k]; ok {
-			return errors.New("issuer public key bases are not pairwise distinct")
+			return nil, errors.New("issuer public key bases are not pairwise distinct")
 		}
 		bases[k] = struct{}{}
 	}
@@ -238,10 +250,22 @@ func (IPk *IssuerPublicKey) Check(curve *math.Curve, t Translator) error {
 
 	// Verify that the challenge is the same
 	if !ProofC.Equals(curve.HashToZr(proofData)) {
-		return errors.New("zero knowledge proof in public key invalid")
+		return nil, errors.New("zero knowledge proof in public key invalid")
 	}
 
-	return IPk.SetHash(curve)
+	if err := IPk.SetHash(curve); err != nil {
+		return nil, err
+	}
+
+	return &DecodedIssuerPublicKey{
+		curveID:   curve.ID(),
+		attrNames: slices.Clone(IPk.GetAttributeNames()),
+		ipkHash:   slices.Clone(IPk.GetHash()),
+		hSk:       HSk,
+		hRand:     HRand,
+		hAttrs:    HAttrs,
+		w:         W,
+	}, nil
 }
 
 // SetHash appends a hash of a serialized public key

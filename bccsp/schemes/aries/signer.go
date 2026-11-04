@@ -32,6 +32,9 @@ const signWithSmartcardNoNymsLabel = "signWithSmartcardNoNyms"
 type Signer struct {
 	Curve *math.Curve
 	Rng   io.Reader
+
+	// epochPKCache holds verified epoch public keys.
+	epochPKCache epochPKCache
 }
 
 type vc2SmartcardSignatureProvider struct {
@@ -653,7 +656,7 @@ func (s *Signer) Verify(
 			return fmt.Errorf("signature invalid: epoch [%d] does not match the expected epoch [%d]", sig.Epoch, epoch)
 		}
 
-		if err := verifyEpochPK(revPk, sig.RevocationEpochPk, sig.RevocationPkSig, epoch, types.RevocationAlgorithm(sig.NonRevocationProof.RevocationAlg)); err != nil {
+		if err := s.epochPKCache.verify(revPk, sig.RevocationEpochPk, sig.RevocationPkSig, epoch, types.RevocationAlgorithm(sig.NonRevocationProof.RevocationAlg)); err != nil {
 			return fmt.Errorf("signature invalid: revocation epoch public key: %w", err)
 		}
 	}
