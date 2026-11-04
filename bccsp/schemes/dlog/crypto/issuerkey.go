@@ -172,8 +172,14 @@ func (IPk *IssuerPublicKey) Check(curve *math.Curve, t Translator) error {
 		return err
 	}
 
-	ProofC := curve.NewZrFromBytes(IPk.GetProofC())
-	ProofS := curve.NewZrFromBytes(IPk.GetProofS())
+	ProofC, err := curve.NewZrFromBytesCanonical(IPk.GetProofC())
+	if err != nil {
+		return fmt.Errorf("invalid issuer public key ProofC: %w", err)
+	}
+	ProofS, err := curve.NewZrFromBytesCanonical(IPk.GetProofS())
+	if err != nil {
+		return fmt.Errorf("invalid issuer public key ProofS: %w", err)
+	}
 
 	// Check that the public key is well-formed
 	if NumAttrs < 0 ||
@@ -183,13 +189,31 @@ func (IPk *IssuerPublicKey) Check(curve *math.Curve, t Translator) error {
 		BarG1.IsInfinity() ||
 		BarG2 == nil ||
 		HAttrs == nil ||
-		len(IPk.HAttrs) < NumAttrs {
+		len(IPk.HAttrs) != NumAttrs {
 		return errors.New("some part of the public key is undefined")
 	}
-	for i := range NumAttrs {
-		if IPk.HAttrs[i] == nil {
-			return errors.New("some part of the public key is undefined")
+
+	// Reject identity elements: an identity base removes the binding of the
+	// credential to the corresponding value, and W = BarG2 = identity
+	// corresponds to an issuer secret key equal to zero.
+	if HSk.IsInfinity() || HRand.IsInfinity() || BarG2.IsInfinity() || W.Equals(curve.NewG2()) {
+		return errors.New("issuer public key contains the identity element")
+	}
+	for i := range HAttrs {
+		if HAttrs[i] == nil || HAttrs[i].IsInfinity() {
+			return errors.New("issuer public key contains the identity element")
 		}
+	}
+
+	// Reject repeated bases: if two of HSk, HRand and HAttrs coincide, the
+	// credential only binds the sum of the corresponding values, not each one.
+	bases := make(map[string]struct{}, len(HAttrs)+2)
+	for _, h := range append([]*math.G1{HSk, HRand}, HAttrs...) {
+		k := string(h.Bytes())
+		if _, ok := bases[k]; ok {
+			return errors.New("issuer public key bases are not pairwise distinct")
+		}
+		bases[k] = struct{}{}
 	}
 
 	// Verify Proof

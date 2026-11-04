@@ -125,8 +125,15 @@ func verifyEpochPK(pk *ecdsa.PublicKey, epochPK *amcl.ECP2, epochPkSig []byte, e
 	digest := sha256.Sum256(bytesToSign)
 
 	var sig struct{ R, S *big.Int }
-	if _, err := asn1.Unmarshal(epochPkSig, &sig); err != nil {
+	rest, err := asn1.Unmarshal(epochPkSig, &sig)
+	if err != nil {
 		return fmt.Errorf("failed unmashalling signature: %w", err)
+	}
+	if len(rest) != 0 {
+		return errors.New("failed unmashalling signature: trailing data")
+	}
+	if sig.R == nil || sig.S == nil || sig.R.Sign() <= 0 || sig.S.Sign() <= 0 {
+		return errors.New("epochPKSig invalid")
 	}
 
 	if !ecdsa.Verify(pk, digest[:], sig.R, sig.S) {

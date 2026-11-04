@@ -8,6 +8,7 @@ package idemix
 
 import (
 	"errors"
+	"fmt"
 	"io"
 
 	math "github.com/IBM/mathlib"
@@ -38,6 +39,10 @@ func (i *Idemix) NewCredRequest(sk *math.Zr, IssuerNonce []byte, ipk *IssuerPubl
 }
 
 func newCredRequest(sk *math.Zr, IssuerNonce []byte, ipk *IssuerPublicKey, rng io.Reader, curve *math.Curve, tr Translator) (*CredRequest, error) {
+	if len(IssuerNonce) != curve.ScalarByteSize {
+		return nil, fmt.Errorf("invalid issuer nonce, expected length %d, got %d", curve.ScalarByteSize, len(IssuerNonce))
+	}
+
 	// Set Nym as h_{sk}^{sk}
 	HSk, err := tr.G1FromProto(ipk.HSk)
 	if err != nil {
@@ -89,8 +94,14 @@ func (m *CredRequest) Check(ipk *IssuerPublicKey, curve *math.Curve, tr Translat
 	}
 
 	IssuerNonce := m.GetIssuerNonce()
-	ProofC := curve.NewZrFromBytes(m.GetProofC())
-	ProofS := curve.NewZrFromBytes(m.GetProofS())
+	ProofC, err := curve.NewZrFromBytesCanonical(m.GetProofC())
+	if err != nil {
+		return fmt.Errorf("invalid credential request ProofC: %w", err)
+	}
+	ProofS, err := curve.NewZrFromBytesCanonical(m.GetProofS())
+	if err != nil {
+		return fmt.Errorf("invalid credential request ProofS: %w", err)
+	}
 
 	HSk, err := tr.G1FromProto(ipk.HSk)
 	if err != nil {
@@ -99,6 +110,10 @@ func (m *CredRequest) Check(ipk *IssuerPublicKey, curve *math.Curve, tr Translat
 
 	if Nym == nil || IssuerNonce == nil || ProofC == nil || ProofS == nil {
 		return errors.New("one of the proof values is undefined")
+	}
+
+	if len(IssuerNonce) != curve.ScalarByteSize {
+		return fmt.Errorf("invalid issuer nonce, expected length %d, got %d", curve.ScalarByteSize, len(IssuerNonce))
 	}
 
 	// Verify Proof
