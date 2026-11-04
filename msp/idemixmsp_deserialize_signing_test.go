@@ -98,7 +98,7 @@ func TestDeserializeSigningIdentity(t *testing.T) {
 // TestDeserializeSigningIdentityRequiresPersistentKeyStore documents that
 // DeserializeSigningIdentity cannot recover any nym - not even one belonging to
 // the MSP's own default signer - when the MSP was set up without a persistent
-// keystore.KVS (e.g. via setupCurve/NewIdemixMsp, which fall back to the
+// keystore.KVS (e.g. via setupCurve/NewMSP, which fall back to the
 // non-persistent keystore.Dummy): the nym secret key derived during Setup is
 // then never stored, so BCCSP.GetKey always fails to find it later.
 func TestDeserializeSigningIdentityRequiresPersistentKeyStore(t *testing.T) {
@@ -286,7 +286,7 @@ func TestSetupFailureLeavesNoNymKeyInKVS(t *testing.T) {
 		dir := t.TempDir()
 		fileKVS, err := kvs.NewFileBased(dir)
 		require.NoError(t, err)
-		mspInst, err := NewIdemixMspWithKeyStore(MSPv1_3, nil, fileKVS)
+		mspInst, err := NewMSPWithKeyStore(MSPv1_3, nil, fileKVS)
 		require.NoError(t, err)
 
 		conf := loadCurveConfig(t, sc, "MSP1OU1", IDEMIX)
@@ -324,7 +324,7 @@ func TestSigningIdentitySurvivesSetupOnAnotherScheme(t *testing.T) {
 	first := schemeCurve{scheme: "dlog", curveID: curveIDFP256BN_AMCL}
 	second := schemeCurve{scheme: "aries", curveID: curveIDBLS12_381_BBS}
 
-	mspI, err := NewIdemixMsp(MSPv1_3)
+	mspI, err := NewMSP(MSPv1_3)
 	require.NoError(t, err)
 	require.NoError(t, mspI.Setup(loadCurveConfig(t, first, "MSP1", IDEMIX)))
 	old, err := mspI.GetDefaultSigningIdentity()

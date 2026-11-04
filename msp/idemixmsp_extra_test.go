@@ -167,11 +167,12 @@ func TestValidateUnrecognizedIdentityType(t *testing.T) {
 func TestProviderTypeToString(t *testing.T) {
 	require.Equal(t, "bccsp", ProviderTypeToString(FABRIC))
 	require.Equal(t, "idemix", ProviderTypeToString(IDEMIX))
+	require.Equal(t, "idemix-aries", ProviderTypeToString(IDEMIX_ARIES))
 	require.Empty(t, ProviderTypeToString(OTHER))
 
-	// The value formerly used by IDEMIX_ARIES stays reserved so OTHER keeps its old value.
+	// v0.3.1 wire values are kept.
+	require.Equal(t, IDEMIX_ARIES, ProviderType(2))
 	require.Equal(t, OTHER, ProviderType(3))
-	require.Empty(t, ProviderTypeToString(ProviderType(2)))
 }
 
 func TestRoleMask(t *testing.T) {
@@ -214,7 +215,7 @@ func TestAccessorsDoNotPanicWithoutSigner(t *testing.T) {
 }
 
 func TestAccessorsBeforeSetup(t *testing.T) {
-	mspInst, err := NewIdemixMsp(MSPv1_3)
+	mspInst, err := NewMSP(MSPv1_3)
 	require.NoError(t, err)
 
 	_, _, err = mspInst.Pseudonym()
@@ -275,7 +276,7 @@ func TestSchemeAccessor(t *testing.T) {
 }
 
 func TestDeserializeBeforeSetup(t *testing.T) {
-	mspInst, err := NewIdemixMsp(MSPv1_3)
+	mspInst, err := NewMSP(MSPv1_3)
 	require.NoError(t, err)
 	_, err = mspInst.DeserializeIdentity(nil)
 	require.Error(t, err)
@@ -298,7 +299,7 @@ func TestIssuerPublicKeyReturnsCopy(t *testing.T) {
 }
 
 func TestIsWellFormedNil(t *testing.T) {
-	mspInst, err := NewIdemixMsp(MSPv1_3)
+	mspInst, err := NewMSP(MSPv1_3)
 	require.NoError(t, err)
 	require.Error(t, mspInst.IsWellFormed(nil))
 }
