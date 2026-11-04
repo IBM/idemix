@@ -32,8 +32,15 @@ func (b *BBSLib) ParseSignature(sigBytes []byte) (*Signature, error) {
 		return nil, fmt.Errorf("deserialize G1 compressed signature: %w", err)
 	}
 
-	e := b.parseFr(sigBytes[b.g1CompressedSize : b.g1CompressedSize+frCompressedSize])
-	s := b.parseFr(sigBytes[b.g1CompressedSize+frCompressedSize:])
+	e, err := b.parseFr(sigBytes[b.g1CompressedSize : b.g1CompressedSize+frCompressedSize])
+	if err != nil {
+		return nil, fmt.Errorf("deserialize signature E: %w", err)
+	}
+
+	s, err := b.parseFr(sigBytes[b.g1CompressedSize+frCompressedSize:])
+	if err != nil {
+		return nil, fmt.Errorf("deserialize signature S: %w", err)
+	}
 
 	return &Signature{
 		A:     pointG1,
