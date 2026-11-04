@@ -925,13 +925,14 @@ func (sig *Signature) Ver(
 		}
 	}
 
-	// Verify that the revocation authority signed the epoch public key the
-	// signature was produced against, and that it is for the expected epoch.
+	// Verify that the revocation authority signed the epoch public key for the
+	// epoch carried by the signature; a non-zero expected epoch must also match.
 	if revPk != nil {
-		if sig.Epoch != int64(epoch) {
-			return fmt.Errorf("signature invalid: epoch [%d] does not match the expected epoch [%d]", sig.Epoch, epoch)
+		sigEpoch, err := checkEpoch(sig.Epoch, epoch)
+		if err != nil {
+			return err
 		}
-		if err := verifyEpochPK(revPk, sig.RevocationEpochPk, sig.RevocationPkSig, epoch, RevocationAlgorithm(sig.NonRevocationProof.RevocationAlg)); err != nil {
+		if err := verifyEpochPK(revPk, sig.RevocationEpochPk, sig.RevocationPkSig, sigEpoch, RevocationAlgorithm(sig.NonRevocationProof.RevocationAlg)); err != nil {
 			return fmt.Errorf("signature invalid: revocation epoch public key: %w", err)
 		}
 	}
