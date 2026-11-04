@@ -31,6 +31,7 @@ func TestSetupSchemeAutoDetection(t *testing.T) {
 
 		cases := []testCase{
 			{"IDEMIX", IDEMIX, ""},
+			{"IDEMIX_ARIES (v0.3.1 alias)", IDEMIX_ARIES, ""},
 			{"FABRIC", FABRIC, "unsupported config type"},
 		}
 

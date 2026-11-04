@@ -213,7 +213,7 @@ func (msp *MSP) Setup(conf1 *m.MSPConfig) error {
 		return fmt.Errorf("failed unmarshalling idemix msp config: %w", err)
 	}
 
-	if conf1.Type != int32(IDEMIX) {
+	if conf1.Type != int32(IDEMIX) && conf1.Type != int32(IDEMIX_ARIES) {
 		return fmt.Errorf("setup error: unsupported config type %d, expected IDEMIX", conf1.Type)
 	}
 

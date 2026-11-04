@@ -34,9 +34,10 @@ For v0.3.1 source compatibility, `msp` also provides the type aliases `Idemixmsp
 
 - The `MSP` and `MSPManager` interfaces are removed: `msp.MSP` is now a struct, and the former `MSP` interface is `Provider`. Code that needs the interface should use `NewIdemixMsp`.
 - `NewIdemixMsp*` now return `Provider` and the concrete-returning constructors are `NewMSP*`.
-- The `IDEMIX_ARIES` provider type is removed (value 2 stays reserved so `OTHER` keeps its wire value). `Setup` rejects configs with `Type != IDEMIX`; regenerate or re-type old Aries configs as `IDEMIX`.
+- `IDEMIX_ARIES` is deprecated and accepted as an alias of `IDEMIX`; `Setup` rejects any other type.
 - `NewIdemixIdentity` and `NewSigningIdentity` are no longer exported.
-- `GetIdemixMspConfigWithType` is deprecated: `IDEMIX` is the only accepted type.
+- `GetIdemixMspConfigWithType` is deprecated and accepts only `IDEMIX` and `IDEMIX_ARIES`.
+- Verification checks the revocation authority's signature on the epoch public key; the epoch must match `IdemixMSPConfig.Epoch` when it is non-zero.
 
 ### Behavior notes
 
