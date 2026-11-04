@@ -133,11 +133,10 @@ func TestDeserializeSigningIdentityBadInput(t *testing.T) {
 	})
 }
 
-// TestDeserializeSigningIdentityRejectsOuterEnvelope documents that, unlike
-// DeserializeIdentity, DeserializeSigningIdentity does not accept the outer
-// SerializedIdentity envelope produced by identity.Serialize(): it must be
-// given the inner SerializedIdemixIdentity bytes directly.
-func TestDeserializeSigningIdentityRejectsOuterEnvelope(t *testing.T) {
+// TestDeserializeSigningIdentityAcceptsOuterEnvelope checks that, like DeserializeIdentity,
+// DeserializeSigningIdentity accepts the SerializedIdentity envelope produced by Serialize, as
+// well as the inner SerializedIdemixIdentity bytes, and rejects an envelope for another MSP.
+func TestDeserializeSigningIdentityAcceptsOuterEnvelope(t *testing.T) {
 	forEachSchemeCurve(t, func(t *testing.T, sc schemeCurve) {
 		t.Helper()
 
@@ -150,9 +149,20 @@ func TestDeserializeSigningIdentityRejectsOuterEnvelope(t *testing.T) {
 		serializedID, err := id1.Serialize()
 		require.NoError(t, err)
 
-		// Passing the outer envelope (mspid + inner bytes) instead of just the
-		// inner bytes must not silently succeed.
-		_, err = msp1.DeserializeSigningIdentity(serializedID)
+		sid, err := msp1.DeserializeSigningIdentity(serializedID)
+		require.NoError(t, err)
+		require.NotNil(t, sid)
+
+		outer := &m.SerializedIdentity{}
+		require.NoError(t, proto.Unmarshal(serializedID, outer))
+		sid, err = msp1.DeserializeSigningIdentity(outer.IdBytes)
+		require.NoError(t, err)
+		require.NotNil(t, sid)
+
+		outer.Mspid = "another"
+		other, err := proto.Marshal(outer)
+		require.NoError(t, err)
+		_, err = msp1.DeserializeSigningIdentity(other)
 		require.Error(t, err)
 	})
 }
@@ -306,4 +316,24 @@ func TestSetupDoesNotRetainSignerSecretKey(t *testing.T) {
 		require.NotNil(t, mspInst.conf.GetSigner())
 		require.Empty(t, mspInst.conf.GetSigner().GetSk())
 	})
+}
+
+// TestSigningIdentitySurvivesSetupOnAnotherScheme checks that a signing identity keeps
+// signing with its own material after Setup is re-run on the MSP for another scheme/curve.
+func TestSigningIdentitySurvivesSetupOnAnotherScheme(t *testing.T) {
+	first := schemeCurve{scheme: "dlog", curveID: curveIDFP256BN_AMCL}
+	second := schemeCurve{scheme: "aries", curveID: curveIDBLS12_381_BBS}
+
+	mspI, err := NewMSP(MSPv1_3)
+	require.NoError(t, err)
+	require.NoError(t, mspI.Setup(loadCurveConfig(t, first, "MSP1", IDEMIX)))
+	old, err := mspI.GetDefaultSigningIdentity()
+	require.NoError(t, err)
+
+	require.NoError(t, mspI.Setup(loadCurveConfig(t, second, "MSP1", IDEMIX)))
+
+	var sig []byte
+	require.NotPanics(t, func() { sig, err = old.Sign([]byte("msg")) })
+	require.NoError(t, err)
+	require.NotEmpty(t, sig)
 }

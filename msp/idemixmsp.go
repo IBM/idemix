@@ -609,7 +609,8 @@ func (msp *MSP) DeserializeIdentity(serializedID []byte) (Identity, error) {
 // SerializedIdemixIdentity bytes) previously produced by this MSP's default signer (or
 // Pseudonym). It requires the MSP to have been created with a persistent keystore.KVS
 // (NewMSPWithKeyStore), because the nym secret key is looked up by the SKI of the
-// identity's nym public key. The identity must carry the default signer's OU and role, its
+// identity's nym public key. raw is either the output of Serialize or the inner
+// SerializedIdemixIdentity bytes. The identity must carry the default signer's OU and role, its
 // association proof must verify, and the nym secret key found in the KVS must belong to the
 // default signer's user secret key. The KVS is expected to hold the keys of a single user.
 func (msp *MSP) DeserializeSigningIdentity(raw []byte) (SigningIdentity, error) {
@@ -620,7 +621,7 @@ func (msp *MSP) DeserializeSigningIdentity(raw []byte) (SigningIdentity, error) 
 		return nil, errors.New("cannot deserialize a signing identity: msp has no persistent keystore")
 	}
 
-	id, err := msp.deserializeIdentityInternal(raw)
+	id, err := msp.deserializeSigningIdentityBytes(raw)
 	if err != nil {
 		return nil, err
 	}
@@ -655,6 +656,17 @@ func (msp *MSP) DeserializeSigningIdentity(raw []byte) (SigningIdentity, error) 
 	}
 
 	return sid, nil
+}
+
+// deserializeSigningIdentityBytes accepts either the SerializedIdentity envelope produced by
+// Serialize for this MSP or the inner SerializedIdemixIdentity bytes.
+func (msp *MSP) deserializeSigningIdentityBytes(raw []byte) (*identity, error) {
+	sID := &m.SerializedIdentity{}
+	if err := proto.Unmarshal(raw, sID); err == nil && sID.Mspid == msp.name && len(sID.IdBytes) != 0 {
+		return msp.deserializeIdentityInternal(sID.IdBytes)
+	}
+
+	return msp.deserializeIdentityInternal(raw)
 }
 
 // nymOwnershipChallenge is the message signed by DeserializeSigningIdentity to check that a nym
@@ -1225,6 +1237,10 @@ type signingIdentity struct {
 	UserKey      bccsp.Key
 	NymKey       bccsp.Key
 	enrollmentId string
+	// csp and ipk are the material the keys belong to: a later Setup on the MSP
+	// (possibly for another scheme) must not mix them.
+	csp bccsp.BCCSP
+	ipk bccsp.Key
 }
 
 func newSigningIdentity(
@@ -1234,18 +1250,21 @@ func newSigningIdentity(
 	nymKey bccsp.Key,
 	enrollmentId string,
 ) *signingIdentity {
-	return &signingIdentity{identity: identity, Cred: cred, UserKey: userKey, NymKey: nymKey, enrollmentId: enrollmentId}
+	return &signingIdentity{
+		identity: identity, Cred: cred, UserKey: userKey, NymKey: nymKey, enrollmentId: enrollmentId,
+		csp: identity.msp.csp, ipk: identity.msp.ipk,
+	}
 }
 
 func (id *signingIdentity) Sign(msg []byte) ([]byte, error) {
 	id.msp.logger.Debugf("Idemix identity %s is signing", id.GetIdentifier())
 
-	sig, err := id.msp.csp.Sign(
+	sig, err := id.csp.Sign(
 		id.UserKey,
 		msg,
 		&bccsp.IdemixNymSignerOpts{
 			Nym:      id.NymKey,
-			IssuerPK: id.msp.ipk,
+			IssuerPK: id.ipk,
 		},
 	)
 	if err != nil {
