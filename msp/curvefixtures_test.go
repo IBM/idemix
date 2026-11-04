@@ -126,7 +126,7 @@ func loadCurveVerifierConfig(t *testing.T, sc schemeCurve, mspID string, mspType
 func setupCurveWithTypeAndVersion(t *testing.T, sc schemeCurve, mspID string, version MSPVersion, mspType ProviderType) (*MSP, error) {
 	t.Helper()
 
-	mspInst, err := NewIdemixMsp(version)
+	mspInst, err := NewMSP(version)
 	if err != nil {
 		return nil, err
 	}
@@ -153,7 +153,7 @@ func setupCurveWithVersion(t *testing.T, sc schemeCurve, mspID string, version M
 func setupCurveAdmin(t *testing.T, sc schemeCurve, mspID string) (*MSP, error) {
 	t.Helper()
 
-	mspInst, err := NewIdemixMsp(MSPv1_3)
+	mspInst, err := NewMSP(MSPv1_3)
 	if err != nil {
 		return nil, err
 	}
@@ -176,7 +176,7 @@ func setupCurveWithKeyStore(t *testing.T, sc schemeCurve, mspID string) (*MSP, e
 		return nil, err
 	}
 
-	mspInst, err := NewIdemixMspWithKeyStore(MSPv1_3, nil, fileKVS)
+	mspInst, err := NewMSPWithKeyStore(MSPv1_3, nil, fileKVS)
 	if err != nil {
 		return nil, err
 	}
@@ -191,7 +191,7 @@ func setupCurveWithKeyStore(t *testing.T, sc schemeCurve, mspID string) (*MSP, e
 func setupCurveVerifier(t *testing.T, sc schemeCurve, mspID string) (*MSP, error) {
 	t.Helper()
 
-	mspInst, err := NewIdemixMsp(MSPv1_3)
+	mspInst, err := NewMSP(MSPv1_3)
 	if err != nil {
 		return nil, err
 	}

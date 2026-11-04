@@ -214,7 +214,7 @@ func TestAccessorsDoNotPanicWithoutSigner(t *testing.T) {
 }
 
 func TestAccessorsBeforeSetup(t *testing.T) {
-	mspInst, err := NewIdemixMsp(MSPv1_3)
+	mspInst, err := NewMSP(MSPv1_3)
 	require.NoError(t, err)
 
 	_, _, err = mspInst.Pseudonym()
@@ -275,7 +275,7 @@ func TestSchemeAccessor(t *testing.T) {
 }
 
 func TestDeserializeBeforeSetup(t *testing.T) {
-	mspInst, err := NewIdemixMsp(MSPv1_3)
+	mspInst, err := NewMSP(MSPv1_3)
 	require.NoError(t, err)
 	_, err = mspInst.DeserializeIdentity(nil)
 	require.Error(t, err)
@@ -298,7 +298,7 @@ func TestIssuerPublicKeyReturnsCopy(t *testing.T) {
 }
 
 func TestIsWellFormedNil(t *testing.T) {
-	mspInst, err := NewIdemixMsp(MSPv1_3)
+	mspInst, err := NewMSP(MSPv1_3)
 	require.NoError(t, err)
 	require.Error(t, mspInst.IsWellFormed(nil))
 }

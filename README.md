@@ -23,18 +23,25 @@ This project is a Go implementation of an anonymous identity stack for blockchai
 
 ## Constructors
 
-A single MSP constructor is available:
+Two constructor families are available. Both leave scheme selection to `Setup`, which auto-detects the cryptographic scheme from the key material in the config: it first attempts to load the config using the legacy dlog scheme and, if that fails, retries using the Aries/BBS+ scheme. Either scheme accepts any supported curve; `Setup` rejects any config whose type is not `IDEMIX`.
 
-- **`NewIdemixMsp(version)`** (and `NewIdemixMspWithLogger`) — `Setup` auto-detects the underlying cryptographic scheme from the key material in the config: it first attempts to load the config using the legacy dlog scheme and, if that fails, retries using the Aries/BBS+ scheme. Either scheme accepts any supported curve; `Setup` rejects any config whose type is not `IDEMIX`.
+- **`NewMSP(version)`**, `NewMSPWithLogger`, `NewMSPWithKeyStore` — return the concrete `*MSP`, which also exposes `Scheme()`, `Pseudonym()`, `EnrollmentID()`, `IssuerPublicKey()` and `DeserializeSigningIdentity()`.
+- **`NewIdemixMsp(version)`**, `NewIdemixMspWithLogger` — drop-in replacements for the idemix v0.3.1 constructors (as used by fabric-x-common). They return the `Provider` interface, which is the v0.3.1 `MSP` interface under a new name. `NewIdemixMspAries` and `NewIdemixMspAriesWithLogger` are deprecated aliases of these.
+
+For v0.3.1 source compatibility, `msp` also provides the type aliases `Idemixmsp` (= `MSP`), `Idemixidentity` and `IdemixSigningIdentity`, and an exported `(*MSP).DeserializeIdentityInternal`.
 
 ### Breaking changes
 
-- `NewIdemixMspAries` and `NewIdemixMspAriesWithLogger` are removed; use `NewIdemixMsp` / `NewIdemixMspWithLogger`.
+- The `MSP` and `MSPManager` interfaces are removed: `msp.MSP` is now a struct, and the former `MSP` interface is `Provider`. Code that needs the interface should use `NewIdemixMsp`.
+- `NewIdemixMsp*` now return `Provider` and the concrete-returning constructors are `NewMSP*`.
 - The `IDEMIX_ARIES` provider type is removed (value 2 stays reserved so `OTHER` keeps its wire value). `Setup` rejects configs with `Type != IDEMIX`; regenerate or re-type old Aries configs as `IDEMIX`.
-- `Setup` detects the scheme by importing the issuer public key (dlog first, then Aries) and completes the setup with the BCCSP built for the detected scheme. `MSP.Scheme()` reports the result (`SchemeDlog` or `SchemeAries`). A failed `Setup` restores the in-memory state of the MSP and persists no new key. `Setup` must not be called concurrently with other methods.
-- `DeserializeSigningIdentity` requires an MSP created with `NewIdemixMspWithKeyStore` and a persistent KVS holding a single user's keys. It verifies the identity's association proof and that the stored nym secret key belongs to the default signer. `Pseudonym()` persists one nym key per successful call when a KVS is configured (no deletion path).
-- `msp.MSP` is now a struct; the `MSP` and `MSPManager` interfaces are removed. `NewIdemixIdentity` and `NewSigningIdentity` are no longer exported.
+- `NewIdemixIdentity` and `NewSigningIdentity` are no longer exported.
 - `GetIdemixMspConfigWithType` is deprecated: `IDEMIX` is the only accepted type.
+
+### Behavior notes
+
+- `Setup` detects the scheme by importing the issuer public key (dlog first, then Aries) and completes the setup with the BCCSP built for the detected scheme. `MSP.Scheme()` reports the result (`SchemeDlog` or `SchemeAries`). A failed `Setup` restores the in-memory state of the MSP and persists no new key. `Setup` must not be called concurrently with other methods.
+- `DeserializeSigningIdentity` requires an MSP created with `NewMSPWithKeyStore` and a persistent KVS holding a single user's keys. It verifies the identity's association proof and that the stored nym secret key belongs to the default signer. `Pseudonym()` persists one nym key per successful call when a KVS is configured (no deletion path).
 
 ## Curve selection
 
