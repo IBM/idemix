@@ -6,6 +6,9 @@ SPDX-License-Identifier: Apache-2.0
 package handlers_test
 
 import (
+	"crypto/ecdsa"
+	"crypto/elliptic"
+	"crypto/rand"
 	"errors"
 
 	"github.com/IBM/idemix/bccsp/handlers"
@@ -16,6 +19,15 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
+
+var revocationPK = func() bccsp.Key {
+	k, err := ecdsa.GenerateKey(elliptic.P384(), rand.Reader)
+	if err != nil {
+		panic(err)
+	}
+
+	return handlers.NewRevocationPublicKey(&k.PublicKey)
+}()
 
 var _ = Describe("Signature", func() {
 
@@ -256,7 +268,7 @@ var _ = Describe("Signature", func() {
 					[]byte("a signature"),
 					[]byte("a digest"),
 					&bccsp.IdemixSignerOpts{
-						RevocationPublicKey: handlers.NewRevocationPublicKey(nil),
+						RevocationPublicKey: revocationPK,
 						Nym:                 nymPK,
 					},
 				)
@@ -276,7 +288,7 @@ var _ = Describe("Signature", func() {
 					[]byte("a signature"),
 					[]byte("a digest"),
 					&bccsp.IdemixSignerOpts{
-						RevocationPublicKey: handlers.NewRevocationPublicKey(nil),
+						RevocationPublicKey: revocationPK,
 						Nym:                 nymPK,
 					},
 				)
@@ -320,7 +332,7 @@ var _ = Describe("Signature", func() {
 						nil,
 						[]byte("a digest"),
 						&bccsp.IdemixSignerOpts{
-							RevocationPublicKey: handlers.NewRevocationPublicKey(nil),
+							RevocationPublicKey: revocationPK,
 						},
 					)
 					Expect(err).To(MatchError("invalid signature, it must not be empty"))
@@ -367,6 +379,19 @@ var _ = Describe("Signature", func() {
 				})
 			})
 
+			Context("and the option's revocation public key carries no key", func() {
+				It("returns error", func() {
+					valid, err := Verifier.Verify(
+						handlers.NewIssuerPublicKey(nil),
+						[]byte("fake signature"),
+						nil,
+						&bccsp.IdemixSignerOpts{RevocationPublicKey: handlers.NewRevocationPublicKey(nil)},
+					)
+					Expect(err).To(MatchError("invalid options, revocation public key is empty"))
+					Expect(valid).To(BeFalse())
+				})
+			})
+
 			Context("and the nym is nil", func() {
 				It("returns error", func() {
 					valid, err := Verifier.Verify(
@@ -374,7 +399,7 @@ var _ = Describe("Signature", func() {
 						[]byte("a signature"),
 						[]byte("a digest"),
 						&bccsp.IdemixSignerOpts{
-							RevocationPublicKey: handlers.NewRevocationPublicKey(nil),
+							RevocationPublicKey: revocationPK,
 						},
 					)
 					Expect(err).To(MatchError("invalid options, missing nym key"))
@@ -389,7 +414,7 @@ var _ = Describe("Signature", func() {
 						[]byte("a signature"),
 						[]byte("a digest"),
 						&bccsp.IdemixSignerOpts{
-							RevocationPublicKey: handlers.NewRevocationPublicKey(nil),
+							RevocationPublicKey: revocationPK,
 							Nym:                 handlers.NewIssuerPublicKey(nil),
 						},
 					)
@@ -409,7 +434,7 @@ var _ = Describe("Signature", func() {
 						[]byte("a signature"),
 						[]byte("a digest"),
 						&bccsp.IdemixSignerOpts{
-							RevocationPublicKey: handlers.NewRevocationPublicKey(nil),
+							RevocationPublicKey: revocationPK,
 							Nym:                 nymPK,
 						},
 					)
