@@ -6,6 +6,7 @@ SPDX-License-Identifier: Apache-2.0
 package handlers_test
 
 import (
+	"bytes"
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
@@ -13,7 +14,6 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	"errors"
-	"math/big"
 
 	"github.com/IBM/idemix/bccsp/handlers"
 	bccsp "github.com/IBM/idemix/bccsp/types"
@@ -43,24 +43,23 @@ var _ = Describe("Revocation", func() {
 			var (
 				sk                  bccsp.Key
 				idemixRevocationKey *ecdsa.PrivateKey
+				d                   []byte
 				SKI                 []byte
 				pkBytes             []byte
 			)
 			BeforeEach(func() {
-				idemixRevocationKey = &ecdsa.PrivateKey{
-					PublicKey: ecdsa.PublicKey{
-						Curve: elliptic.P256(),
-						X:     elliptic.P256().Params().Gx,
-						Y:     elliptic.P256().Params().Gy,
-					},
-					D: big.NewInt(1)}
+				d = make([]byte, 32)
+				d[31] = 1
+				var err error
+				idemixRevocationKey, err = ecdsa.ParseRawPrivateKey(elliptic.P256(), d)
+				Expect(err).NotTo(HaveOccurred())
 
-				raw := elliptic.Marshal(idemixRevocationKey.Curve, idemixRevocationKey.X, idemixRevocationKey.Y) //nolint:staticcheck
+				raw, err := idemixRevocationKey.PublicKey.Bytes()
+				Expect(err).NotTo(HaveOccurred())
 				hash := sha256.New()
 				hash.Write(raw)
 				SKI = hash.Sum(nil)
 
-				var err error
 				pkBytes, err = x509.MarshalPKIXPublicKey(&idemixRevocationKey.PublicKey)
 				Expect(err).NotTo(HaveOccurred())
 
@@ -107,7 +106,7 @@ var _ = Describe("Revocation", func() {
 					raw, err := sk.Bytes()
 					Expect(err).NotTo(HaveOccurred())
 					Expect(raw).NotTo(BeNil())
-					Expect(raw).To(BeEquivalentTo(idemixRevocationKey.D.Bytes())) //nolint:staticcheck
+					Expect(raw).To(BeEquivalentTo(bytes.TrimLeft(d, "\x00")))
 				})
 			})
 
