@@ -55,6 +55,18 @@ func getIdemixRoleFromMSPRoleType(rtype m.MSPRole_MSPRoleType) int {
 	return getIdemixRoleFromMSPRoleValue(int(rtype))
 }
 
+// isIdemixRole reports whether rtype is an MSP role with an idemix equivalent (MEMBER, ADMIN,
+// CLIENT or PEER). Any other value is rejected, rather than mapped to MEMBER, so that an identity
+// has a single valid encoding of its role.
+func isIdemixRole(rtype m.MSPRole_MSPRoleType) bool {
+	switch rtype {
+	case m.MSPRole_MEMBER, m.MSPRole_ADMIN, m.MSPRole_CLIENT, m.MSPRole_PEER:
+		return true
+	default:
+		return false
+	}
+}
+
 // getIdemixRoleFromMSPRoleValue Receives a MSP role value and returns the idemix equivalent
 func getIdemixRoleFromMSPRoleValue(role int) int {
 	switch role {
