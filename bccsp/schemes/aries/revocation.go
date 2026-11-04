@@ -120,8 +120,19 @@ func checkEpoch(sigEpoch int64, expected int) (int, error) {
 }
 
 func verifyEpochPK(pk *ecdsa.PublicKey, epochPK, epochPkSig []byte, epoch int, alg types.RevocationAlgorithm) error {
+	digest, err := epochPKDigest(pk, epochPK, epoch, alg)
+	if err != nil {
+		return err
+	}
+
+	return verifyEpochPKDigest(pk, digest, epochPkSig)
+}
+
+// epochPKDigest returns the digest signed by the revocation authority for the
+// CRI (epoch, epochPK, alg).
+func epochPKDigest(pk *ecdsa.PublicKey, epochPK []byte, epoch int, alg types.RevocationAlgorithm) ([sha256.Size]byte, error) {
 	if pk == nil || len(epochPK) == 0 {
-		return errors.New("epochPK invalid: received nil input")
+		return [sha256.Size]byte{}, errors.New("epochPK invalid: received nil input")
 	}
 
 	cri := &CredentialRevocationInformation{
@@ -132,11 +143,15 @@ func verifyEpochPK(pk *ecdsa.PublicKey, epochPK, epochPkSig []byte, epoch int, a
 
 	bytesToVer, err := proto.Marshal(cri)
 	if err != nil {
-		return err
+		return [sha256.Size]byte{}, err
 	}
 
-	digest := sha256.Sum256(bytesToVer)
+	return sha256.Sum256(bytesToVer), nil
+}
 
+// verifyEpochPKDigest checks that epochPkSig is a valid signature of digest
+// under pk.
+func verifyEpochPKDigest(pk *ecdsa.PublicKey, digest [sha256.Size]byte, epochPkSig []byte) error {
 	var sig struct{ R, S *big.Int }
 	rest, err := asn1.Unmarshal(epochPkSig, &sig)
 	if err != nil {

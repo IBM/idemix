@@ -177,6 +177,23 @@ func newCredential(key *IssuerKey, m *CredRequest, attrs []*math.Zr, rng io.Read
 // Ver cryptographically verifies the credential by verifying the signature
 // on the attribute values and user's secret key
 func (cred *Credential) Ver(sk *math.Zr, ipk *IssuerPublicKey, curve *math.Curve, t Translator) error {
+	return cred.ver(sk, protoIssuerKey{ipk: ipk}, curve, t)
+}
+
+// VerDecoded is like Ver, but takes an already decoded issuer public key.
+func (cred *Credential) VerDecoded(sk *math.Zr, ipk *DecodedIssuerPublicKey, curve *math.Curve, t Translator) error {
+	if ipk == nil {
+		return errors.New("credential invalid: nil issuer public key")
+	}
+
+	if err := ipk.checkCurve(curve); err != nil {
+		return err
+	}
+
+	return cred.ver(sk, ipk, curve, t)
+}
+
+func (cred *Credential) ver(sk *math.Zr, ipk issuerKeyView, curve *math.Curve, t Translator) error {
 	// Validate Input
 
 	// - parse the credential
@@ -198,41 +215,29 @@ func (cred *Credential) Ver(sk *math.Zr, ipk *IssuerPublicKey, curve *math.Curve
 	}
 
 	// - verify that the credential carries exactly one value per issuer attribute
-	if len(cred.GetAttrs()) != len(ipk.GetAttributeNames()) || len(ipk.GetHAttrs()) != len(ipk.GetAttributeNames()) {
+	attributeNames := ipk.attributeNames()
+	if len(cred.GetAttrs()) != len(attributeNames) || ipk.baseCount() != len(attributeNames) {
 		return fmt.Errorf("credential has %d attributes, the issuer public key defines %d names and %d bases",
-			len(cred.GetAttrs()), len(ipk.GetAttributeNames()), len(ipk.GetHAttrs()))
+			len(cred.GetAttrs()), len(attributeNames), ipk.baseCount())
 	}
 
 	// - verify that all attribute values are present
 	attrs := make([]*math.Zr, len(cred.GetAttrs()))
 	for i := range len(cred.GetAttrs()) {
 		if cred.Attrs[i] == nil {
-			return fmt.Errorf("credential has no value for attribute %s", ipk.AttributeNames[i])
+			return fmt.Errorf("credential has no value for attribute %s", attributeNames[i])
 		}
 		attrs[i], err = curve.NewZrFromBytesCanonical(cred.Attrs[i])
 		if err != nil {
-			return fmt.Errorf("invalid credential value for attribute %s: %w", ipk.AttributeNames[i], err)
+			return fmt.Errorf("invalid credential value for attribute %s: %w", attributeNames[i], err)
 		}
 	}
 
-	HSk, err := t.G1FromProto(ipk.HSk)
+	bases, err := ipk.bases(t, false, true)
 	if err != nil {
 		return err
 	}
-
-	HRand, err := t.G1FromProto(ipk.HRand)
-	if err != nil {
-		return err
-	}
-
-	HAttrs := make([]*math.G1, len(ipk.HAttrs))
-	for i := range ipk.HAttrs {
-		var err error
-		HAttrs[i], err = t.G1FromProto(ipk.HAttrs[i])
-		if err != nil {
-			return err
-		}
-	}
+	HSk, HRand, HAttrs := bases.HSk, bases.HRand, bases.HAttrs
 
 	// - verify cryptographic signature on the attributes and the user secret key
 	BPrime := curve.NewG1()
@@ -254,7 +259,7 @@ func (cred *Credential) Ver(sk *math.Zr, ipk *IssuerPublicKey, curve *math.Curve
 		return errors.New("b-value from credential does not match the attribute values")
 	}
 
-	W, err := t.G2FromProto(ipk.W)
+	W, err := ipk.g2W(t)
 	if err != nil {
 		return err
 	}
