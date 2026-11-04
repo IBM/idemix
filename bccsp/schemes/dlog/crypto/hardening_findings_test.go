@@ -66,6 +66,31 @@ func TestFindingSignatureVerRevocationFieldsUnchecked(t *testing.T) {
 	}
 }
 
+// A CRI for a non-zero epoch (fabric-ca starts at epoch 1) verifies when no
+// epoch is configured (0) or the configured epoch matches, and fails otherwise.
+func TestSignatureVerNonZeroEpoch(t *testing.T) {
+	for _, e := range envs {
+		f := newFindingFx(t, e)
+		rng, err := f.curve.Rand()
+		require.NoError(t, err)
+		f.cri, err = f.idmx.CreateCRI(f.rk, nil, 1, ALG_NO_REVOCATION, rng, f.tr)
+		require.NoError(t, err)
+		sig := f.sign(t, allHidden, opts.Standard)
+		vals := f.values(allHidden)
+
+		ver := func(epoch int) error {
+			return sig.Ver(allHidden, f.key.Ipk, fxMsg, f.nym, vals, fxRhIndex, fxEidIndex, &f.rk.PublicKey, epoch, f.curve, f.tr, opts.Basic, nil)
+		}
+		require.NoError(t, ver(0), "no configured epoch")
+		require.NoError(t, ver(1), "matching epoch")
+		require.ErrorContains(t, ver(2), "does not match the expected epoch")
+
+		s := proto.Clone(sig).(*Signature)
+		s.Epoch = 2
+		require.Error(t, s.Ver(allHidden, f.key.Ipk, fxMsg, f.nym, vals, fxRhIndex, fxEidIndex, &f.rk.PublicKey, 0, f.curve, f.tr, opts.Basic, nil), "epoch not signed by the revocation authority")
+	}
+}
+
 // FINDING-DLOG-14: the meta EidNym/RhNym in Signature.Ver were decoded with
 // curve.NewG1FromBytes without rejecting the identity.
 func TestFindingSignatureVerMetaNymIdentity(t *testing.T) {
