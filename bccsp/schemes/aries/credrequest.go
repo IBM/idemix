@@ -57,10 +57,13 @@ func (c *CredRequest) BlindVerify(credRequest []byte, key types.IssuerPublicKey,
 
 // Unblind takes a blinded signature and a blinding and produces a standard signature
 func (c *CredRequest) Unblind(signature, blinding []byte) ([]byte, error) {
-	S := c.Curve.NewZrFromBytes(blinding)
+	S, err := c.Curve.NewZrFromBytesCanonical(blinding)
+	if err != nil {
+		return nil, fmt.Errorf("invalid blinding: %w", err)
+	}
 
 	credential := &Credential{}
-	err := proto.Unmarshal(signature, credential)
+	err = proto.Unmarshal(signature, credential)
 	if err != nil {
 		return nil, fmt.Errorf("proto.Unmarshal failed [%w]", err)
 	}

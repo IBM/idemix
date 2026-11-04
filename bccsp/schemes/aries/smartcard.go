@@ -121,7 +121,32 @@ func (sc *Smartcard) NymSign(msg []byte) ([]byte, error) {
 	return resp, nil
 }
 
+// smartcardEidIndex is the index in the issuer public key generators (H) of the
+// enrollment ID base used by the smartcard (H[0] is the user secret key base).
+const smartcardEidIndex = 3
+
 func (sc *Smartcard) NymVerify(proofBytes []byte, nymEid *math.G1, msg []byte) error {
+	if sc.Curve == nil || sc.H0 == nil || sc.H1 == nil || sc.H2 == nil {
+		return errors.New("invalid smartcard verifier: missing parameters")
+	}
+
+	if nymEid == nil {
+		return errors.New("invalid nym eid: nil")
+	}
+
+	expectedLen := 16 + 2*sc.Curve.G1ByteSize + 2*sc.Curve.ScalarByteSize
+	// proofs produced by physical cards carry the trailing APDU status word
+	// 0x9000 (success), which is the only trailer accepted.
+	switch len(proofBytes) {
+	case expectedLen:
+	case expectedLen + 2:
+		if proofBytes[expectedLen] != 0x90 || proofBytes[expectedLen+1] != 0x00 {
+			return fmt.Errorf("invalid proof: unexpected status word %x", proofBytes[expectedLen:])
+		}
+	default:
+		return fmt.Errorf("invalid proof length %d, expected %d or %d", len(proofBytes), expectedLen, expectedLen+2)
+	}
+
 	offset := 16
 
 	B, err := sc.Curve.NewG1FromBytes(proofBytes[offset : offset+sc.Curve.G1ByteSize])
@@ -136,10 +161,16 @@ func (sc *Smartcard) NymVerify(proofBytes []byte, nymEid *math.G1, msg []byte) e
 	}
 	offset += sc.Curve.G1ByteSize
 
-	x_hat := sc.Curve.NewZrFromBytes(proofBytes[offset : offset+sc.Curve.ScalarByteSize])
+	x_hat, err := sc.Curve.NewZrFromBytesCanonical(proofBytes[offset : offset+sc.Curve.ScalarByteSize])
+	if err != nil {
+		return fmt.Errorf("could not parse x_hat, err %w", err)
+	}
 	offset += sc.Curve.ScalarByteSize
 
-	r_hat := sc.Curve.NewZrFromBytes(proofBytes[offset : offset+sc.Curve.ScalarByteSize])
+	r_hat, err := sc.Curve.NewZrFromBytesCanonical(proofBytes[offset : offset+sc.Curve.ScalarByteSize])
+	if err != nil {
+		return fmt.Errorf("could not parse r_hat, err %w", err)
+	}
 
 	var challengeBytes []byte
 	challengeBytes = append(challengeBytes, sc.H0.Bytes()[1:]...)
@@ -193,11 +224,20 @@ func (s *SmartcardIdemixBackend) Sign(isc any, ipk types.IssuerPublicKey, digest
 
 // Verify verifies an idemix NymSignature
 func (s *SmartcardIdemixBackend) Verify(ipk types.IssuerPublicKey, Nym *math.G1, signature, digest []byte) error {
+	key, ok := ipk.(*IssuerPublicKey)
+	if !ok {
+		return fmt.Errorf("invalid issuer public key, expected *IssuerPublicKey, got [%T]", ipk)
+	}
+
+	if key.PKwG == nil || key.PKwG.H0 == nil || len(key.PKwG.H) <= smartcardEidIndex {
+		return fmt.Errorf("invalid issuer public key: smartcard verification requires at least %d generators", smartcardEidIndex+1)
+	}
+
 	sc := &Smartcard{}
 
-	sc.H0 = ipk.(*IssuerPublicKey).PKwG.H0
-	sc.H1 = ipk.(*IssuerPublicKey).PKwG.H[0]
-	sc.H2 = ipk.(*IssuerPublicKey).PKwG.H[3]
+	sc.H0 = key.PKwG.H0
+	sc.H1 = key.PKwG.H[0]
+	sc.H2 = key.PKwG.H[smartcardEidIndex]
 	sc.Curve = s.Curve
 
 	return sc.NymVerify(signature, Nym, digest)
