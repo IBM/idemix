@@ -32,7 +32,7 @@ func (nym NymEID) AuditNymEid(
 		return errors.New("no EidNym provided")
 	}
 
-	if len(ipk.HAttrs) <= eidIndex {
+	if eidIndex < 0 || len(ipk.HAttrs) <= eidIndex {
 		return errors.New("could not access H_a_eid in array")
 	}
 
@@ -49,6 +49,9 @@ func (nym NymEID) AuditNymEid(
 	EidNym, err := curve.NewG1FromBytes(nym)
 	if err != nil {
 		return fmt.Errorf("could not deserialize EidNym: %w", err)
+	}
+	if EidNym.IsInfinity() {
+		return errors.New("could not deserialize EidNym: point at infinity")
 	}
 
 	Nym_eid := H_a_eid.Mul2(eidAttr, HRand, RNymEid)

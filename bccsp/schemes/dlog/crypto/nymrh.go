@@ -32,7 +32,7 @@ func (nym NymRH) AuditNymRh(
 		return errors.New("no RhNym provided")
 	}
 
-	if len(ipk.HAttrs) <= rhIndex {
+	if rhIndex < 0 || len(ipk.HAttrs) <= rhIndex {
 		return errors.New("could not access H_a_rh in array")
 	}
 
@@ -49,6 +49,9 @@ func (nym NymRH) AuditNymRh(
 	RhNym, err := curve.NewG1FromBytes(nym)
 	if err != nil {
 		return fmt.Errorf("could not deserialize RhNym: %w", err)
+	}
+	if RhNym.IsInfinity() {
+		return errors.New("could not deserialize RhNym: point at infinity")
 	}
 
 	Nym_rh := H_a_rh.Mul2(rhAttr, HRand, RNymRh)

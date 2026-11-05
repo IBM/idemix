@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package idemix
 
 import (
+	"fmt"
 	"io"
 
 	amcl "github.com/IBM/idemix/bccsp/schemes/dlog/crypto/translator/amcl"
@@ -61,7 +62,13 @@ func (i *Idemix) MakeNymFromBytes(raw []byte) (*math.G1, *math.Zr, error) {
 }
 
 func makeNymFromBytes(curve *math.Curve, raw []byte, translator Translator) (*math.G1, *math.Zr, error) {
-	RandNym := curve.NewZrFromBytes(raw[:curve.ScalarByteSize])
+	if len(raw) != curve.ScalarByteSize+2*curve.CoordByteSize {
+		return nil, nil, fmt.Errorf("invalid nym key length, expected %d, got %d", curve.ScalarByteSize+2*curve.CoordByteSize, len(raw))
+	}
+	RandNym, err := curve.NewZrFromBytesCanonical(raw[:curve.ScalarByteSize])
+	if err != nil {
+		return nil, nil, fmt.Errorf("invalid nym randomness: %w", err)
+	}
 	pk, err := translator.G1FromProto(&amcl.ECP{
 		X: raw[curve.ScalarByteSize : curve.ScalarByteSize+curve.CoordByteSize],
 		Y: raw[curve.ScalarByteSize+curve.CoordByteSize:],
@@ -71,4 +78,26 @@ func makeNymFromBytes(curve *math.Curve, raw []byte, translator Translator) (*ma
 	}
 
 	return pk, RandNym, nil
+}
+
+// namedScalar describes a serialized scalar to be decoded into dst.
+type namedScalar struct {
+	name string
+	raw  []byte
+	dst  **math.Zr
+}
+
+// parseCanonicalScalars decodes each serialized scalar in order, rejecting
+// non-canonical encodings (wrong length or value not smaller than the group
+// order) so that distinct byte strings cannot decode to the same scalar.
+func parseCanonicalScalars(curve *math.Curve, scalars ...namedScalar) error {
+	for _, s := range scalars {
+		zr, err := curve.NewZrFromBytesCanonical(s.raw)
+		if err != nil {
+			return fmt.Errorf("%s: %w", s.name, err)
+		}
+		*s.dst = zr
+	}
+
+	return nil
 }
