@@ -776,6 +776,9 @@ func (sig *Signature) AuditNymEid(
 	if err != nil {
 		return fmt.Errorf("could not deserialize EidNym: %w", err)
 	}
+	if EidNym.IsInfinity() {
+		return errors.New("could not deserialize EidNym: point at infinity")
+	}
 
 	Nym_eid := H_a_eid.Mul2(eidAttr, HRand, RNymEid)
 
@@ -821,6 +824,9 @@ func (sig *Signature) AuditNymRh(
 	if err != nil {
 		return fmt.Errorf("could not deserialize RhNym: %w", err)
 	}
+	if RhNym.IsInfinity() {
+		return errors.New("could not deserialize RhNym: point at infinity")
+	}
 
 	Nym_rh := H_a_rh.Mul2(rhAttr, HRand, RNymRh)
 
@@ -835,6 +841,7 @@ func (sig *Signature) AuditNymRh(
 // Disclosure steers which attributes it expects to be disclosed
 // attributeValues contains the desired attribute values.
 // This function will check that if attribute i is disclosed, the i-th attribute equals attributeValues[i].
+// A nil revPk skips the epoch and epoch-PK checks, and epoch is then ignored.
 func (sig *Signature) Ver(
 	Disclosure []byte,
 	ipk *IssuerPublicKey,

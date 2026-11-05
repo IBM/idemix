@@ -29,6 +29,15 @@ func TestFindingAuditNymAcceptsIdentity(t *testing.T) {
 			require.NotPanics(t, func() { err = NymRH(raw).AuditNymRh(f.key.Ipk, zero, fxRhIndex, zero, f.curve, f.tr) })
 			require.Error(t, err)
 		}
+
+		// same for the nyms carried by a Signature
+		id := f.tr.G1ToProto(f.curve.NewG1())
+		sig := &Signature{EidNym: &EIDNym{Nym: id}, RhNym: &RHNym{Nym: id}}
+		var err error
+		require.NotPanics(t, func() { err = sig.AuditNymEid(f.key.Ipk, zero, fxEidIndex, zero, f.curve, f.tr) })
+		require.Error(t, err, "signature eid nym")
+		require.NotPanics(t, func() { err = sig.AuditNymRh(f.key.Ipk, zero, fxRhIndex, zero, f.curve, f.tr) })
+		require.Error(t, err, "signature rh nym")
 	}
 }
 

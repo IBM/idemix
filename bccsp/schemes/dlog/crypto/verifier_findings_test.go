@@ -100,8 +100,8 @@ func (f *findingFx) ver(t *testing.T, sig *Signature, disc []byte, vals []*math.
 var allHidden = []byte{0, 0, 0, 0}
 
 // FINDING-DLOG-1: Signature.Ver dereferences sig.NonRevocationProof without a
-// nil check (signature.go:842, again at :1028 and :1055). A signature whose
-// non_revocation_proof field is simply omitted makes the verifier panic.
+// nil check. A signature whose non_revocation_proof field is simply omitted
+// makes the verifier panic.
 func TestFindingSignatureVerNilNonRevocationProof(t *testing.T) {
 	for _, e := range envs {
 		f := newFindingFx(t, e)
@@ -115,7 +115,7 @@ func TestFindingSignatureVerNilNonRevocationProof(t *testing.T) {
 
 // FINDING-DLOG-2: with VerificationType BestEffort, a signature carrying an
 // RhNym but no EidNym sets verifyRHNym, which forces verifyEIDNym, and then
-// sig.EidNym.ProofSEid is dereferenced on a nil EidNym (signature.go:996).
+// sig.EidNym.ProofSEid is dereferenced on a nil EidNym.
 func TestFindingSignatureVerBestEffortRhNymWithoutEidNym(t *testing.T) {
 	for _, e := range envs {
 		f := newFindingFx(t, e)
@@ -126,8 +126,8 @@ func TestFindingSignatureVerBestEffortRhNymWithoutEidNym(t *testing.T) {
 }
 
 // FINDING-DLOG-3: Signature.Ver bounds-checks rhIndex but never eidIndex; when
-// the eid nym is verified, ipk.HAttrs[eidIndex] is indexed directly
-// (signature.go:991), so an out-of-range eidIndex panics instead of erroring.
+// the eid nym is verified, ipk.HAttrs[eidIndex] is indexed directly,
+// so an out-of-range eidIndex panics instead of erroring.
 func TestFindingSignatureVerEidIndexOutOfRange(t *testing.T) {
 	for _, e := range envs {
 		f := newFindingFx(t, e)
@@ -141,7 +141,7 @@ func TestFindingSignatureVerEidIndexOutOfRange(t *testing.T) {
 
 // FINDING-DLOG-4: Signature.Ver does not check len(attributeValues) nor that
 // disclosed entries are non-nil; HAttrs[index].Mul(attributeValues[index])
-// (signature.go:979) panics on a short slice or a nil value.
+// panics on a short slice or a nil value.
 func TestFindingSignatureVerMalformedAttributeValues(t *testing.T) {
 	disc := []byte{1, 0, 0, 0}
 	for _, e := range envs {
@@ -156,9 +156,9 @@ func TestFindingSignatureVerMalformedAttributeValues(t *testing.T) {
 
 // FINDING-DLOG-5: Signature.Ver treats any VerificationType it does not know
 // (including ExpectSmartcard / ExpectSmartcardNoNyms, which the dlog scheme
-// does not implement, and out-of-range values) as Basic and accepts
-// (signature.go:845-869). A caller asking for a property the scheme cannot
-// verify gets a silent accept instead of an error.
+// does not implement, and out-of-range values) as Basic and accepts. A caller
+// asking for a property the scheme cannot verify gets a silent accept instead
+// of an error.
 func TestFindingSignatureVerUnsupportedVerificationTypeAccepted(t *testing.T) {
 	for _, e := range envs {
 		f := newFindingFx(t, e)
@@ -170,9 +170,9 @@ func TestFindingSignatureVerUnsupportedVerificationTypeAccepted(t *testing.T) {
 }
 
 // FINDING-DLOG-6: CredRequest.Check sizes its proof buffer for an IssuerNonce
-// of exactly ScalarByteSize bytes and then copies ipk.Hash after the nonce
-// (credrequest.go:111-118). A credential request whose issuer_nonce is longer
-// makes copy(proofData[index:], ...) slice out of range and panic. The bridge
+// of exactly ScalarByteSize bytes and then copies ipk.Hash after the nonce.
+// A credential request whose issuer_nonce is longer makes
+// copy(proofData[index:], ...) slice out of range and panic. The bridge
 // only checks the nonce length after Check returns.
 func TestFindingCredRequestCheckLongNonce(t *testing.T) {
 	for _, e := range envs {
@@ -191,8 +191,7 @@ func TestFindingCredRequestCheckLongNonce(t *testing.T) {
 
 // FINDING-DLOG-7: Credential.Ver never checks len(cred.Attrs) against the
 // issuer key; a credential with more attributes than ipk.HAttrs indexes
-// HAttrs out of range (credential.go:222/:230) and, for a nil extra entry,
-// ipk.AttributeNames (credential.go:193).
+// HAttrs out of range and, for a nil extra entry, ipk.AttributeNames.
 func TestFindingCredentialVerExtraAttributes(t *testing.T) {
 	for _, e := range envs {
 		f := newFindingFx(t, e)
@@ -208,8 +207,8 @@ func TestFindingCredentialVerExtraAttributes(t *testing.T) {
 	}
 }
 
-// FINDING-DLOG-8: makeNymFromBytes slices raw without a length check
-// (util.go:64-67); a short serialized nym key panics.
+// FINDING-DLOG-8: makeNymFromBytes slices raw without a length check;
+// a short serialized nym key panics.
 func TestFindingMakeNymFromBytesShortInput(t *testing.T) {
 	for _, e := range envs {
 		f := newFindingFx(t, e)
@@ -222,8 +221,7 @@ func TestFindingMakeNymFromBytesShortInput(t *testing.T) {
 }
 
 // FINDING-DLOG-9: the audit functions only check the upper bound of the
-// attribute index (`len(ipk.HAttrs) <= idx`), so a negative index panics
-// (signature.go:746/:791, nymeid.go:39, nymrh.go:39).
+// attribute index (`len(ipk.HAttrs) <= idx`), so a negative index panics.
 func TestFindingAuditNegativeIndex(t *testing.T) {
 	for _, e := range envs {
 		f := newFindingFx(t, e)
@@ -249,7 +247,7 @@ func TestFindingAuditNegativeIndex(t *testing.T) {
 // secret key 0, with a valid proof of knowledge of 0 (anyone can then compute
 // A = B^{1/e} and forge credentials for any attributes), and (b) HSk/HRand/
 // HAttrs[i] = identity, which removes the binding of the credential to the
-// user secret key / randomness / attribute i (issuerkey.go:177-188).
+// user secret key / randomness / attribute i.
 func TestFindingIssuerPublicKeyCheckAcceptsIdentityElements(t *testing.T) {
 	for _, e := range envs {
 		f := newFindingFx(t, e)
@@ -289,9 +287,9 @@ func TestFindingIssuerPublicKeyCheckAcceptsIdentityElements(t *testing.T) {
 	}
 }
 
-// FINDING-DLOG-11: verifyEpochPK ignores the `rest` returned by asn1.Unmarshal
-// (revocation_authority.go:128), so an epoch PK signature with arbitrary
-// trailing bytes is accepted: the signature encoding is malleable.
+// FINDING-DLOG-11: verifyEpochPK ignores the `rest` returned by asn1.Unmarshal,
+// so an epoch PK signature with arbitrary trailing bytes is accepted: the
+// signature encoding is malleable.
 func TestFindingVerifyEpochPKAcceptsTrailingBytes(t *testing.T) {
 	for _, e := range envs {
 		f := newFindingFx(t, e)
