@@ -3,7 +3,7 @@ module github.com/IBM/idemix
 go 1.27.3
 
 require (
-	github.com/IBM/mathlib v0.3.2
+	github.com/IBM/mathlib v0.3.3-0.20261103131649-7162020950b3
 	github.com/alecthomas/kingpin/v2 v2.4.0
 	github.com/hyperledger/fabric-protos-go-apiv2 v0.3.7
 	github.com/onsi/ginkgo/v2 v2.32.2

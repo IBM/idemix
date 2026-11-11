@@ -38,9 +38,7 @@ func (u *User) NewKeyFromBytes(raw []byte) (res *math.Zr, err error) {
 		return nil, fmt.Errorf("invalid length, expected [%d], got [%d]", u.Idemix.Curve.ScalarByteSize, len(raw))
 	}
 
-	res = u.Idemix.Curve.NewZrFromBytes(raw)
-
-	return
+	return u.Idemix.Curve.NewZrFromBytesCanonical(raw)
 }
 
 // MakeNym generates a new pseudonym key-pair derived from the passed user secret key (sk) and issuer public key (ipk)

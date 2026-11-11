@@ -110,6 +110,20 @@ func (i *Idemix) VerifyEpochPK(pk *ecdsa.PublicKey, epochPK *amcl.ECP2, epochPkS
 	return verifyEpochPK(pk, epochPK, epochPkSig, epoch, alg)
 }
 
+// checkEpoch returns the epoch carried by a signature, as an int. When expected
+// is non-zero, the signature epoch must equal it; zero accepts any epoch, which
+// is then authenticated by the revocation authority's signature on the epoch PK.
+func checkEpoch(sigEpoch int64, expected int) (int, error) {
+	if sigEpoch < 0 || int64(int(sigEpoch)) != sigEpoch {
+		return 0, fmt.Errorf("signature invalid: invalid epoch [%d]", sigEpoch)
+	}
+	if expected != 0 && sigEpoch != int64(expected) {
+		return 0, fmt.Errorf("signature invalid: epoch [%d] does not match the expected epoch [%d]", sigEpoch, expected)
+	}
+
+	return int(sigEpoch), nil
+}
+
 func verifyEpochPK(pk *ecdsa.PublicKey, epochPK *amcl.ECP2, epochPkSig []byte, epoch int, alg RevocationAlgorithm) error {
 	if pk == nil || epochPK == nil {
 		return errors.New("epochPK invalid: received nil input")
@@ -125,8 +139,15 @@ func verifyEpochPK(pk *ecdsa.PublicKey, epochPK *amcl.ECP2, epochPkSig []byte, e
 	digest := sha256.Sum256(bytesToSign)
 
 	var sig struct{ R, S *big.Int }
-	if _, err := asn1.Unmarshal(epochPkSig, &sig); err != nil {
+	rest, err := asn1.Unmarshal(epochPkSig, &sig)
+	if err != nil {
 		return fmt.Errorf("failed unmashalling signature: %w", err)
+	}
+	if len(rest) != 0 {
+		return errors.New("failed unmashalling signature: trailing data")
+	}
+	if sig.R == nil || sig.S == nil || sig.R.Sign() <= 0 || sig.S.Sign() <= 0 {
+		return errors.New("epochPKSig invalid")
 	}
 
 	if !ecdsa.Verify(pk, digest[:], sig.R, sig.S) {

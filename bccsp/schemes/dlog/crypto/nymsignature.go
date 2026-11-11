@@ -8,6 +8,7 @@ package idemix
 
 import (
 	"errors"
+	"fmt"
 	"io"
 
 	math "github.com/IBM/mathlib"
@@ -84,10 +85,16 @@ func newNymSignature(sk *math.Zr, Nym *math.G1, RNym *math.Zr, ipk *IssuerPublic
 
 // Ver verifies an idemix NymSignature
 func (sig *NymSignature) Ver(nym *math.G1, ipk *IssuerPublicKey, msg []byte, curve *math.Curve, tr Translator) error {
-	ProofC := curve.NewZrFromBytes(sig.GetProofC())
-	ProofSSk := curve.NewZrFromBytes(sig.GetProofSSk())
-	ProofSRNym := curve.NewZrFromBytes(sig.GetProofSRNym())
-	Nonce := curve.NewZrFromBytes(sig.GetNonce())
+	var ProofC, ProofSSk, ProofSRNym, Nonce *math.Zr
+	err := parseCanonicalScalars(curve,
+		namedScalar{"ProofC", sig.GetProofC(), &ProofC},
+		namedScalar{"ProofSSk", sig.GetProofSSk(), &ProofSSk},
+		namedScalar{"ProofSRNym", sig.GetProofSRNym(), &ProofSRNym},
+		namedScalar{"Nonce", sig.GetNonce(), &Nonce},
+	)
+	if err != nil {
+		return fmt.Errorf("pseudonym signature invalid: zero-knowledge proof is invalid: %w", err)
+	}
 
 	HRand, err := tr.G1FromProto(ipk.HRand)
 	if err != nil {
