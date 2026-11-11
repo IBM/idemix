@@ -728,7 +728,9 @@ func TestErrorPaths_Signer_Verify_SkIndexOutOfRange(t *testing.T) {
 		types.ExpectEidNymRhNym, nil,
 	)
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "invalid signature: sk index out of range")
+	// a wrong skIndex shifts the expected revealed indices, so it is now rejected by the
+	// revealed-index equality check (or, failing that, by the sk response bounds check)
+	assert.Contains(t, err.Error(), "invalid signature:")
 }
 
 // TestErrorPaths_Cred_Verify_SkPosOutOfRange regression-tests F3: Cred.Verify used

@@ -152,7 +152,10 @@ func (b *BBSLib) UnmarshalPrivateKey(privKeyBytes []byte) (*PrivateKey, error) {
 		return nil, errors.New("invalid size of private key")
 	}
 
-	fr := b.parseFr(privKeyBytes)
+	fr, err := b.parseFr(privKeyBytes)
+	if err != nil {
+		return nil, fmt.Errorf("invalid private key: %w", err)
+	}
 
 	return &PrivateKey{
 		FR:    fr,
