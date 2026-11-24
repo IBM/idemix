@@ -21,6 +21,9 @@ import (
 type SignatureScheme struct {
 	Translator idemix.Translator
 	Idemix     *idemix.Idemix
+
+	// epochPKCache holds verified epoch public keys.
+	epochPKCache idemix.EpochPKCache
 }
 
 // Sign produces an idemix-signature with the respect to the passed serialised credential (cred),
@@ -260,9 +263,27 @@ func (s *SignatureScheme) Verify(
 		return err
 	}
 
-	return sig.Ver(
+	if iipk.decoded == nil {
+		return sig.Ver(
+			disclosure,
+			iipk.PK,
+			digest,
+			nym,
+			attrValues,
+			rhIndex,
+			eidIndex,
+			revocationPublicKey,
+			epoch,
+			s.Idemix.Curve,
+			s.Translator,
+			verType,
+			meta,
+		)
+	}
+
+	return sig.VerDecoded(
 		disclosure,
-		iipk.PK,
+		iipk.decoded,
 		digest,
 		nym,
 		attrValues,
@@ -274,5 +295,6 @@ func (s *SignatureScheme) Verify(
 		s.Translator,
 		verType,
 		meta,
+		&s.epochPKCache,
 	)
 }
