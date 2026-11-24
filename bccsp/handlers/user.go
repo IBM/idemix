@@ -25,6 +25,13 @@ func NewUserSecretKey(sk *math.Zr, exportable bool) *UserSecretKey {
 	return &UserSecretKey{Sk: sk, Exportable: exportable}
 }
 
+// valid returns true if the key is not a typed-nil pointer.
+// Sk is intentionally not checked: smartcard-based signing uses a user key
+// without a secret, the secret living on the smartcard.
+func (k *UserSecretKey) valid() bool {
+	return k != nil
+}
+
 func (k *UserSecretKey) Bytes() ([]byte, error) {
 	if k.Exportable {
 		return k.Sk.Bytes(), nil

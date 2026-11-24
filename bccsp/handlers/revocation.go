@@ -31,6 +31,17 @@ func NewRevocationSecretKey(sk *ecdsa.PrivateKey, exportable bool) *revocationSe
 	return &revocationSecretKey{privKey: sk, exportable: exportable}
 }
 
+// valid returns true if the key is not a typed-nil pointer.
+func (k *revocationSecretKey) valid() bool {
+	return k != nil
+}
+
+// valid returns true if the key is not a typed-nil pointer.
+// Verifier.Verify additionally rejects a nil pubKey.
+func (k *revocationPublicKey) valid() bool {
+	return k != nil
+}
+
 // Bytes converts this key to its byte representation,
 // if this operation is allowed.
 func (k *revocationSecretKey) Bytes() ([]byte, error) {
@@ -205,11 +216,11 @@ type CriSigner struct {
 
 func (s *CriSigner) Sign(k bccsp.Key, digest []byte, opts bccsp.SignerOpts) ([]byte, error) {
 	revocationSecretKey, ok := k.(*revocationSecretKey)
-	if !ok {
+	if !ok || !revocationSecretKey.valid() {
 		return nil, errors.New("invalid key, expected *revocationSecretKey")
 	}
 	criOpts, ok := opts.(*bccsp.IdemixCRISignerOpts)
-	if !ok {
+	if !ok || criOpts == nil {
 		return nil, errors.New("invalid options, expected *IdemixCRISignerOpts")
 	}
 
@@ -227,11 +238,11 @@ type CriVerifier struct {
 
 func (v *CriVerifier) Verify(k bccsp.Key, signature, digest []byte, opts bccsp.SignerOpts) (bool, error) {
 	revocationPublicKey, ok := k.(*revocationPublicKey)
-	if !ok {
+	if !ok || !revocationPublicKey.valid() {
 		return false, errors.New("invalid key, expected *revocationPublicKey")
 	}
 	criOpts, ok := opts.(*bccsp.IdemixCRISignerOpts)
-	if !ok {
+	if !ok || criOpts == nil {
 		return false, errors.New("invalid options, expected *IdemixCRISignerOpts")
 	}
 	if len(signature) == 0 {
