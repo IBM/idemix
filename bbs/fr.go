@@ -13,8 +13,12 @@ import (
 	"golang.org/x/crypto/blake2b"
 )
 
-func (b *BBSLib) parseFr(data []byte) *ml.Zr {
-	return b.curve.NewZrFromBytes(data)
+// parseFr decodes a scalar received from serialized (possibly untrusted)
+// data. Only canonical encodings are accepted: exactly ScalarByteSize bytes
+// encoding a value smaller than the group order. This prevents scalar
+// malleability (distinct byte strings decoding to the same scalar).
+func (b *BBSLib) parseFr(data []byte) (*ml.Zr, error) {
+	return b.curve.NewZrFromBytesCanonical(data)
 }
 
 var (

@@ -34,7 +34,7 @@ func (u *User) NewKeyFromBytes(raw []byte) (*math.Zr, error) {
 		return nil, fmt.Errorf("invalid length, expected [%d], got [%d]", u.Curve.ScalarByteSize, len(raw))
 	}
 
-	return u.Curve.NewZrFromBytes(raw), nil
+	return u.Curve.NewZrFromBytesCanonical(raw)
 }
 
 // MakeNym creates a new unlinkable pseudonym
@@ -62,7 +62,10 @@ func (u *User) NewNymFromBytes(raw []byte) (*math.G1, *math.Zr, error) {
 		return nil, nil, fmt.Errorf("invalid length, expected [%d], got [%d]", u.Curve.ScalarByteSize+u.Curve.G1ByteSize, len(raw))
 	}
 
-	rnd := u.Curve.NewZrFromBytes(raw[:u.Curve.ScalarByteSize])
+	rnd, err := u.Curve.NewZrFromBytesCanonical(raw[:u.Curve.ScalarByteSize])
+	if err != nil {
+		return nil, nil, err
+	}
 	nym, err := u.Curve.NewG1FromBytes(raw[u.Curve.ScalarByteSize:])
 	if err != nil {
 		return nil, nil, err

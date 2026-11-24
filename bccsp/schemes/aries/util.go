@@ -7,6 +7,8 @@ SPDX-License-Identifier: Apache-2.0
 package aries
 
 import (
+	"fmt"
+
 	"github.com/IBM/idemix/bbs"
 	"github.com/IBM/idemix/bccsp/types"
 	math "github.com/IBM/mathlib"
@@ -53,19 +55,25 @@ func revealedAttributesIndexNoSk(attributes []types.IdemixAttribute) []int {
 	return revealed
 }
 
-func revealedAttributesIndex(attributes []types.IdemixAttribute) []int {
+// revealedAttributesIndex returns the indices, in the BBS+ message vector (which
+// includes the user secret key at position skPos), of the disclosed attributes.
+func revealedAttributesIndex(attributes []types.IdemixAttribute, skPos int) []int {
 	revealed := make([]int, 0, len(attributes))
 
 	for i, msg := range attributes {
 		if msg.Type != types.IdemixHiddenAttribute {
-			revealed = append(revealed, i+1)
+			if i < skPos {
+				revealed = append(revealed, i)
+			} else {
+				revealed = append(revealed, i+1)
+			}
 		}
 	}
 
 	return revealed
 }
 
-func (c *Credential) toSignatureMessage(sk *math.Zr, curve *math.Curve) []*bbs.SignatureMessage {
+func (c *Credential) toSignatureMessage(sk *math.Zr, curve *math.Curve) ([]*bbs.SignatureMessage, error) {
 	msgsZr := make([]*bbs.SignatureMessage, 0, len(c.Attrs)+1)
 
 	j := 0
@@ -76,12 +84,29 @@ func (c *Credential) toSignatureMessage(sk *math.Zr, curve *math.Curve) []*bbs.S
 		if i == int(c.SkPos) {
 			msg.FR = sk
 		} else {
-			msg.FR = curve.NewZrFromBytes(c.Attrs[j])
+			fr, err := curve.NewZrFromBytesCanonical(c.Attrs[j])
+			if err != nil {
+				return nil, fmt.Errorf("invalid credential attribute [%d]: %w", j, err)
+			}
+			msg.FR = fr
 			j++
 		}
 
 		msg.Idx = i
 	}
 
-	return msgsZr
+	return msgsZr, nil
+}
+
+// hiddenPosition returns the position of message idx among the hidden messages,
+// i.e. idx minus the number of revealed indices smaller than idx.
+func hiddenPosition(idx int, revealed []int) int {
+	pos := idx
+	for _, r := range revealed {
+		if r < idx {
+			pos--
+		}
+	}
+
+	return pos
 }

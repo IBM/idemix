@@ -166,8 +166,21 @@ func (bbs *BBSG2Pub) VerifyProofFr(messages []*SignatureMessage, proof, nonce, p
 		return fmt.Errorf("build generators from public key: %w", err)
 	}
 
+	// The revealed messages are mapped positionally onto payload.Revealed: the verifier
+	// must supply exactly one message per revealed index, otherwise surplus messages
+	// would be silently ignored and never bound by the proof.
 	if len(payload.Revealed) > len(messages) {
 		return errors.New("payload revealed bigger from messages")
+	}
+
+	if len(payload.Revealed) != len(messages) {
+		return fmt.Errorf("number of revealed messages in proof (%d) does not match the number of supplied messages (%d)", len(payload.Revealed), len(messages))
+	}
+
+	for _, idx := range payload.Revealed {
+		if idx < 0 || idx >= payload.MessagesCount {
+			return fmt.Errorf("revealed message index %d out of range [0, %d)", idx, payload.MessagesCount)
+		}
 	}
 
 	revealedMessages := make(map[int]*SignatureMessage)

@@ -6,6 +6,7 @@ SPDX-License-Identifier: Apache-2.0
 package aries
 
 import (
+	"errors"
 	"fmt"
 	"io"
 
@@ -74,6 +75,18 @@ func (s *NymSigner) Verify(
 	ipk, ok := key.(*IssuerPublicKey)
 	if !ok {
 		return fmt.Errorf("invalid issuer public key, expected *IssuerPublicKey, got [%T]", ipk)
+	}
+
+	if Nym == nil {
+		return errors.New("invalid nym: nil")
+	}
+
+	if ipk.PKwG == nil || ipk.PKwG.H0 == nil {
+		return errors.New("invalid issuer public key: missing generators")
+	}
+
+	if skIndex < 0 || skIndex >= len(ipk.PKwG.H) {
+		return fmt.Errorf("invalid sk index %d, expected in [0, %d)", skIndex, len(ipk.PKwG.H))
 	}
 
 	sig := &NymSignature{}

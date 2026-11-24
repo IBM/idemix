@@ -34,6 +34,10 @@ func (c *Cred) Sign(key types.IssuerSecretKey, credentialRequest []byte, attribu
 		return nil, fmt.Errorf("ParseBlindedMessages failed [%w]", err)
 	}
 
+	if c.UserSecretKeyIndex < 0 || c.UserSecretKeyIndex > len(attributes) {
+		return nil, fmt.Errorf("invalid user secret key index %d", c.UserSecretKeyIndex)
+	}
+
 	msgsZr := attributesToSignatureMessage(attributes, c.Curve, c.UserSecretKeyIndex)
 
 	sig, err := BlindSign(msgsZr, len(attributes)+1, blindedMsg.C, isk.SK.FR.Bytes(), c.Curve)
@@ -49,6 +53,7 @@ func (c *Cred) Sign(key types.IssuerSecretKey, credentialRequest []byte, attribu
 	cred := &Credential{
 		Cred:  sig,
 		Attrs: attrs,
+		SkPos: int32(c.UserSecretKeyIndex), // #nosec G115 -- bounded by len(attributes) above
 	}
 
 	credBytes, err := proto.Marshal(cred)
@@ -100,8 +105,13 @@ func (c *Cred) Verify(sk *math.Zr, key types.IssuerPublicKey, credBytes []byte, 
 			continue
 		}
 
+		attrFR, err := c.Curve.NewZrFromBytesCanonical(credential.Attrs[i])
+		if err != nil {
+			return fmt.Errorf("invalid credential: attribute [%d]: %w", i, err)
+		}
+
 		sm[j] = &bbs.SignatureMessage{
-			FR:  c.Curve.NewZrFromBytes(credential.Attrs[i]),
+			FR:  attrFR,
 			Idx: j,
 		}
 
