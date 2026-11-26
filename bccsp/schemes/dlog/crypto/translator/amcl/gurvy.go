@@ -68,8 +68,8 @@ func (a *Gurvy) G1FromProto(e *ECP) (*math.G1, error) {
 		return nil, errInvalidLength
 	}
 
-	bytes := make([]byte, len(e.X)*2)
-	l := len(e.X)
+	l := a.C.CoordByteSize
+	bytes := make([]byte, 2*l)
 	copy(bytes, e.X)
 	copy(bytes[l:], e.Y)
 
@@ -101,8 +101,8 @@ func (a *Gurvy) G2FromProto(e *ECP2) (*math.G2, error) {
 		return nil, errInvalidLength
 	}
 
-	bytes := make([]byte, len(e.Xa)*4)
-	l := len(e.Xa)
+	l := a.C.CoordByteSize
+	bytes := make([]byte, 4*l)
 	copy(bytes[0:l], e.Xa)
 	copy(bytes[l:2*l], e.Xb)
 	copy(bytes[2*l:3*l], e.Ya)

@@ -165,7 +165,14 @@ func TestAmclTranslatorRejectsInvalidPoints(t *testing.T) {
 			_, err = tr.G2FromProto(nil)
 			require.EqualError(t, err, errNilArgument.Error())
 			_, err = tr.G1FromRawBytes(nil)
-			assert.EqualError(t, err, errInvalidLength.Error())
+			require.EqualError(t, err, errInvalidLength.Error())
+
+			// oversized coordinates are rejected before allocation
+			big := make([]byte, 1024*c.CoordByteSize)
+			_, err = tr.G1FromProto(&ECP{X: big, Y: big})
+			require.EqualError(t, err, errInvalidLength.Error())
+			_, err = tr.G2FromProto(&ECP2{Xa: big, Xb: big, Ya: big, Yb: big})
+			require.EqualError(t, err, errInvalidLength.Error())
 		})
 	}
 }
@@ -218,6 +225,7 @@ func TestGurvyTranslatorRejectsMalformedInput(t *testing.T) {
 				{X: honest.X[1:], Y: honest.Y},
 				{X: honest.X, Y: append(append([]byte{}, honest.Y...), 0)},
 				{X: append([]byte{0}, honest.X...), Y: append([]byte{0}, honest.Y...)},
+				{X: make([]byte, 1024*c.CoordByteSize), Y: make([]byte, 1024*c.CoordByteSize)},
 			} {
 				_, err = tr.G1FromProto(e)
 				require.EqualError(t, err, errInvalidLength.Error())
@@ -228,6 +236,7 @@ func TestGurvyTranslatorRejectsMalformedInput(t *testing.T) {
 				{Xa: honest2.Xa, Xb: honest2.Xb, Ya: honest2.Ya},
 				{Xa: honest2.Xa[1:], Xb: honest2.Xb, Ya: honest2.Ya, Yb: honest2.Yb},
 				{Xa: honest2.Xa, Xb: honest2.Xb, Ya: honest2.Ya, Yb: append(append([]byte{}, honest2.Yb...), 0)},
+				{Xa: make([]byte, 1024*c.CoordByteSize), Xb: make([]byte, 1024*c.CoordByteSize), Ya: make([]byte, 1024*c.CoordByteSize), Yb: make([]byte, 1024*c.CoordByteSize)},
 			} {
 				_, err = tr.G2FromProto(e)
 				require.EqualError(t, err, errInvalidLength.Error())
