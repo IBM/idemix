@@ -241,7 +241,7 @@ func TestFindingSetupIgnoresConfiguredEpoch(t *testing.T) {
 	require.NoError(t, err)
 	conf.Config = raw
 
-	mspI, err := NewIdemixMsp(MSPv1_3)
+	mspI, err := NewMSP(MSPv1_3)
 	require.NoError(t, err)
 	if err := mspI.Setup(conf); err != nil {
 		// rejecting a config whose signer CRI is for another epoch is also acceptable

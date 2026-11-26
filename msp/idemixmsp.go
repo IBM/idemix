@@ -169,28 +169,28 @@ type MSP struct {
 // an attacker-supplied principal consume quadratic CPU time and an unbounded amount of stack.
 const maxCombinedPrincipalDepth = 32
 
-// NewIdemixMsp creates a new instance of msp. Setup auto-detects the underlying
+// NewMSP creates a new instance of msp. Setup auto-detects the underlying
 // cryptographic scheme (dlog or Aries/BBS+) from the key material in the config: it first
 // attempts to load the config using the dlog scheme and, if that fails, retries using the
 // Aries/BBS+ scheme. Any curve supported by curveAndTranslator is accepted by either scheme;
 // the curve is determined at Setup time from IdemixMSPConfig.CurveId (default: FP256BN_AMCL
 // for dlog, BLS12_381_BBS for Aries).
-func NewIdemixMsp(version MSPVersion) (*MSP, error) {
-	return NewIdemixMspWithLogger(version, newDefaultLogger("idemix"))
+func NewMSP(version MSPVersion) (*MSP, error) {
+	return NewMSPWithLogger(version, newDefaultLogger("idemix"))
 }
 
-// NewIdemixMspWithLogger creates a new instance of idemixmsp with a custom logger. See
-// NewIdemixMsp for the scheme auto-detection and curve-selection behavior of Setup.
+// NewMSPWithLogger creates a new instance of idemixmsp with a custom logger. See
+// NewMSP for the scheme auto-detection and curve-selection behavior of Setup.
 // If logger is nil, the default logger is used.
-func NewIdemixMspWithLogger(version MSPVersion, logger Logger) (*MSP, error) {
-	return NewIdemixMspWithKeyStore(version, logger, nil)
+func NewMSPWithLogger(version MSPVersion, logger Logger) (*MSP, error) {
+	return NewMSPWithKeyStore(version, logger, nil)
 }
 
-// NewIdemixMspWithKeyStore creates a new instance of idemixmsp with a custom logger and a
-// custom keystore.KVS used to persist imported/derived keys. See NewIdemixMsp for the scheme
+// NewMSPWithKeyStore creates a new instance of idemixmsp with a custom logger and a
+// custom keystore.KVS used to persist imported/derived keys. See NewMSP for the scheme
 // auto-detection and curve-selection behavior of Setup. If logger is nil, the default logger is
 // used. If kvs is nil, a non-persistent keystore.Dummy is used.
-func NewIdemixMspWithKeyStore(version MSPVersion, logger Logger, kvs keystore.KVS) (*MSP, error) {
+func NewMSPWithKeyStore(version MSPVersion, logger Logger, kvs keystore.KVS) (*MSP, error) {
 	if logger == nil {
 		logger = newDefaultLogger("idemix")
 	}
@@ -213,7 +213,7 @@ func (msp *MSP) Setup(conf1 *m.MSPConfig) error {
 		return fmt.Errorf("failed unmarshalling idemix msp config: %w", err)
 	}
 
-	if conf1.Type != int32(IDEMIX) {
+	if conf1.Type != int32(IDEMIX) && conf1.Type != int32(IDEMIX_ARIES) {
 		return fmt.Errorf("setup error: unsupported config type %d, expected IDEMIX", conf1.Type)
 	}
 
@@ -608,7 +608,7 @@ func (msp *MSP) DeserializeIdentity(serializedID []byte) (Identity, error) {
 // DeserializeSigningIdentity rebuilds a SigningIdentity from a serialized identity (the inner
 // SerializedIdemixIdentity bytes) previously produced by this MSP's default signer (or
 // Pseudonym). It requires the MSP to have been created with a persistent keystore.KVS
-// (NewIdemixMspWithKeyStore), because the nym secret key is looked up by the SKI of the
+// (NewMSPWithKeyStore), because the nym secret key is looked up by the SKI of the
 // identity's nym public key. raw is either the output of Serialize or the inner
 // SerializedIdemixIdentity bytes. The identity must carry the default signer's OU and role, its
 // association proof must verify, and the nym secret key found in the KVS must belong to the

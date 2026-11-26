@@ -45,9 +45,9 @@ func GetIdemixMspConfig(dir string, ID string) (*m.MSPConfig, error) {
 // uses the per-scheme default. Callers of a verification-only MSP on a non-default curve must set
 // IdemixMSPConfig.CurveId themselves.
 //
-// Deprecated: IDEMIX is the only supported type; use GetIdemixMspConfig.
+// Deprecated: IDEMIX_ARIES is accepted as an alias of IDEMIX; use GetIdemixMspConfig.
 func GetIdemixMspConfigWithType(dir string, ID string, mspType ProviderType) (*m.MSPConfig, error) {
-	if mspType != IDEMIX {
+	if mspType != IDEMIX && mspType != IDEMIX_ARIES {
 		return nil, fmt.Errorf("msp type %d is not supported", mspType)
 	}
 
@@ -92,5 +92,5 @@ func GetIdemixMspConfigWithType(dir string, ID string, mspType ProviderType) (*m
 		return nil, err
 	}
 
-	return &m.MSPConfig{Config: confBytes, Type: int32(mspType)}, nil
+	return &m.MSPConfig{Config: confBytes, Type: int32(IDEMIX)}, nil
 }

@@ -27,7 +27,7 @@ func TestAudit(t *testing.T) {
 func testAudit(t *testing.T, sc schemeCurve) {
 	t.Helper()
 
-	mspI, err := NewIdemixMsp(MSPv1_3)
+	mspI, err := NewMSP(MSPv1_3)
 	require.NoError(t, err)
 
 	conf := loadCurveConfig(t, sc, "EidRH", IDEMIX)

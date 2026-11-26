@@ -31,12 +31,13 @@ func TestSetupSchemeAutoDetection(t *testing.T) {
 
 		cases := []testCase{
 			{"IDEMIX", IDEMIX, ""},
+			{"IDEMIX_ARIES (v0.3.1 alias)", IDEMIX_ARIES, ""},
 			{"FABRIC", FABRIC, "unsupported config type"},
 		}
 
 		for _, tc := range cases {
 			t.Run(tc.name, func(t *testing.T) {
-				mspInst, err := NewIdemixMsp(MSPv1_3)
+				mspInst, err := NewMSP(MSPv1_3)
 				require.NoError(t, err)
 
 				conf := loadCurveConfig(t, sc, "MSP1OU1", IDEMIX)
@@ -66,7 +67,7 @@ func TestSetupSchemeAutoDetection(t *testing.T) {
 }
 
 func TestSetupCurveFromConfig(t *testing.T) {
-	mspInst, err := NewIdemixMsp(MSPv1_3)
+	mspInst, err := NewMSP(MSPv1_3)
 	require.NoError(t, err)
 
 	conf, err := GetIdemixMspConfigWithType("testdata/curves/aries/BLS12_381_BBS", "MSP1OU1eid1", IDEMIX)
@@ -98,7 +99,7 @@ func TestSetupCurveFromConfig(t *testing.T) {
 // the mismatch only surfaces once the default signer's credential is verified against the
 // wrong curve's generators.
 func TestSetupCurveMismatch(t *testing.T) {
-	mspInst, err := NewIdemixMsp(MSPv1_3)
+	mspInst, err := NewMSP(MSPv1_3)
 	require.NoError(t, err)
 
 	conf, err := GetIdemixMspConfigWithType("testdata/curves/aries/BLS12_381_BBS", "MSP1OU1eid1", IDEMIX)
@@ -118,13 +119,13 @@ func TestSetupCurveMismatch(t *testing.T) {
 }
 
 func TestSetupWithLoggerNilLogger(t *testing.T) {
-	mspInst, err := NewIdemixMspWithLogger(MSPv1_3, nil)
+	mspInst, err := NewMSPWithLogger(MSPv1_3, nil)
 	require.NoError(t, err)
 	require.NotNil(t, mspInst)
 }
 
 func TestSetupNilConf(t *testing.T) {
-	mspInst, err := NewIdemixMsp(MSPv1_3)
+	mspInst, err := NewMSP(MSPv1_3)
 	require.NoError(t, err)
 
 	err = mspInst.Setup(nil)
@@ -140,7 +141,7 @@ func TestSetupDefaultCurve(t *testing.T) {
 		{scheme: "aries", curveID: curveIDBLS12_381_BBS},
 	} {
 		t.Run(sc.name(), func(t *testing.T) {
-			mspInst, err := NewIdemixMsp(MSPv1_3)
+			mspInst, err := NewMSP(MSPv1_3)
 			require.NoError(t, err)
 
 			conf, err := GetIdemixMspConfigWithType(sc.dir(), "MSP1OU1", IDEMIX)
@@ -172,7 +173,7 @@ func TestSetupUnstampedConfig(t *testing.T) {
 
 		conf, err := GetIdemixMspConfig(sc.dir(), "MSP1OU1")
 		require.NoError(t, err)
-		signerMsp, err := NewIdemixMsp(MSPv1_3)
+		signerMsp, err := NewMSP(MSPv1_3)
 		require.NoError(t, err)
 		require.NoError(t, signerMsp.Setup(conf))
 		require.Equal(t, CryptoScheme(sc.scheme), signerMsp.Scheme())
@@ -190,7 +191,7 @@ func TestSetupUnstampedConfig(t *testing.T) {
 		verConf.Config, err = proto.Marshal(idemixConfig)
 		require.NoError(t, err)
 
-		verMsp, err := NewIdemixMsp(MSPv1_3)
+		verMsp, err := NewMSP(MSPv1_3)
 		require.NoError(t, err)
 		require.NoError(t, verMsp.Setup(verConf))
 
