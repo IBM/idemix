@@ -112,8 +112,8 @@ func (a *Fp256bn) G1FromProto(e *ECP) (*math.G1, error) {
 		return nil, errInvalidLength
 	}
 
-	bytes := make([]byte, len(e.X)*2+1)
-	l := len(e.X)
+	l := a.C.CoordByteSize
+	bytes := make([]byte, 2*l+1)
 	bytes[0] = 0x04
 	copy(bytes[1:], e.X)
 	copy(bytes[l+1:], e.Y)
@@ -150,8 +150,8 @@ func (a *Fp256bn) G2FromProto(e *ECP2) (*math.G2, error) {
 		return nil, errInvalidLength
 	}
 
-	bytes := make([]byte, len(e.Xa)*4)
-	l := len(e.Xa)
+	l := a.C.CoordByteSize
+	bytes := make([]byte, 4*l)
 	copy(bytes[0:l], e.Xa)
 	copy(bytes[l:2*l], e.Xb)
 	copy(bytes[2*l:3*l], e.Ya)
@@ -211,8 +211,8 @@ func (a *Fp256bnMiracl) G1FromProto(e *ECP) (*math.G1, error) {
 		return nil, errInvalidLength
 	}
 
-	bytes := make([]byte, len(e.X)*2+1)
-	l := len(e.X)
+	l := a.C.CoordByteSize
+	bytes := make([]byte, 2*l+1)
 	bytes[0] = 0x04
 	copy(bytes[1:], e.X)
 	copy(bytes[l+1:], e.Y)
@@ -249,9 +249,9 @@ func (a *Fp256bnMiracl) G2FromProto(e *ECP2) (*math.G2, error) {
 		return nil, errInvalidLength
 	}
 
-	bytes := make([]byte, 1+len(e.Xa)*4)
+	l := a.C.CoordByteSize
+	bytes := make([]byte, 1+4*l)
 	bytes[0] = 0x04
-	l := len(e.Xa)
 	copy(bytes[1:], e.Xa)
 	copy(bytes[1+l:], e.Xb)
 	copy(bytes[1+2*l:], e.Ya)
