@@ -76,7 +76,7 @@ func TestUser(t *testing.T) {
 	t.Run("corrupted_public_nym_bytes", func(t *testing.T) {
 		corrupted := make([]byte, len(nymBytes))
 		copy(corrupted, nymBytes)
-		corrupted[len(corrupted)-1] = 0
+		corrupted[len(corrupted)-1] ^= 0xff
 		_, err := user.NewPublicNymFromBytes(corrupted)
 		assert.EqualError(t, err, "failure [set bytes failed [invalid point: subgroup check failed]]")
 	})
@@ -84,7 +84,7 @@ func TestUser(t *testing.T) {
 	t.Run("corrupted_nym_bytes", func(t *testing.T) {
 		corrupted := make([]byte, len(bothBytes))
 		copy(corrupted, bothBytes)
-		corrupted[len(corrupted)-1] = 0
+		corrupted[len(corrupted)-1] ^= 0xff
 		_, _, err := user.NewNymFromBytes(corrupted)
 		assert.EqualError(t, err, "failure [set bytes failed [invalid point: subgroup check failed]]")
 	})
